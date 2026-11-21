@@ -52,6 +52,8 @@
  * one hush, one flare, one sting). Reduced motion (docs "Rules"): a flip is a crossfade ending where the flip lands,
  * no rise, tremble, pop, burst, ray rotation, stamp scale or drop, no flash (the glow is already full at the flare);
  * every cue, the duck and the settle keep their times.
+ *
+ * @module
  */
 import { DRAFT_OFFER_COUNT, Rarity } from "shared/sim";
 import { semitonesToSpeed } from "./comboConfig";
@@ -67,6 +69,10 @@ export const DraftBeat = {
 	RARE: Rarity.RARE,
 	LEGENDARY: Rarity.LEGENDARY,
 } as const;
+/**
+ * One of `DraftBeat`'s values (a `Rarity` number): how a card flips in the reveal. Common is a plain flip, rare adds
+ * the chime and flare, legendary plays the charge, hush and flare.
+ */
 export type DraftBeatId = (typeof DraftBeat)[keyof typeof DraftBeat];
 
 /** One sound to play this step. */

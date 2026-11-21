@@ -15,6 +15,8 @@
  *             the drop's ordinary bob counted from the landing
  *   debug     the label text of a loaded piece and of a Silver piece (developer text, English; KV_LootDebug and
  *             KV_SilverLabel)
+ *
+ * @module
  */
 import { CAMERA_PITCH_DEG, STUDS_PER_TILE } from "shared/config";
 import { TILE_SIZE, cellKey } from "shared/dungeon";

@@ -3,6 +3,8 @@
  * Start rule, the status line), the invite list, received invites, notice toasts, and the small run-handoff / exit
  * rules the controllers use (task L6). Display names come from a `nameOf` callback (the client reads the Player in
  * this server), so this stays Roblox-API-free and headlessly tested (menu.spec.ts).
+ *
+ * @module
  */
 import {
 	LOBBY,
@@ -34,6 +36,10 @@ export interface StringSpec {
 	readonly vars?: StringVars;
 }
 
+/**
+ * Looks up a player's display name by UserId. The client passes one that reads the Player in this server, so this
+ * module never touches the Roblox API.
+ */
 export type NameOf = (userId: number) => string;
 
 /** A lobby's display name: `lobby.name.<id>` ("{host}'s descent" for hostDescent). */
@@ -49,6 +55,10 @@ export function nextLobbyName(nameId: LobbyNameId): LobbyNameId {
 
 // --- browser ---------------------------------------------------------------------------------
 
+/**
+ * One lobby as a row of the lobby browser: its title, member count and visibility as string specs and keys, its phase,
+ * and whether this player is in it or may join it. Built by `browserRows` from the server's lobby summaries.
+ */
 export interface BrowserRow {
 	readonly lobbyId: string;
 	readonly title: StringSpec;
@@ -96,6 +106,10 @@ export function browserRows(
 
 // --- lobby room ------------------------------------------------------------------------------
 
+/**
+ * One member as a row of the lobby room: name, host / ready / me tags, their character pick and dye, and whether the
+ * host's row buttons (kick, make host) show. Built by `lobbyRoomModel`, in join order.
+ */
 export interface RoomMember {
 	readonly userId: number;
 	readonly name: string;
@@ -117,6 +131,11 @@ export interface RoomMember {
 	readonly canMakeHost: boolean;
 }
 
+/**
+ * The lobby room screen for this player: the title, which controls are shown or enabled (the host's Start and settings,
+ * Ready, inviting), the status line and the member rows. Built by `lobbyRoomModel` from the server's lobby view;
+ * client/ui/menu draws it.
+ */
 export interface LobbyRoomModel {
 	readonly lobbyId: string;
 	readonly title: StringSpec;
@@ -167,6 +186,11 @@ export function countdownLeft(countdownIn: number | undefined, elapsed: number):
 	return math.max(0, math.ceil(countdownIn - elapsed));
 }
 
+/**
+ * The lobby room's model for player `me` from the server's `view`: the member rows in join order, the host-only
+ * controls (only while forming), the Start rule (host, forming, every member ready) and the status line.
+ * `countdownSeconds` is the whole seconds left that the countdown status shows (see `countdownLeft`).
+ */
 export function lobbyRoomModel(view: LobbyView, me: number, nameOf: NameOf, countdownSeconds: number): LobbyRoomModel {
 	const isHost = view.hostId === me;
 	const forming = view.phase === "forming";
@@ -208,11 +232,20 @@ export function lobbyRoomModel(view: LobbyView, me: number, nameOf: NameOf, coun
 
 // --- invites ---------------------------------------------------------------------------------
 
+/**
+ * A player in this server, by UserId and display name: what the invite list is built from (the client's `lobby` slice
+ * keeps everyone in this server, this player too, in join order).
+ */
 export interface ServerPlayer {
 	readonly userId: number;
 	readonly name: string;
 }
 
+/**
+ * One row of the lobby room's invite list: a player who could be invited, or one already invited, with where the invite
+ * came from and whether they are in this server yet. Built by `inviteCandidates`; `inviteCandidateKey` gives the row's
+ * button text.
+ */
 export interface InviteCandidate {
 	readonly userId: number;
 	readonly name: string;
@@ -291,6 +324,10 @@ export interface PlatformInviteButton {
 	readonly reasonKey?: string;
 }
 
+/**
+ * The state of a Roblox invite button (see `PlatformInviteButton`): disabled with the reason line when the server said
+ * this player cannot send invites (`canSend` false; undefined stays enabled), otherwise enabled only while `allowed`.
+ */
 export function platformInviteButton(canSend: boolean | undefined, allowed = true): PlatformInviteButton {
 	if (canSend === false) return { enabled: false, reasonKey: LOBBY_STRINGS.invitePlatformUnavailable };
 	return { enabled: allowed };
@@ -320,6 +357,10 @@ export function arrivedInviteShown(
 	return players.some((p) => p.userId === userId);
 }
 
+/**
+ * A live invite this player received, as an invite toast draws it: the ids Accept and Decline send back, the inviter's
+ * display name and the lobby's title. Built by `receivedInvites`.
+ */
 export interface ReceivedInvite {
 	readonly inviteId: string;
 	readonly lobbyId: string;
@@ -453,6 +494,9 @@ export function mainMenuLobbyKey(inLobby: boolean): string {
 	return inLobby ? MENU_STRINGS.yourLobby : MENU_STRINGS.lobbies;
 }
 
+/**
+ * The run-over panel's ways out: whether Again is offered, and the exit button's string key. Built by `runOverExits`.
+ */
 export interface RunOverExits {
 	/** "Again" (retry; R): solo runs only. A party run's way on is the lobby. */
 	readonly again: boolean;
@@ -460,6 +504,10 @@ export interface RunOverExits {
 	readonly exitKey: string;
 }
 
+/**
+ * The run-over panel's exits: Again only after a solo run (`coop` false), and an exit button that reads Back to lobby
+ * while this player is in a lobby, else Main menu.
+ */
 export function runOverExits(coop: boolean, inLobby: boolean): RunOverExits {
 	return { again: !coop, exitKey: inLobby ? MENU_STRINGS.backToLobby : MENU_STRINGS.mainMenu };
 }
@@ -487,6 +535,10 @@ export function partyRunOverLine(
 	return { key: MENU_STRINGS.partyEnded, reason: verdict.reason ?? verdict.code ?? "" };
 }
 
+/**
+ * A button of the pause overlay (solo, the co-op party overlay or a tutorial run). `pauseItems` gives the buttons for
+ * each case, in order.
+ */
 export type PauseItem =
 	| "resume"
 	| "restart"

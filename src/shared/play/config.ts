@@ -1,6 +1,8 @@
 /**
  * Client play-session tunables (task 8): run setup attributes, HUD snapshot rate, device thresholds. Data only; the
  * client controllers and the pure modules in shared/play read these (CLAUDE.md "No magic numbers").
+ *
+ * @module
  */
 import { SIM_HZ } from "shared/sim";
 
@@ -147,6 +149,10 @@ export const RUN_START_TIMEOUT_SECONDS = 5;
  * unranked run.
  */
 export const RUN_START_BUSY_RETRY_SECONDS = 2;
+/**
+ * How many times the client sends `startRun` again after a `busy` answer, RUN_START_BUSY_RETRY_SECONDS apart (15 x 2 s
+ * = 30 s in all), before it falls back to an unranked run.
+ */
 export const RUN_START_BUSY_RETRIES = 15;
 
 // ---------------------------------------------------------------------------------------------

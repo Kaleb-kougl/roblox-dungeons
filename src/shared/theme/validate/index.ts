@@ -64,6 +64,8 @@
  *
  * Roblox port (docs/PROJECTILE_ART.md PA3): bullets may be one-facing `sprites` sets with a `meanColor`; their rules
  * (bulletArt.ts `bulletArtReport`) run through `variantColorProblems`, so this module takes no new name.
+ *
+ * @module
  */
 export {
 	ASSET_ID_PATTERN,

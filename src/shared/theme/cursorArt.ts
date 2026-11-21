@@ -11,6 +11,8 @@
  *     shows `ui.cursor`. Present, it must register with `ui.cursor` (an image too, the same drawn size and pivot:
  *     `cursorArtProblems`), so swapping the two never moves a pixel or the click point. The generic ui image checks
  *     (validate.ts: the pivot inside the image or rect) apply to both.
+ *
+ * @module
  */
 
 import type { ImageRef, PixelRect } from "./core";

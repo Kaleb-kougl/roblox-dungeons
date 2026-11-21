@@ -1,6 +1,8 @@
 /**
  * Day math for the Daily (docs/DAILY.md "2. The day and the daily seed"). Pure: unix seconds in, day index out. Days
  * roll over at UTC midnight (DSD5); day 0 is 2026-01-01 (DAILY.epochSeconds), shown as Daily #1.
+ *
+ * @module
  */
 import { DAILY } from "./config";
 

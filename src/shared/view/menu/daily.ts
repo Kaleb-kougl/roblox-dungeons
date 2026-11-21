@@ -14,6 +14,8 @@
  * Unknown parts say nothing: no status (not answered yet) or a stale one (its day is over: the server's push or the
  * client's re-request is on its way) keeps the title and the countdown from day math and a quiet placeholder; a status
  * without `mine` (no DataStore: Studio, an outage) shows no best line; Play solo never waits on any of it.
+ *
+ * @module
  */
 import { BOSS_FLOOR_EVERY, bossKindFor, endlessRoster, floorSeed } from "shared/dungeon";
 import { DAILY, dailyLabel, type DailyMineEntry, type DailyPodium, type DailyStatus } from "shared/daily";
@@ -158,6 +160,10 @@ export interface DailyPodiumRow {
 	readonly score: string;
 }
 
+/**
+ * Yesterday's podium strip on the main menu as ready-to-draw text: its title, the top rows and the line about this
+ * player's own finish. `dailyPodiumModel` builds it, and returns undefined when the strip is hidden.
+ */
 export interface DailyPodiumModel {
 	/** `Yesterday's podium · Daily #303`. */
 	readonly title: string;

@@ -16,6 +16,8 @@
  * room would spawn that room's enemies (and show its prompt) early ("early" rooms; a chain floor has none).
  *
  * Tutorial floors are endless floors (tutorialForgeParams): pillars are solid WALL cells, so the walks go round them.
+ *
+ * @module
  */
 import {
 	EncounterRng,
@@ -45,6 +47,11 @@ export interface TutorialLeg {
 	readonly early: ReadonlyArray<number>;
 }
 
+/**
+ * The walk through the tutorial floor's lesson rooms in lesson order (`tutorialTour`): one leg per pair of consecutive
+ * rooms, with totals. Distances are BFS steps in tiles. tutorial.ts reads each leg's door; the seed finder and the lock
+ * spec read the totals (a good floor has no unreachable leg and no early rooms).
+ */
 export interface TutorialTour {
 	/** Room ids in tour order. */
 	readonly rooms: ReadonlyArray<number>;
@@ -167,6 +174,10 @@ export interface TutorialCorridor {
 	readonly length: number;
 }
 
+/**
+ * What `checkTutorialChain` found on a floor: the problems that stop it being a strict chain of lesson rooms, plus the
+ * corridors and the tour it measured. The lock spec asserts `problems` is empty; the seed finder prints the rest.
+ */
 export interface TutorialChainReport {
 	/** Empty when the floor is a strict chain in `order` (see checkTutorialChain). */
 	readonly problems: ReadonlyArray<string>;

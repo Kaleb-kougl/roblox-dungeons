@@ -2,9 +2,15 @@
  * The server's merged input log of one co-op run (M4): every finalized merged frame (relay.ts), from which the server
  * cuts the segments it feeds into its own SegmentedValidator (the codec's party variant: one stream per player).
  * Frames of ticks already handed to the validator are released, so a long run keeps at most a segment's worth. Pure.
+ *
+ * @module
  */
 import { encodeRecording, type InputFrame, type Recording } from "shared/sim";
 
+/**
+ * The server's merged input log of one co-op run: one frame stream per player, released as its ticks go to the
+ * validator.
+ */
 export class PartyRunLog {
 	/** Per player: the frames of ticks [base, base + size). */
 	private readonly streams: InputFrame[][] = [];

@@ -23,6 +23,8 @@
  * Taking a card (grantCard): a boon card raises its level by one (level I also appends it to RunPlayerState.boons) and
  * applies Hearty / Deep Flask / Warding's one-off step for the level gained; a duo card appends the duo. Then the
  * player's mods are rebuilt at their levels.
+ *
+ * @module
  */
 import { jsMin } from "shared/jsmath";
 import { rngInt, type RngHolder } from "../rng";

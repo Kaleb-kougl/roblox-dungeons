@@ -2,6 +2,8 @@
  * Test support (docs/GOLDLING_RUMOURS.md GR1): the Goldling's barrel or crate is appended to a floor's breakables after
  * every other piece (the clutter, then the vault's chest), and only roomSpawnTiles loses its cell. Specs of the floor
  * outputs placed before it (the clutter, loot, pellets, the vault, the altars) compare against the floor without it.
+ *
+ * @module
  */
 import type { BreakablePlacement } from "../breakables";
 import { withoutBreakableCells } from "../breakables";

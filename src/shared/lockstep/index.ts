@@ -17,6 +17,8 @@
  *   menuInput.ts  CoopMenuInputGate: neutral local input while a menu owns the controls (a party run never pauses)
  *
  * The server's RunSessionService and the client's SimController wrap these with remotes and clocks.
+ *
+ * @module
  */
 export * from "./config";
 export * from "./relay";

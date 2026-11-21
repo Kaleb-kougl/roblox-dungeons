@@ -4,6 +4,8 @@
  *
  * Party size scaling applies to ENDLESS runs, at spawn: enemy hp here (actors.ts spawnActor), the room encounter
  * budget in shared/dungeon endlessData.ts (PARTY_BUDGET_MULTIPLIERS). Enemy bullet speed never scales with the party.
+ *
+ * @module
  */
 
 /** The largest party (players 0 .. 7). */

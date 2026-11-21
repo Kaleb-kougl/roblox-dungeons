@@ -7,6 +7,8 @@
  * apart from `ember` (today's meter gold, the reach state's colour) and every combo tier (the panel shows them side by
  * side), and never reads as an enemy bullet or a telegraph (the NEW BEST! shout is painted on the floor under bullets,
  * the combo shout's construction).
+ *
+ * @module
  */
 
 import { colorDifference, contrastRatio, isHexColor } from "./color";

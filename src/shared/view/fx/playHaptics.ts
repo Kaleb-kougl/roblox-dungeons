@@ -25,6 +25,8 @@
  *              stagger and death always play past the gap, cap and duty.
  *
  * touchWaveform turns a phone cue's pulses into FloatCurveKey-ready points (HapticEffect:SetWaveformKeys, ms).
+ *
+ * @module
  */
 import type { HurtKind } from "../watch";
 import { pulseEndSec, pulseStartSec, type TouchPulse } from "./haptics";

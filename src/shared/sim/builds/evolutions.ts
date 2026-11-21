@@ -49,6 +49,8 @@
  *      (ScoreEvents.comboStart < t x 10 <= combo; the combo only rises inside stepCombat), every living Lingering III
  *      owner fires t SOUL_SHARDs aimed from their position (fireAimedVolley within SOUL_SHARDS_RANGE, effect MOMENTUM,
  *      gen 0). Once per crossing: a combo cut and a rise again is a new crossing.
+ *
+ * @module
  */
 import type { SimCtx } from "../combat/ctx";
 import type { SimState } from "../state";

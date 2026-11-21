@@ -16,6 +16,8 @@
  *     tick; a new actor id counts as alive-unknown (no puff).
  *
  * Read-only on the sim, no allocation per tick beyond the lists' growth (plain number arrays). Presentation only.
+ *
+ * @module
  */
 import { NO_KIND, PYRE, archetypeIndex, hookEndBreaks, partySize, playerAt, type SimState } from "shared/sim";
 

@@ -14,6 +14,8 @@
  *                                         player, each styled dim / lit (the brake on) / inside (the body in its keep)
  *
  * Presentation only: it reads a Dungeon and SolidCells the sim already uses and never writes anything back.
+ *
+ * @module
  */
 import {
 	blocksMove,
@@ -247,6 +249,10 @@ export const KeepRingStyle = {
 	/** The watched player's body is inside this keep distance (whatever the brake). */
 	INSIDE: 2,
 } as const;
+/**
+ * One `KeepRingStyle` value (0 dim, 1 lit, 2 inside): the per-ring style `keepRingsNear` writes into `KeepRings.style`,
+ * which CollisionDebugController maps to a colour role.
+ */
 export type KeepRingStyle = (typeof KeepRingStyle)[keyof typeof KeepRingStyle];
 
 /** The keep circles to draw this frame: `count` live entries (the arrays grow, never shrink). */

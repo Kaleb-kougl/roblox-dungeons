@@ -4,6 +4,8 @@
  * (slideScenes.ts, docs/WALL_SLIDE.md WS0-WS2), the elite affix census (affixCensus.ts, EV6), the census shards
  * (shards.ts: a long census split over several spec files by run seed) and the floor without the Goldling's piece
  * (goldenPiece.ts, docs/GOLDLING_RUMOURS.md GR1) and the secret room census (secretCensus.ts, docs/SECRET_ROOMS.md SR1).
+ *
+ * @module
  */
 export * from "./poolCensus";
 export * from "./spenderFallback";

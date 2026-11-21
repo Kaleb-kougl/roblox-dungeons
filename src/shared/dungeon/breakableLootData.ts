@@ -3,6 +3,8 @@
  * source): how many barrels and crates of an endless floor hold a boost, and which. Data only: ./breakableLoot.ts
  * reads it, nothing is inline in the logic. The sim-side rules (release on break, ground slots) live in shared/sim
  * drops/breakLoot.ts.
+ *
+ * @module
  */
 import type { BreakableKindName } from "./breakablesData";
 
@@ -12,9 +14,14 @@ export interface BreakableLootBand {
 	readonly fromFloor: number;
 	/** Loaded pieces per floor, one draw in [min, max] (capped by the pieces available). */
 	readonly min: number;
+	/** The most loaded pieces a floor of this band gets. */
 	readonly max: number;
 }
 
+/**
+ * The tunables of boosts hidden in breakables: the rng salt, how many pieces per depth band and how the boost kind is
+ * weighted.
+ */
 export interface BreakableLootTunables {
 	/**
 	 * The loot's own rng stream: new EncounterRng(floor seed ^ salt) (murmur3's n), like the breakables (0x5bd1e995),
@@ -34,6 +41,7 @@ export interface BreakableLootTunables {
 	readonly kindWeights: ReadonlyArray<number>;
 }
 
+/** The loot values. Changing one changes which pieces hold a boost on every endless floor. */
 export const BREAKABLE_LOOT: BreakableLootTunables = table.freeze({
 	salt: 0xe6546b64,
 	bands: table.freeze([

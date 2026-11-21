@@ -4,6 +4,8 @@
  * (goldenHooks.ts) and the tick's appearance and escape (stepGolden.ts). The archetype is
  * combat/actors/archetypes/golden.ts. Inside the sim, import the files directly (a barrel import from inside would
  * create require cycles).
+ *
+ * @module
  */
 export * from "./goldenData";
 export * from "./golden";

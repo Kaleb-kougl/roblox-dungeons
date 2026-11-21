@@ -12,12 +12,18 @@
  * JD4: no squash axis leaves 1 +- FEEL_SQUASH.maxDeform (15 %), nothing runs past FEEL_SQUASH.maxSec (180 ms), and the
  * drawn cell is a whole number of art pixels on each axis (roundToArtPixels). JD9: under reduced motion (the juice
  * motionScale 0) every curve is 1 x 1. Presentation only: nothing here reaches the sim.
+ *
+ * @module
  */
 import { CAMERA_PITCH_DEG } from "shared/config";
 import { MAX_PARTY_SIZE } from "shared/sim";
 import { floorClearanceStuds, type SpriteBillboard } from "../sprites";
 import { FEEL_SQUASH, type SpawnCurve, type SquashCurve } from "./motionFxConfig";
 
+/**
+ * Which squash is playing on a sprite: the knight's roll taking off or landing, an enemy's hit pop, a runtime spawn's
+ * grow-in or a death slump. It names the FEEL_SQUASH curve and the priority (SQUASH_PRIORITY).
+ */
 export type SquashKind = "rollStart" | "rollEnd" | "hit" | "spawn" | "death";
 
 /** A width / height scale (1 x 1: as drawn). Mutable so a caller can reuse one per frame (squashInto). */

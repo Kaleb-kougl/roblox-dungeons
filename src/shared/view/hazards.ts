@@ -4,6 +4,8 @@
  * ember's burn loop, and the strike's flat size (its art's rim mapped onto the hit radius, no depth stretch: the art
  * is seen from straight above). The ember sizes with gooSpriteSize / gooSpritePlacement (3/4 art, like the goo).
  * Tunables: HAZARD_ART_VIEW (hazardsConfig.ts).
+ *
+ * @module
  */
 import { BUILD_BULLET_VIEW } from "./buildBulletsConfig";
 import { HAZARD_ART_VIEW } from "./hazardsConfig";
@@ -16,6 +18,10 @@ export interface HazardCellLook {
 	transparency: number;
 }
 
+/**
+ * A fresh HazardCellLook for a pool to keep and hand to `strikeFlashLook` and the other look functions every frame
+ * (cell 0, no flips, opaque). The client's HazardSpritePool owns one per pool.
+ */
 export function newHazardCellLook(): HazardCellLook {
 	return { cell: 0, flipX: false, flipY: false, transparency: 0 };
 }

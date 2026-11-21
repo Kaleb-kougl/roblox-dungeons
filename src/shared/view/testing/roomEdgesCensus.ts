@@ -3,6 +3,8 @@
  * (roomEdges.endless.<n>.spec.ts): checkRoomEdgesFloor checks one floor's edges (trigger parity with roomIdAt,
  * completeness: every room-floor / other-floor neighbour pair covered by exactly one run unit) and counts its dashes;
  * roomEdgesCensus runs it over endless run seeds x floors 1..ROOM_EDGES_CENSUS.floors. Test support only.
+ *
+ * @module
  */
 import { STUDS_PER_TILE } from "shared/config";
 import {
@@ -17,6 +19,10 @@ import {
 } from "shared/dungeon";
 import { ROOM_EDGE_VIEW, dashLayout, type RoomEdgeRun, type RoomEdges, roomEdges } from "shared/view";
 
+/**
+ * The endless census's sample: run seeds 1..`runs`, floors 1..`floors` of each, split over `shards` spec files
+ * (roomEdges.endless.<n>.spec.ts, each taking its share of the run seeds through `censusShard`). Specs only.
+ */
 export const ROOM_EDGES_CENSUS = { runs: 60, floors: 20, shards: 4 } as const;
 
 const EPS = 0.01;
@@ -26,6 +32,10 @@ function units(r: RoomEdgeRun): number {
 	return math.abs(r.x1 - r.x0) + math.abs(r.z1 - r.z0);
 }
 
+/**
+ * One checked floor's numbers, from `checkRoomEdgesFloor`: its runs, their total length in one-tile units, and the dash
+ * Parts they lay out to. Specs only.
+ */
 export interface RoomEdgesFloorStats {
 	readonly runs: number;
 	readonly unitEdges: number;
@@ -111,6 +121,10 @@ export function checkRoomEdgesFloor(d: Dungeon, e: RoomEdges, label: string): Ro
 	return { runs: e.runs.size(), unitEdges: e.unitEdges, dashes, contacts };
 }
 
+/**
+ * What `roomEdgesCensus` found over its floors: how many it checked and how many were boss floors, the most dashes,
+ * runs and unit edges on one floor, and how many floors (and unit edges in all) had two rooms touching. Specs only.
+ */
 export interface RoomEdgesCensus {
 	readonly floors: number;
 	readonly bossFloors: number;

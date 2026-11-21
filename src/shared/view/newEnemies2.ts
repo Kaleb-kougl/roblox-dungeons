@@ -13,6 +13,8 @@
  *   Pyre-keeper the torch's flight to the landing cell over the light telegraph (torchArcPoint), the pyre's flame
  *   / pyre      (pyreFlameScale: growing while it lights, flickering once lit; reduced motion: steady)
  *   bursts      newEnemy2Bursts: the frame's sparks, guard breaks, chain snaps, gulps, fizzles and puffs as one list
+ *
+ * @module
  */
 import {
 	AiState,
@@ -148,6 +150,10 @@ export const ChainTarget = {
 	/** The player it drags (hookedPlayerOf). */
 	PLAYER: 2,
 } as const;
+/**
+ * One `ChainTarget` value (0 none, 1 the flying hook, 2 the dragged player): what `chainTarget` returns, telling
+ * NewEnemy2MarksController where a Chainhook's chain ends this frame.
+ */
 export type ChainTarget = (typeof ChainTarget)[keyof typeof ChainTarget];
 
 /** The chain's target kind for actor `a` (any actor: NONE unless it is a living Chainhook throwing or dragging). */
@@ -229,6 +235,10 @@ export interface TorchPoint {
 	heightTiles: number;
 }
 
+/**
+ * A fresh TorchPoint (not shown) for the caller to keep and hand to `torchArcPoint` every frame.
+ * NewEnemy2MarksController owns one.
+ */
 export function newTorchPoint(): TorchPoint {
 	return { shown: false, x: 0, z: 0, heightTiles: 0 };
 }
@@ -303,6 +313,7 @@ export const NewEnemy2Burst = {
 	FIZZLE: 4,
 	PUFF: 5,
 } as const;
+/** One `NewEnemy2Burst` value (0..5): a burst's kind, the index into `NEW_ENEMY_2_BURST_LOOKS`. */
 export type NewEnemy2Burst = (typeof NewEnemy2Burst)[keyof typeof NewEnemy2Burst];
 
 /** A burst kind's look: its chip shape, colour role and seed salt (NEW_ENEMY_2_BURSTS). */

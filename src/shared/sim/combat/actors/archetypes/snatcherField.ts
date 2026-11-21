@@ -17,6 +17,8 @@
  * same entry, and get the same field as they would alone), keyed on everything it reads (the room object, the world
  * config, the breakables' piece list and intact count, the source cells), so any state (a clone, another run, a spec)
  * gets exactly the field it would build from scratch. It allocates only when a room id first appears or its box grows.
+ *
+ * @module
  */
 import {
 	cellKey,

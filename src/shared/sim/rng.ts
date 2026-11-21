@@ -6,6 +6,8 @@
  *
  * Luau port: every intermediate is a uint32 in [0, 2^32) (bit32 semantics). JS's signed `| 0` views differ only in the
  * sign of the representation, never in the bits, so the outputs are identical (fixtures/rng.json).
+ *
+ * @module
  */
 
 import { imul, jsMax, jsMin, u32 } from "shared/jsmath";
@@ -15,6 +17,9 @@ const TWO_POW_32 = 4294967296;
 
 /** Anything that carries a mulberry32 state word (SimState does). */
 export interface RngHolder {
+	/**
+	 * The generator's whole state: one uint32 in [0, 2^32). Each draw advances it in place; in SimState it is hashed.
+	 */
 	rngState: number;
 }
 

@@ -9,6 +9,8 @@
  * open is an open chest, with no flash, shards, lines, column or edges. A new vault (another room / slot / centre, or
  * the sim's tick going backwards) forgets every time; events of another vault in the same frame (a floor change) are
  * ignored.
+ *
+ * @module
  */
 import { SIM_HZ, VaultStatus, type SimState } from "shared/sim";
 import type { TreasureFrameSource, TreasureOpenedEvent } from "./events";

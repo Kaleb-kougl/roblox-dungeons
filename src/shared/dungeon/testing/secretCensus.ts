@@ -6,6 +6,8 @@
  * set (which never depends on the draw) is sampled on a random quarter of the floors. Tallied per depth band: floors,
  * chance hits, hits with no candidate (the real rate's loss), candidates per hit floor, the picked chamber sizes, tiers,
  * facings, boss floors with a secret, and crack rooms with a planned Charger (the Archer's third key). Test support only.
+ *
+ * @module
  */
 import {
 	EncounterRng,
@@ -24,6 +26,7 @@ import {
 	type SecretFloorInput,
 } from "shared/dungeon";
 
+/** The secret census's sample: run seeds, shards, floors and depth bands. */
 export const SECRET_CENSUS = {
 	/** Run seeds 1..runs over all shards (the plan's 1-60). */
 	runs: 60,
@@ -46,19 +49,29 @@ const OPTIONS: EndlessFloorOptions = {
 	secrets: true,
 };
 
+/** One depth band's tallies. */
 export interface SecretCensusBand {
+	/** Floors looked at. */
 	floors: number;
+	/** Floors whose chance draw hit. */
 	hits: number;
 	/** Hits whose floor has no candidate (no secret). */
 	empty: number;
+	/** Floors that ended with a secret. */
 	secrets: number;
+	/** Candidates on the sampled floors, summed. */
 	candidates: number;
+	/** The fewest candidates on one sampled floor. */
 	minCandidates: number;
+	/** The most candidates on one sampled floor. */
 	maxCandidates: number;
 }
 
+/** The census's tallies for one party size. */
 export interface SecretCensus {
+	/** Party size. */
 	readonly party: number;
+	/** Per depth band, SECRET_CENSUS order. */
 	readonly bands: SecretCensusBand[];
 	/** Picked chamber sizes, "along x depth" -> count. */
 	readonly sizes: Map<string, number>;
@@ -66,8 +79,11 @@ export interface SecretCensus {
 	readonly tiers: Map<number, number>;
 	/** "fx,fz" -> count. */
 	readonly facings: Map<string, number>;
+	/** Boss floors with a secret. */
 	bossFloors: number;
+	/** Crack rooms with a planned Charger. */
 	chargerRooms: number;
+	/** Crack rooms that are elite rooms. */
 	eliteRooms: number;
 }
 

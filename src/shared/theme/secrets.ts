@@ -12,6 +12,14 @@
  * is characters.ts CHARACTER_OVERRIDE_KEYS' last (optional, never required). The Codex entry's kind line, tab label
  * and codex-only description follow docs/CODEX.md's key scheme in codex.ts CODEX_STRING_KEYS (`codex.tab.secrets`,
  * `codex.kind.secret`, `codex.desc.secret.room`); its name is here (SECRET_CODEX_NAME_KEY).
+ *
+ * The contract lists named above:
+ * {@link shared/theme/contract/strings!REQUIRED_STRING_KEYS | REQUIRED_STRING_KEYS},
+ * {@link shared/theme/contract/ids!PORT_AUDIO_EVENTS | PORT_AUDIO_EVENTS},
+ * {@link shared/theme/contract/fx!FX_IDS | FX_IDS},
+ * {@link shared/theme/contract/slots!SLOTS | SLOTS}.
+ *
+ * @module
  */
 
 import type { ColorRole } from "./types";
@@ -85,6 +93,10 @@ export const SECRET_AUDIO_IDS: ReadonlyArray<string> = [SECRET_KNOCK_SOUND, SECR
  * bullet or a warning.
  */
 export const SECRET_DUST_ROLE: ColorRole = "secret.dust";
+/**
+ * Every secret-room colour role, the `roles` list of secretColors.ts SECRET_COLOR_RULES (the roles `secretReport`
+ * checks, in this order). One entry today.
+ */
 export const SECRET_ROLES: ReadonlyArray<ColorRole> = [SECRET_DUST_ROLE];
 
 /**
@@ -98,7 +110,15 @@ export const SECRET_ROLES: ReadonlyArray<ColorRole> = [SECRET_DUST_ROLE];
  *   secret.rubble  the 2 x 1 rubble pile left flat on the crack's cells after the open.
  */
 export const SECRET_CRACK_ID = "secret.crack";
+/**
+ * The rubble's asset ID: the optional 2 x 1 pile left flat on the crack's cells after the wall opens (see
+ * SECRET_CRACK_ID's comment for both IDs).
+ */
 export const SECRET_RUBBLE_ID = "secret.rubble";
+/**
+ * Both optional secret world art IDs, the crack then the rubble: the only IDs the `secret` slot accepts
+ * (isSecretArtId), the ones secretArt.ts checks and the vale manifest fills.
+ */
 export const SECRET_ART_IDS: ReadonlyArray<string> = [SECRET_CRACK_ID, SECRET_RUBBLE_ID];
 /** Every secret world art ID starts with this (the slot's prefix). */
 export const SECRET_ART_PREFIX = "secret.";

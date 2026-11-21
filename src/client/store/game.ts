@@ -48,6 +48,10 @@ export interface VerdictView {
 	readonly runId?: string;
 }
 
+/**
+ * The result of the debug replay check (the driver key, KV_Debug's info line): whether re-simulating the recording gave
+ * the live state's hash, both hashes, and the ticks replayed. SimController stores it; a new run clears it.
+ */
 export interface ReplayCheckView {
 	readonly match: boolean;
 	readonly liveHash: string;
@@ -136,6 +140,13 @@ export interface MapView {
 
 const NO_MAP: MapView = { available: false, open: false };
 
+/**
+ * The `game` slice's state: the HUD snapshot, the last-used input device, the run's verdict and fixed facts, the toasts
+ * and the first-sighting card, the minimap's floor state and the debug readouts. SimController writes most of it (run
+ * start, floor change, snapshot, verdict, toasts, run end), InputController the device, MinimapController the map,
+ * SightingController the card. A run start clears everything run-scoped; leaving the run clears it too but keeps the
+ * last verdict.
+ */
 export interface GameState {
 	readonly snapshot: GameSnapshot;
 	/** The last boss seen this run (its corpse may be gone by the time the victory line shows). */
@@ -192,6 +203,12 @@ const initialState: GameState = {
 	leftRun: 0,
 };
 
+/**
+ * The game HUD slice (state: `GameState`, see the file comment). `startRun` begins a run with fresh info and an empty
+ * verdict, replay check, toasts, sighting and map; `changeFloor` swaps the run info only; `endRun` empties the snapshot
+ * and marks no run active while the last verdict stays. The setters return the same state when nothing changed, so
+ * subscribers fire only on a real change.
+ */
 export const gameSlice = createProducer(initialState, {
 	setSnapshot: (state, snapshot: GameSnapshot) =>
 		snapshotsEqual(state.snapshot, snapshot)
@@ -252,16 +269,72 @@ export const gameSlice = createProducer(initialState, {
 			: state,
 });
 
+/**
+ * The whole `game` slice, for a reader that needs several of its fields at once. It is a new object on every dispatch
+ * that changed any field, the ~10 Hz snapshot included.
+ */
 export const selectGame = (state: { game: GameState }) => state.game;
+/**
+ * The HUD snapshot: the flat copy of the run the HUD draws from (vitals, boss line, score and combo, the draft, boons
+ * and boosts), taken by SimController at about 10 Hz and replaced only when a field changed. `EMPTY_SNAPSHOT` while no
+ * run is active.
+ */
 export const selectSnapshot = (state: { game: GameState }) => state.game.snapshot;
+/**
+ * The id of the last boss seen this run, "" when none was (and after the run was left). It outlives the snapshot's boss
+ * id, because the corpse may be gone by the time the run-over panel's victory line names the boss.
+ */
 export const selectLastBossId = (state: { game: GameState }) => state.game.lastBossId;
+/**
+ * The device the player used last: "keyboard" (the start value), "gamepad" or "touch". Presentation only: which key
+ * names the hints show, and whether the touch controls are up. InputController sets it on a switch.
+ */
 export const selectInputDevice = (state: { game: GameState }) => state.game.inputDevice;
+/**
+ * What became of the run's submission (`VerdictView`): status "none" from a run's start, "pending" once sent, then
+ * "accepted" / "rejected" / "skipped" with the server's records, daily and Silver outcomes. It carries its run counter
+ * because it can arrive after a restart, and it stays after the run is left for the menu.
+ */
 export const selectVerdict = (state: { game: GameState }) => state.game.verdict;
+/**
+ * The last debug replay check of this run (match, the two hashes, ticks), undefined until one was asked for and again
+ * after a run start or exit. The KV_Debug info line shows it.
+ */
 export const selectReplayCheck = (state: { game: GameState }) => state.game.replayCheck;
+/**
+ * The latency probe's readout for the debug info line (docs/FEEL.md J9); undefined outside KV_Debug co-op runs and
+ * after a run start or exit.
+ */
 export const selectLatencyProbe = (state: { game: GameState }) => state.game.latencyProbe;
+/**
+ * The fixed facts of the current run and floor (`RunInfo`: seed, world, biome, co-op, the run counter, the character,
+ * the floor's modifier). Set at a run start and replaced on a floor change; after the run is left it still holds the
+ * last run's facts, so pair it with `selectGameActive`.
+ */
 export const selectRunInfo = (state: { game: GameState }) => state.game.run;
+/**
+ * True from a run's start until it is left for the menu (the run-over panel included); false before the first run and
+ * in the menus. The HUD, the pause button and the item tooltip mount on it, and the menu layer hides on it.
+ */
 export const selectGameActive = (state: { game: GameState }) => state.game.active;
+/**
+ * The top-centre HUD toasts on screen, newest last and at most `PROGRESSION_VIEW.maxToasts`; empty when none. Each
+ * carries the `os.clock()` time it expires at; a run start or exit empties the list.
+ */
 export const selectToasts = (state: { game: GameState }) => state.game.toasts;
+/**
+ * The first-sighting card on screen (a toast drawn apart from the top-centre ones), undefined when none.
+ * SightingController shows and expires it; a run start or exit clears it.
+ */
 export const selectSighting = (state: { game: GameState }) => state.game.sighting;
+/**
+ * The minimap's floor state: whether this floor has a map at all (never the greybox) and whether the full map overlay
+ * is open. Both false from a run's start until MinimapController reports. The corner panel and the full map read it.
+ */
 export const selectMapView = (state: { game: GameState }) => state.game.map;
+/**
+ * The run counter (`RunInfo.run`) of the run the player ended with Leave run, 0 when none. The run-over panel compares
+ * it with the run on screen to show "You left the run" as its main line; it is not cleared, a later run simply has
+ * another counter.
+ */
 export const selectLeftRun = (state: { game: GameState }) => state.game.leftRun;

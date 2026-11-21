@@ -10,6 +10,8 @@
  *             breakables' cells, from GoldenState.src. Cached (GoldenState.cache, never hashed) under the key (fieldTick,
  *             the floor data, the intact piece count): every input is hashed state, so a clone that rebuilds it from
  *             scratch gets the same field (a piece broken since fieldTick changes the count, and both rebuild).
+ *
+ * @module
  */
 import { cellKey, fleeField, newFleeScratch, worldToGrid } from "shared/dungeon";
 import { solidCells } from "../breakables/cells";

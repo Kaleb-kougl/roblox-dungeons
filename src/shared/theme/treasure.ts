@@ -14,16 +14,32 @@
  * Tiers and locks are numbered as shared/dungeon vaultData.ts `VaultTier` (COMMON 0, RARE 1, LEGENDARY 2) and
  * `VaultLock` (UNTOUCHED 0, SWIFT 1); the theme imports nothing outside shared/theme, so treasure.spec.ts pins the
  * orders against the dungeon's tables.
+ *
+ * The contract lists named above:
+ * {@link shared/theme/contract/strings!REQUIRED_STRING_KEYS | REQUIRED_STRING_KEYS},
+ * {@link shared/theme/contract/ids!PORT_AUDIO_EVENTS | PORT_AUDIO_EVENTS},
+ * {@link shared/theme/contract/ids!REQUIRED_ASSET_IDS | REQUIRED_ASSET_IDS},
+ * {@link shared/theme/contract/fx!FX_IDS | FX_IDS}.
+ *
+ * @module
  */
 
 import type { ColorRole } from "./types";
 
 /** The chest's tiers, VaultTier order (the draft's rarity names, TRD5). */
 export const TREASURE_TIERS = ["common", "rare", "legendary"] as const;
+/**
+ * A chest tier's name (a TREASURE_TIERS entry). Its position in that list is the dungeon's `VaultTier` number; the name
+ * is the last segment of the tier's string key (`boon.rarity.<tier>`) and floor colour role (`treasure.<tier>`).
+ */
 export type TreasureTier = (typeof TREASURE_TIERS)[number];
 
 /** The vault's locks, VaultLock order (TRD4). */
 export const TREASURE_LOCKS = ["untouched", "swift"] as const;
+/**
+ * A vault lock's name (a TREASURE_LOCKS entry). Its position in that list is the dungeon's `VaultLock` number; the name
+ * is the last segment of the lock's string key (`treasure.lock.<lock>`).
+ */
 export type TreasureLock = (typeof TREASURE_LOCKS)[number];
 
 /**

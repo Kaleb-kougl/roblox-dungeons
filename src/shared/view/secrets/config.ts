@@ -11,6 +11,8 @@
  *   reveal.jingleSec     the discovery jingle (`sfx.jingle.secret`), the torches light
  *   openingSec           SecretLook leaves OPENING for OPEN (every step above is over)
  * Reduced motion: no dust, no sink (the chamber cuts in at the open), no shards; the shout and the sounds stay.
+ *
+ * @module
  */
 import type { ColorRole } from "shared/theme";
 import { TREASURE_VIEW } from "../treasure/config";
@@ -19,6 +21,12 @@ const BURST_SEC = 0.35;
 const SINK_SEC = 0.5;
 const JINGLE_SEC = 0.4;
 
+/**
+ * A secret room's presentation tunables (see the file comment for the open's timeline): the crack's dust trickle before
+ * the open, the burst, the sink, the reveal and the chest. Times are seconds of sim time and distances tiles unless a
+ * field says otherwise. Read by look.ts, knock.ts, shout.ts and cues.ts here and by the client's
+ * SecretRenderController.
+ */
 export const SECRET_VIEW = {
 	/** Workspace folder, render step and profiler label of SecretRenderController (Track V2). */
 	folderName: "KV_Secret",

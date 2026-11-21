@@ -10,6 +10,8 @@
  *   party 4  the most spawns in one room, the rooms at the actor cap, and the worst room's pool slots (poolHighWater.ts
  *            roomLoad)
  * One Forge layout per (floor, run) serves both. Split over shard specs by floors (each row is a whole floor's sample).
+ *
+ * @module
  */
 import {
 	ENDLESS_ROOM_ACTOR_CAP,
@@ -33,6 +35,10 @@ export const NT6_KINDS = ["mortar", "mender", "jackal"] as const;
 /** The party size of the worst case. */
 export const NT6_PARTY = 4;
 
+/**
+ * Spec support. One floor's row of the NT6 room pool census: the solo pool census row, the Jackal pack checks and
+ * per-kind room counts, plus the party-of-four worst case over the same layouts.
+ */
 export interface Nt6CensusRow {
 	readonly solo: PoolCensusRow;
 	/** Solo: Jackal packs over the sample, and rooms whose Jackals are not whole packs of consecutive spawns. */

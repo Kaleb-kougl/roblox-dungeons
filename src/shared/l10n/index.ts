@@ -5,6 +5,8 @@
  * (fonts.ts), the client's locale state (state.ts) and the fit audit's rules (fitAudit.ts).
  *
  * Plain TypeScript, no Roblox APIs (headlessly tested). Never reached by the sim.
+ *
+ * @module
  */
 export * from "./devStrings";
 export * from "./hash";

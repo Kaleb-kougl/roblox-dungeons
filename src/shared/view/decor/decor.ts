@@ -5,6 +5,8 @@
  * layouts held inside the footprint rule's boxes (decorPieceLayout, decorFxLayout: the rule only proves DECOR_BOX safe,
  * so art and its effects are never drawn larger). The client DecorController (R4) only copies the results onto its
  * instances. Allocation-free per frame (selectDecorFades).
+ *
+ * @module
  */
 import { CAMERA_PITCH_DEG } from "shared/config";
 import type { DecorArt, Pivot } from "shared/theme";

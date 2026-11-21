@@ -11,6 +11,8 @@
  * docs/ITEM_TOOLTIPS.md IT4 the item tooltips' hover / focus / tap (TooltipController); docs/STAGE_ASSETS.md SA18 the
  * UI's art readiness (UiArtController); docs/CURSOR.md C4 / C5 the menus' gauntlet cursor and the one writer of
  * MouseIconEnabled, the pointer hidden while on a gamepad included (CursorController).
+ *
+ * @module
  */
 export * from "./SettingsController";
 export * from "./SilverShopController";

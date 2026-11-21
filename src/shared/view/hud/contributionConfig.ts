@@ -2,6 +2,8 @@
  * The co-op contribution card's tunables, title table and string keys (docs/RUN_CONTRIBUTION.md CT3; logic in
  * contribution.ts). Presentation only: nothing here reaches the sim, a hash or the leaderboard. Title thresholds are
  * CT10's tuning levers.
+ *
+ * @module
  */
 
 /** A player's one positive title (assignTitles). `teammate` is the fallback, never assigned by a lead. */
@@ -19,6 +21,7 @@ export type ContribTitle =
 /** A You-card cell (the highlight grid's cell, in CONTRIB.cellOrder). */
 export type ContribCellKind = "damage" | "kills" | "bossDamage" | "parries" | "grazes" | "hits" | "pickups";
 
+/** The contribution views' tunables (`CONTRIB`; `contributionOf` takes another one in specs). */
 export interface ContribConfig {
 	/** The party size from which a run gets the contribution views (the tab strip). */
 	readonly minPartySize: number;
@@ -28,6 +31,10 @@ export interface ContribConfig {
 	readonly cellOrder: ReadonlyArray<ContribCellKind>;
 }
 
+/**
+ * The contribution views' tunables as shipped: party runs from 2 players, shares in whole percent summing to 100, and
+ * the You card's seven cells in the plan's order.
+ */
 export const CONTRIB: ContribConfig = {
 	minPartySize: 2,
 	shareTotal: 100,
@@ -56,8 +63,18 @@ export interface ContribTitleRule {
 	readonly fullLeadSec?: number;
 }
 
+/**
+ * A title a player earns by leading a stat: every `ContribTitle` but the fallback `teammate`. The keys of
+ * `CONTRIB_TITLES`.
+ */
 export type ContribLeadTitle = Exclude<ContribTitle, "teammate">;
 
+/**
+ * Each title's rule (the fields are `ContribTitleRule`'s), read by `assignTitles` for the stat's strict leader: Heavy
+ * Hitter leads damage with at least 120 % of an even share, Boss Breaker any boss damage, Finisher 10 kills, Guardian 5
+ * parries, Daredevil 30 grazes, Untouchable the fewest hits when the party took at least 3 and the player stood 75 % of
+ * the run, Last Stand a lead of 60 s for the full score, Collector 10 pickups. The thresholds are CT10's tuning levers.
+ */
 export const CONTRIB_TITLES: Readonly<Record<ContribLeadTitle, ContribTitleRule>> = {
 	heavyHitter: { evenSharePercent: 120 },
 	bossBreaker: { above: 0 },

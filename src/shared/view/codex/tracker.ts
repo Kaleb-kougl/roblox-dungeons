@@ -56,6 +56,8 @@
  * order), this account's found total and the catalog's, and whether the Codex is loaded. Frozen when the run is over
  * (or the local player left, or the run ended); rebuilt once more when a late load resolves held finds of that run (or
  * the frozen one was not loaded yet): CodexController hands the new one to the store.
+ *
+ * @module
  */
 import {
 	CODEX,
@@ -90,6 +92,10 @@ export type CodexRise = CodexClaim;
 /** How a rise shows (see the file comment). */
 export type CodexToastRoute = "none" | "card" | "chip" | "codex";
 
+/**
+ * `codexToastRoute`'s answer for one rise: where it shows (`route`) and whether it bypasses the per-floor toast budget
+ * (`always`). `none` and `card` rises never reach the budget, so their `always` is not read.
+ */
 export interface CodexToastDecision {
 	readonly route: CodexToastRoute;
 	/** Outside the budget: a duo / evolution chip, a boss kill, a vault chest's relic. */
@@ -212,6 +218,12 @@ interface Held {
 
 const NO_ELIGIBILITY: CodexEligibility = table.freeze({ claims: false, toasts: false });
 
+/**
+ * The session's Codex bookkeeping (see the file comment): fed every `codexStatus` through `receive`, started per run
+ * with the run's eligibility, updated once per rendered frame with a CodexFrame, it reports which entries rose (to
+ * claim), which toast or wear the NEW! chip under the per-floor budget, and the run's summary. One instance per client
+ * session, owned by CodexController; pure, so the specs drive it with hand-built frames.
+ */
 export class CodexTracker {
 	private load: LoadState = "pending";
 	/** Baseline tier per id: the loaded doc merged up, plus every reported rise. */

@@ -31,6 +31,8 @@
  *
  * `steer: "guide"` (docs/TUTORIAL_ARROW.md A3) walks by the guidance arrow's heading (shared/tutorial TutorialGuide)
  * instead, while the arrow shows: the proof that the arrow never sends a player into a wall.
+ *
+ * @module
  */
 import { TUTORIAL } from "shared/config";
 import { bulletBlocker, clearWalk, gridToWorld, worldToGrid } from "shared/dungeon";
@@ -73,6 +75,11 @@ import { TUTORIAL_ROOMS, buildTutorialRunConfig, tutorialRoom, type TutorialLess
 import type { EndlessRunSetup } from "../endless";
 import { distanceField, frame, walkDir, type Field } from "./endlessBot";
 
+/**
+ * Spec support. Options of `playTutorial`: how the tutorial bot deviates from the default route (room order, when it
+ * drinks, guards, opens the map or sweeps the pellets, how it steers). Absent fields play the tutorial the
+ * straightforward way.
+ */
 export interface TutorialBotOptions {
 	/** Floor-1 lesson rooms after the entrance, in visit order (default: the tour). */
 	readonly order?: ReadonlyArray<TutorialLessonId>;
@@ -119,6 +126,11 @@ export type TutorialBotMapMode = "current" | "early" | "never" | "unavailable";
 /** When the tutorial bot walks combat G's pellets (TutorialBotOptions.pellets). */
 export type TutorialBotPelletMode = "first" | "late";
 
+/**
+ * Spec support. What `playTutorial` returns: the finished run and director, and everything the bot recorded on the way
+ * for specs to assert on (when each step was done, funnel steps, callouts, prompts, heart checks, the boss fight's
+ * milestones). Ticks are sim ticks at 60 Hz.
+ */
 export interface TutorialBotResult {
 	readonly setup: EndlessRunSetup;
 	readonly run: LiveRun;

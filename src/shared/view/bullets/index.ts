@@ -11,6 +11,8 @@
  *               floorCanvasRotation (many sprites on one floor canvas, spike PA0's option C), screenHeading
  *   impacts.ts  BulletImpacts: player bullets that vanished with life left (hits; identity without the in-flight
  *               pierce fields, projected life and position), as a fixed-size feed for PA7
+ *
+ * @module
  */
 export * from "./config";
 export * from "./looks";

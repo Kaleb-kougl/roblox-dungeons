@@ -8,6 +8,8 @@
  * shout's test, shoutDucked) the pop drops to OVERCAP_POP_DUCK.opacity (overcapPopOpacity). The camera is a narrow-FOV
  * perspective camera framed as the web build's orthographic one (shared/view iso.ts), so the projection is the
  * orthographic one. Pure, no allocation (the box is the caller's). Presentation only.
+ *
+ * @module
  */
 import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG, STUDS_PER_TILE } from "shared/config";
 import { TILE_SIZE } from "shared/sim";

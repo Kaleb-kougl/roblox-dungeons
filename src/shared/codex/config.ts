@@ -1,4 +1,8 @@
-/** Codex tunables (claude/codex-plan.md "Codex data (server)", CX2). Data only. */
+/**
+ * Codex tunables (claude/codex-plan.md "Codex data (server)", CX2). Data only.
+ *
+ * @module
+ */
 import { SETTINGS_RETRY, type RetryPolicy } from "shared/settings";
 
 /**
@@ -7,6 +11,11 @@ import { SETTINGS_RETRY, type RetryPolicy } from "shared/settings";
  */
 export const CODEX_DOC_VERSION = 1;
 
+/**
+ * The Codex's tunables, in one frozen object (`CODEX`): the DataStore's name, the remote limits the server enforces,
+ * the save and wait timings of CodexService (all in seconds), and the two client display budgets (`toastsPerFloor`,
+ * `recapIcons`).
+ */
 export interface CodexTunables {
 	/** DataStore holding one CodexDoc per player, keyed by shared/settings `playerDataKey(userId)`. */
 	readonly dataStore: string;
@@ -52,6 +61,11 @@ export interface CodexTunables {
 	readonly warnRate: { readonly count: number; readonly windowSeconds: number };
 }
 
+/**
+ * The live Codex tunables, read by CodexService and by the client's tracker and outbox. One document per player in
+ * `KV_Codex_v1`; each Codex remote allows 10 calls per 10 s per player, a claim call at most 16 items and a viewed call
+ * at most 64 ids; dirty documents autosave every 120 s; Studio does not write the store.
+ */
 export const CODEX: CodexTunables = table.freeze({
 	dataStore: "KV_Codex_v1",
 	claimRate: table.freeze({ count: 10, windowSeconds: 10 }),
@@ -83,6 +97,10 @@ export interface CodexOutboxTunables {
 	readonly callsPerWindow: number;
 }
 
+/**
+ * The live send pacing of the client's outbox: a flush every 2 s at most, and at most 5 calls of each remote per 10 s,
+ * half of what the server's limiter allows.
+ */
 export const CODEX_OUTBOX: CodexOutboxTunables = table.freeze({
 	flushSeconds: 2,
 	windowSeconds: 10,

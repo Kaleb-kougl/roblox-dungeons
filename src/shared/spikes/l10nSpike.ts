@@ -4,6 +4,8 @@
  * (headless-safe); the client spike resolves the font names to Enum.Font and draws the sheet.
  *
  * The samples are glyph tests, not shipped strings: they never go through the string tables.
+ *
+ * @module
  */
 
 /** The scripts the sheet covers (docs/LOCALIZATION.md design 1; `pseudo` is the pseudo-locale's brackets and NBSP). */
@@ -19,6 +21,10 @@ export const L10N_SPIKE_SCRIPTS = [
 	"arabic",
 	"pseudo",
 ] as const;
+/**
+ * The script a localization spike sample is tagged with (an `L10N_SPIKE_SCRIPTS` member). Finer than the game's own
+ * locale scripts: Japanese, Korean and the two Chinese scripts are separate here, and the pseudo-locale has its own.
+ */
 export type L10nSpikeScript = (typeof L10N_SPIKE_SCRIPTS)[number];
 
 /** The nine Latin-script locales whose accents the sheet checks one by one. */

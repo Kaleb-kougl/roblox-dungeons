@@ -34,6 +34,8 @@
  * instead resolves through ./smash.ts resolveSmash (an owner with a smash effect, ./wrecker.ts hasSmashEffect), and
  * fires the on-kill boons too only for a Powder Keg owner (BV6; Overkill does nothing: excess 0). Afterwards player 0
  * is bound again and ctx.procGen is 0.
+ *
+ * @module
  */
 import { jsMin } from "shared/jsmath";
 import type { SimCtx } from "../combat/ctx";

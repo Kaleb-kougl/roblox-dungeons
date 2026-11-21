@@ -1,10 +1,16 @@
 /**
  * Lobby events -> AnalyticsService custom events (TelemetryService logs them; names in docs/SERVER.md "Telemetry").
  * Pure, like shared/run analytics.ts; every field value comes from a small fixed set.
+ *
+ * @module
  */
 import type { AnalyticsEventSpec } from "shared/run";
 import type { LobbyVisibility } from "./config";
 
+/**
+ * The custom event names the lobby and invite builders below log under, one per kind of event. These are the names that
+ * appear in Roblox analytics, so changing one starts a new series.
+ */
 export const LOBBY_ANALYTICS_EVENT = {
 	lobbyCreated: "LobbyCreated",
 	lobbyStarted: "LobbyStarted",
@@ -14,6 +20,10 @@ export const LOBBY_ANALYTICS_EVENT = {
 	partyGrouped: "PartyGrouped",
 } as const;
 
+/**
+ * How an in-server lobby invite ended, `LobbyInviteAnswered`'s field 01: the invitee accepted it, declined it, or let
+ * it time out.
+ */
 export type LobbyInviteAnswer = "accept" | "decline" | "expire";
 
 /** How a `LobbyInviteSent` went out: the lobby's in-server invite list, or Roblox's invite prompt. */

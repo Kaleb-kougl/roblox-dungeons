@@ -4,6 +4,8 @@
  * phases, the damage cap, onDeath) in unit and determinism tests. Importing this module registers them, so import it
  * at the top of a spec (before any createSimState: the registry seals when the first run starts). Each spec file runs
  * in its own module world, so the extra ids never reach another spec's index table.
+ *
+ * @module
  */
 
 import { SIM_DT } from "../units";
@@ -50,11 +52,18 @@ export const TEST_CHASER = registerArchetype<ArchetypeData>({
 	},
 });
 
-interface TestBossData extends ArchetypeData {
+/** The test boss's tuning on top of the shared archetype data. */
+export interface TestBossData extends ArchetypeData {
+	/** How long the ring attack is telegraphed before it fires, ticks. */
 	telegraphTicks: number;
+	/** The bullet ring the attack fires. */
 	ring: BurstSpec;
 }
 
+/**
+ * Attack id the test boss passes to `ctx.telegraph` for its ring, so a spec can read it back from the actor's `attack`
+ * field while the ring is telegraphed.
+ */
 export const TEST_BOSS_ATTACK_RING = 1;
 const BOSS_PHASE_2_HP = 40;
 const BOSS_PHASE_3_HP = 20;

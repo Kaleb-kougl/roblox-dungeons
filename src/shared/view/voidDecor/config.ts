@@ -3,6 +3,8 @@
  * per-band knobs, the set pieces' caps and spacing (VOID_PIECES, read by shared/view/decor's planDecor), the debug
  * attributes and the hash salts. Presentation only: nothing here reaches the sim, a replay or a Forge param.
  * Starting values from the plan; VD11 tunes them in Studio.
+ *
+ * @module
  */
 import { GAME_WORLD } from "../config";
 

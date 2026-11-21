@@ -6,6 +6,8 @@
  *
  * Units: real (unpaused) seconds from the moment the stage cover starts to fade; offsets in reference px (HUD_VIEW);
  * pitch in semitones (PlaybackSpeed = 2^(st / 12), comboConfig semitonesToSpeed); 0..1 fractions elsewhere.
+ *
+ * @module
  */
 
 /** The reveal's port audio IDs (DR4 adds them to the theme's PORT_AUDIO_EVENTS; plain strings here). */
@@ -22,6 +24,11 @@ export const DRAFT_REVEAL_SFX = {
 	pick: "sfx.draft.pick",
 } as const;
 
+/**
+ * The reveal's timeline tunables, read by the DraftReveal state machine (draftReveal.ts): the deal, the flips, the rare
+ * landing, the legendary beat, the skip, the pick stamp and the reduced-motion values. Units are the file header's:
+ * real seconds from the moment the stage cover starts to fade, reference px, semitones, 0..1 fractions.
+ */
 export const DRAFT_REVEAL = {
 	/** Longest step one frame may take: a hitch delays the timeline, never skips a cue (they all fire, in order). */
 	maxFrameDtSec: 0.1,

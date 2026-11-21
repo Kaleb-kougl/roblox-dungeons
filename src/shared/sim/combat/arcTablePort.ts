@@ -11,6 +11,8 @@
  *
  * Add a shape: one PORT_ARC_SOURCES row (count, spread computed exactly as the BurstSpec computes it, and where it comes
  * from). A shape missing here still errors with "arc table miss".
+ *
+ * @module
  */
 
 import { dcos, dsin } from "shared/dungeon/forge";
@@ -18,8 +20,14 @@ import type { ArcShape } from "./arcTable";
 
 /** One port shape: gen.arc(count, spread) and the BurstSpec(s) that fire it. */
 export interface PortArcSource {
+	/** Bullets in the burst, as passed to `gen.arc`. */
 	readonly count: number;
+	/**
+	 * Cone width in radians, edge to edge (`TAU` for a full ring). Must be the same float the firing `BurstSpec`
+	 * computes, so write it with the same expression.
+	 */
 	readonly spread: number;
+	/** Which `BurstSpec`(s) fire this shape (file and constant). Documentation only: never read by the sim. */
 	readonly source: string;
 }
 

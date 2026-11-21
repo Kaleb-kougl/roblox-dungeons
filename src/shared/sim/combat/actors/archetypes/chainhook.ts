@@ -50,6 +50,8 @@
  * (hooked party index + 1 while dragging, 0 otherwise), slot 6 shared by state (CHAINHOOK_LOST: ticks without sight
  * while keeping range; CHAINHOOK_THROW_TARGET: the target + 1 while aiming and thrown; CHAINHOOK_DAMAGE: damage taken
  * since the latch while dragging), CHAINHOOK_STRAFE (+1 / -1).
+ *
+ * @module
  */
 
 import { secondsToTicks } from "../../../playerData";
@@ -76,31 +78,50 @@ import {
 } from "./enemyShared";
 import { IMP } from "./imp";
 
+/**
+ * The Chainhook's tuning on top of the room enemy rules: its keep-range band and strafe, the hook throw, the drag and
+ * the yank strike.
+ */
 export interface ChainhookData extends RoomEnemyData {
 	/** Preferred distance band to its target (world units; it wants line of sight). */
 	readonly keepMin: number;
+	/**
+	 * The far edge of the band (world units): past it, it walks toward its target; nearer than keepMin it backs off.
+	 */
 	readonly keepMax: number;
 	/** Weight of the sideways component of the keep-range move (radial is 1; the sniper's). */
 	readonly strafeWeight: number;
 	/** Ticks between throws (random in [min, max], `enemyCooldown`; the first drawn at spawn). */
 	readonly throwCooldownMin: number;
+	/** The longest wait between throws, ticks (inclusive upper bound of the draw). */
 	readonly throwCooldownMax: number;
 	/** Throws when its target is this close (world units) and in sight. */
 	readonly throwRange: number;
 	/** Aim telegraph ticks (the heading locks at its start) and its warning line's length (world units). */
 	readonly aimTicks: number;
+	/** Length of the aim telegraph's warning line along the locked heading, world units (the throw range). */
 	readonly throwLineLength: number;
 	/** The hook: one BulletKind.HOOK bullet (0 damage: it latches, never hurts). */
 	readonly hook: BurstSpec;
 	/** The drag: pull speed (world units / s), stop distance (world units, centre to centre), longest drag (ticks). */
 	readonly pullSpeed: number;
+	/**
+	 * The drag never pulls the hooked player nearer than this (world units, centre to centre); reaching it ends the
+	 * drag with the yank.
+	 */
 	readonly pullStop: number;
+	/** A drag that has not arrived after this many ticks ends without a yank (back to keeping range). */
 	readonly dragMaxTicks: number;
 	/** Damage it takes since the latch that breaks the drag (a teammate freed you). */
 	readonly breakDamage: number;
 	/** The yank strike on arrival: telegraph ticks, the ring at its feet (world units), the fan. */
 	readonly yankTelegraphTicks: number;
+	/** Radius of the ring drawn at its feet while it telegraphs the yank, world units. */
 	readonly yankRingRadius: number;
+	/**
+	 * The fan fired down the heading to the dragged player when the yank telegraph runs out (the imp's fan, the same
+	 * spec object).
+	 */
 	readonly yankFan: BurstSpec;
 }
 
@@ -119,6 +140,7 @@ export const CHAINHOOK_ATTACK_YANK = 2;
 // --- v[] slots (0..2 shared)
 /** Locked heading (unit): the throw's while aiming, the yank's while telegraphing it. */
 export const CHAINHOOK_DIR_X = 3;
+/** v[4]: the z component of the locked heading (unit), the pair of CHAINHOOK_DIR_X. */
 export const CHAINHOOK_DIR_Z = 4;
 /** The hooked player's party index + 1 while dragging (0: nobody). */
 export const CHAINHOOK_HOOKED = 5;
@@ -144,6 +166,10 @@ const STRAFE_BLOCKED = 0.3;
 /** Squared length below which a vector has no direction. */
 const MIN_DIR2 = 1e-12;
 
+/**
+ * The registered 'chainhook' archetype: keeps range, throws a hook down a telegraphed line, drags the player it latches
+ * to its feet and strikes with a fan. Its only draws are throw cooldowns (one in init, one per aim).
+ */
 export const CHAINHOOK = registerArchetype<ChainhookData>({
 	id: "chainhook",
 	band: PORT_BAND_ENEMIES_3,

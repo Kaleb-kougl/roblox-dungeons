@@ -7,6 +7,8 @@
  * runs its own TreasureViewTracker (the same pure look TreasureRenderController draws, from the same RunView.treasure
  * and sim clock), so the audio never depends on the order the client's render steps run in. A vault met mid-way, or
  * whose events were missed, is silent (the look's edges never fire for it). Pure, tested headlessly.
+ *
+ * @module
  */
 import type { SimState } from "shared/sim";
 import type { TreasureFrameSource } from "./events";

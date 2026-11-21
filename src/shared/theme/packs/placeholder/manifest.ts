@@ -17,6 +17,8 @@
  *   "enemy.sniper": { kind: "spritesheet", assetId: "rbxassetid://<n>", frameW: 16, frameH: 16, pivot: { x: 8, y: 15 }, animations: { ... } },
  *   "sfx.ember": { kind: "sound", assetId: "rbxassetid://<n>", volume: 0.8 },
  * then run `npm run verify` (src/shared/theme/README.md, "Replacing assets").
+ *
+ * @module
  */
 
 import type { ThemeManifest } from "../../types";
@@ -24,6 +26,11 @@ import type { ThemeManifest } from "../../types";
 const PLACEHOLDER = { kind: "placeholder" } as const;
 const SILENT = { kind: "silent" } as const;
 
+/**
+ * The placeholder pack's manifest: the default pack (DEFAULT_PACK_ID) and the one `loadThemePack` falls back to for an
+ * unknown pack id. It defines every required ID with no uploaded content, so the game is fully drawable and silent from
+ * it alone.
+ */
 export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 	format: 1,
 	id: "placeholder",

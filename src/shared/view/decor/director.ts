@@ -39,6 +39,8 @@
  * read from the shared state, so every client shows the same rooms lit.
  *
  * The view object is reused: update() mutates and returns the same DecorView (and its arrays) every frame.
+ *
+ * @module
  */
 import {
 	NO_KIND,
@@ -202,6 +204,13 @@ function isBrazier(e: DecorEntry): boolean {
 	return e.kind === "brazier";
 }
 
+/**
+ * Turns the run's state into how the decoration looks this frame (see the file comment for the trigger table): which
+ * rooms' torches and braziers are lit and how far through their fade, the boss ring, the stairwell glow, the shrine
+ * dim, pedestal glints, the Ember gutter and the run-over cold. `update(frame)` once per rendered frame returns one
+ * reused DecorView; `getView()` reads the last one. Keeps only view-side timers, never writes the sim. Owned by the
+ * client's DecorController.
+ */
 export class DecorDirector {
 	private readonly view = newView();
 	private scene: DecorScene | undefined;

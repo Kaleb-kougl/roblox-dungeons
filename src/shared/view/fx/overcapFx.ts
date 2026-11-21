@@ -26,6 +26,8 @@
  * Gates: `quiet` (comboQuiet) puts nothing out and forgets the pops (the windows are kept: a drink is never under the
  * cover, and a run over ends the run); a new run (another state object, or the tick going back) forgets everything.
  * Records of a player outside the party are ignored. No allocation in steady state. Presentation only.
+ *
+ * @module
  */
 import { HAPPY_HOUR_TICKS, SIM_HZ, partySize, type SimState } from "shared/sim";
 import type { BuildFxFrameSource } from "./buildFxEvents";

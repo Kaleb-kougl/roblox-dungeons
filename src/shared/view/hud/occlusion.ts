@@ -3,6 +3,8 @@
  * bullet is under an always-on corner panel, the toast panel or the first-sighting card (HUD_FADE_SLOTS), that panel
  * fades to mostly transparent and comes back once the area has stayed clear for a moment. Pure: screen rects and points in, booleans and transparencies out; the client
  * (HudOcclusionController) projects the world and drives the panels' GroupTransparency bindings.
+ *
+ * @module
  */
 import { HUD_CORNERS, type HudCorner } from "./corners";
 import type { ScreenRect } from "./footprint";

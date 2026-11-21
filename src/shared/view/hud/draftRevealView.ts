@@ -5,6 +5,8 @@
  * (`draftCardLook`). DraftRevealController (client) calls it once per card per rendered frame and writes the result;
  * DraftOverlay (client/ui/hud) binds to it with no further logic. Presentation only; checked headlessly
  * (draftRevealView.spec.ts). Timings live in draftRevealConfig.ts; the card size stays PROGRESSION_VIEW's 240 x 150.
+ *
+ * @module
  */
 import { DraftBeat, type DraftBeatId, type DraftRevealCardFrame, type DraftRevealFrame } from "./draftReveal";
 import { HUD_VIEW } from "./layout";
@@ -20,6 +22,12 @@ export const DRAFT_SKIN = {
 	skullRight: "ui.draft.skull.right",
 } as const;
 
+/**
+ * The draft overlay's draw constants, read by `draftCardLook` and the client's DraftOverlay: the card art's scale
+ * (reference px per art px), the flip widths (0..1) under which text and strokes are hidden, each card image's opaque
+ * body in art px, the legendary skulls' placement, the eyes' red, the glow stroke, the flash, the shine band and the
+ * ray ring, plus the Studio debug attribute's name.
+ */
 export const DRAFT_REVEAL_VIEW = {
 	/** Workspace string attribute (DR6, off by default): `c,l,r` etc., the next reveals' rarities (display only). */
 	debugAttribute: "KV_DraftRevealDebug",
@@ -278,6 +286,11 @@ export interface DraftCardLook {
 	raised: boolean;
 }
 
+/**
+ * A fresh, hidden card look: not shown, every alpha 0, width and scale 1, the back surface, no shine, burst or halo,
+ * neither selected nor raised. The client's DraftRevealController makes one and hands it to `draftCardLook` as `out`
+ * every frame, so no table is allocated per card.
+ */
 export function newDraftCardLook(): DraftCardLook {
 	return {
 		shown: false,
@@ -364,6 +377,11 @@ export interface DraftOverlayLook {
 	readonly hintAlpha: number;
 }
 
+/**
+ * The overlay's own look from the reveal's frame: drawn while the reveal is active; the title, the hint and the panel
+ * behind them fade with the frame's title alpha times its overlay alpha (the exit fade), each clamped to 0..1, the
+ * panel up to the HUD panels' opacity.
+ */
 export function draftOverlayLook(frame: Readonly<DraftRevealFrame>): DraftOverlayLook {
 	const o = math.clamp(frame.overlayAlpha, 0, 1);
 	const title = math.clamp(frame.titleAlpha, 0, 1) * o;

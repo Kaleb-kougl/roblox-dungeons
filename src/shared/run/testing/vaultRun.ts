@@ -6,12 +6,18 @@
  * buildDevRunConfig passes it), `treasure` replaces or drops (`false`: the floors keep their vaults and chest pieces,
  * the sim has no treasure state) the treasure config, and `startFloor` starts the run there (dev mode's floor jump, with
  * its Depth; any party size, unlike the dev world).
+ *
+ * @module
  */
 import type { VaultOverride } from "shared/dungeon";
 import type { SimConfig, TreasureConfig } from "shared/sim";
 import { devStartDepth } from "../dev";
 import { buildEndlessRunConfig, type EndlessRunSetup } from "../endless";
 
+/**
+ * Spec support. Options of `buildVaultRunConfig`: what a vault spec changes on the real endless run. All absent gives
+ * the endless run of that seed.
+ */
 export interface VaultRunOptions {
 	/** Absent: placeVault's own draws (about one floor in two from floor 2). */
 	readonly override?: VaultOverride;

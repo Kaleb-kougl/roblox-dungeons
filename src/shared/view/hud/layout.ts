@@ -4,6 +4,8 @@
  *
  * Ported pieces (project-kaleb-vale @ 42897e2): heartFills (src/player/PlayerHud.tsx), formatClock
  * (src/playtest/PlaytestOverlay.tsx), the boss phase in Roman numerals (src/boss/BossHud.tsx). The rest is new.
+ *
+ * @module
  */
 import { formatTenths } from "shared/l10n";
 import { deviceHintOf, type DeviceHint, type InputLabelStr } from "shared/play";
@@ -30,6 +32,10 @@ export const SETTINGS_KEY = "O";
 export const SETTINGS_PAD_CLOSE_KEY = "ButtonB";
 /** Input names (Enum.KeyCode) the menus' close / resume hints name, per last-used device: label them with *Hint. */
 export const SETTINGS_INPUTS = { keyboard: SETTINGS_KEY, gamepad: SETTINGS_PAD_CLOSE_KEY } as const;
+/**
+ * Input names (Enum.KeyCode) that pause and resume the run, per last-used device: `pauseHint` labels them. They match
+ * shared/play's fixed pause inputs (bindings.spec.ts), which are not rebindable.
+ */
 export const PAUSE_INPUTS = { keyboard: "P", gamepad: "ButtonStart" } as const;
 
 /** The Options screen's close hint labels ("O" / "B"), through `input.key.*` when given a string lookup. */

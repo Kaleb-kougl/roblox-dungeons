@@ -11,6 +11,8 @@
  *   CAP      a small damageCapped tag beside a capped boss, at most once per CAP_THROTTLE.
  *   full     the pool drops its oldest number (least recently popped) for the new one.
  * Under reducedMotion (motion = 0): no jitter, no rise, no pop; numbers still appear and fade in place.
+ *
+ * @module
  */
 import { formatDecimal } from "shared/l10n";
 import { BAR_GAP } from "./bars";
@@ -24,6 +26,10 @@ export const MERGE_WINDOW = 0.25;
 export const NUMBER_LIFE = 0.7;
 /** Rise distance (px) and time (s, ease-out), then it hangs until it fades. */
 export const RISE_PX = 12;
+/**
+ * Seconds a number takes to rise RISE_PX (quadratic ease-out); for the rest of NUMBER_LIFE it hangs at the top. No rise
+ * under reduced motion.
+ */
 export const RISE_TIME = 0.6;
 /** Fade-out over the last part of the life (s). */
 export const NUMBER_FADE = 0.2;
@@ -35,10 +41,18 @@ export const JITTER_PX = 4;
 export const CAP_THROTTLE = 0.5;
 /** Glyph scales: normal 1, heavy / popping 2. */
 export const NUMBER_SCALE_NORMAL = 1;
+/**
+ * Integer glyph scale of a heavy number (for its whole life) and of a normal number during its POP_TIME pop: twice
+ * NUMBER_SCALE_NORMAL.
+ */
 export const NUMBER_SCALE_BIG = 2;
 
 /** Number styles. */
 export const NumberStyle = { NORMAL: 0, HEAVY: 1, CAP: 2 } as const;
+/**
+ * One of the NumberStyle values: which kind of number a pool entry is. It picks the colour and scale, and hits only
+ * merge into a number of the same style.
+ */
 export type NumberStyleId = (typeof NumberStyle)[keyof typeof NumberStyle];
 
 function filled(n: number, v: number): number[] {
@@ -47,6 +61,12 @@ function filled(n: number, v: number): number[] {
 	return out;
 }
 
+/**
+ * The fixed pool of floating damage numbers (NUMBER_POOL_SIZE entries, parallel arrays indexed by entry; `live` is 1
+ * for a shown one). The client's DamageNumberController adds the hit tracker's hits to it (merging a stream on one
+ * actor into one number) and CAP tags, then draws every live entry each frame from its age since `born`. Positions are
+ * sim units plus a pixel offset; times are SimClock seconds. When full, the oldest number is replaced.
+ */
 export class DamageNumberPool {
 	readonly capacity: number;
 	readonly live: number[];
@@ -222,6 +242,10 @@ export const NUMBER_BASE_GAP = BAR_GAP + 5;
 export const BOSS_NUMBER_HEIGHT = 0.3;
 /** The CAP tag sits beside the boss: CAP_SIDE_PX right of the sprite's edge, at CAP_HEIGHT of its height. */
 export const CAP_SIDE_PX = 2;
+/**
+ * Height of the CAP tag on a boss, as a fraction (0..1) of the boss's drawn height above its feet: the same height its
+ * damage numbers start at (BOSS_NUMBER_HEIGHT).
+ */
 export const CAP_HEIGHT = 0.3;
 
 /** Start height (px above the feet) of a number on an actor drawn `h` px tall. */

@@ -4,6 +4,8 @@
  * rule and its report (`breakableOutlineReport`) are in variantColors.ts, so contract.ts and validate.ts take no new
  * name. The sprite art draws its rim from a baked outline sheet (art/atlases.json worldArt piece `rim`, the vale pack's
  * decor-atlas-outline.png), tinted with this role; placeholder boxes take one shared Highlight in it.
+ *
+ * @module
  */
 
 import type { ColorRole } from "./types";

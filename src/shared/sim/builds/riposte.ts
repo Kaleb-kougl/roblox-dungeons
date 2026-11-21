@@ -42,6 +42,8 @@
  *       roll or a swap discards it. In a roll (ROLL, ./hooks.ts buildsOnRollThrough) stepWaves fires the ring the same
  *       tick, damage min(braceCount, max), from any weapon. Once per guard or roll; a brace that restored nothing marks
  *       nothing.
+ *
+ * @module
  */
 import { jsMin } from "shared/jsmath";
 import type { SimCtx } from "../combat/ctx";

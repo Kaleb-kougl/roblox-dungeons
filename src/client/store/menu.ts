@@ -48,6 +48,11 @@ const initialState: MenuState = {
 	character: undefined,
 };
 
+/**
+ * The menu shell's slice (state: `MenuState`). MenuController dispatches the navigation actions (reduced by
+ * shared/view/menu `menuNavReduce`), the Leave run confirm, the co-op overlay, the first-run gate and the character
+ * screen; SimController reports the Roblox menu. It starts with no menu and `awaitingFirstRun` true.
+ */
 export const menuSlice = createProducer(initialState, {
 	menuNav: (state, action: MenuNavAction) => {
 		const nav = menuNavReduce(state.nav, action);
@@ -74,10 +79,37 @@ export const menuSlice = createProducer(initialState, {
 	},
 });
 
+/**
+ * The menu's current screen with its back stack (the screens under it, root first; empty at the root and with no menu).
+ */
 export const selectMenuNav = (state: { menu: MenuState }) => state.menu.nav;
+/**
+ * The menu screen showing: "none" during play and before the first-run gate decided, else "main", "lobbies", "lobby",
+ * "credits", "codex", "armory" or "character". HUD overlays read it to step aside while a menu is up.
+ */
 export const selectMenuScreen = (state: { menu: MenuState }) => state.menu.nav.screen;
+/**
+ * The pause or party overlay shows its "Leaving ends your run..." confirm instead of its buttons. False by default, and
+ * dropped whenever the party overlay closes.
+ */
 export const selectLeaveConfirm = (state: { menu: MenuState }) => state.menu.leaveConfirm;
+/**
+ * The co-op party overlay is open: a co-op run never pauses, so the pause key opens this over the running run instead.
+ * False in solo runs and while it is closed.
+ */
 export const selectCoopOverlay = (state: { menu: MenuState }) => state.menu.coopOverlay;
+/**
+ * The join still waits for the first-run gate (a first-time player goes straight into the tutorial): true from join,
+ * false once MenuController saw the gate decide. While true the menu layer shows only its backdrop.
+ */
 export const selectAwaitingFirstRun = (state: { menu: MenuState }) => state.menu.awaitingFirstRun;
+/**
+ * The character screen's state while it is up: what opened it (which decides what Confirm starts) and the focused card.
+ * Undefined while the screen is not showing.
+ */
 export const selectCharacterScreen = (state: { menu: MenuState }) => state.menu.character;
+/**
+ * The Roblox menu (Escape / Start) is open. The pause overlay and the pause button hide under it, and menu focus leaves
+ * it alone.
+ */
 export const selectRobloxMenuOpen = (state: { menu: MenuState }) => state.menu.robloxMenuOpen;

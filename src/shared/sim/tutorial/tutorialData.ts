@@ -1,6 +1,8 @@
 /**
  * First-run tutorial tunables for the sim (docs/TUTORIAL.md "Architecture §1"; a Roblox-port feature, no web source).
  * Data only; imports nothing from the sim, so player.ts / state.ts can use it without a require cycle.
+ *
+ * @module
  */
 
 /**

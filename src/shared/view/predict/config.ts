@@ -20,6 +20,12 @@ export interface PredictionViewTunables {
 	readonly blendMaxStep: number;
 }
 
+/**
+ * The smoothing in play (SimController hands it to its PredictionSmoother and PredictionResume): a correction's offset
+ * halves every 0.06 s; a correction over 1 tile snaps; the drawn body stays within 1 tile of the prediction; after a
+ * Chainhook's drag the knight blends back to the prediction over 0.25 s (into merged at once), at most a quarter of the
+ * gap per frame. A longer half-life hides corrections better but lets the drawn knight trail its true place for longer.
+ */
 export const PREDICTION_VIEW: PredictionViewTunables = table.freeze({
 	halfLifeSec: 0.06,
 	snapTiles: 1.0,
@@ -41,6 +47,7 @@ export interface BulletAheadTunables {
 	readonly maxTicks: number;
 }
 
+/** The bullets-ahead cap in play: 30 ticks (0.5 s at 60 Hz). `BulletAhead.prepare` clamps its window to it. */
 export const BULLET_AHEAD: BulletAheadTunables = table.freeze({
 	maxTicks: 30,
 });

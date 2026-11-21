@@ -7,23 +7,34 @@
  * BREAKABLE_LOOT.kindWeights).
  *
  * Distances are in tiles (TILE_SIZE = 1 world unit), measured between tile centres unless a rule says otherwise.
+ *
+ * @module
  */
 import type { EncounterRoomType } from "./encounterTypes";
 import type { BreakablePieceKindName } from "./breakablesData";
 
 /** A depth band of vault floors: from `fromFloor` on, `percent` of the floors hold a vault (TRD6). */
 export interface VaultChanceBand {
+	/** The band's first floor. */
 	readonly fromFloor: number;
+	/** The chance a floor of the band holds a vault, percent. */
 	readonly percent: number;
 }
 
 /** The Legendary share of starting tiers (else Rare, TRD6): base on VAULT.fromFloor, + perFloor a floor, at most max. */
 export interface VaultLegendaryTunables {
+	/** The Legendary share on VAULT.fromFloor, percent. */
 	readonly base: number;
+	/** Percent added per floor below it. */
 	readonly perFloor: number;
+	/** The share's ceiling, percent. */
 	readonly max: number;
 }
 
+/**
+ * The vault roll's tunables: its rng salt, the chance per depth band, which rooms qualify and the chest's tier and lock
+ * weights.
+ */
 export interface VaultTunables {
 	/**
 	 * The vault's own rng stream: new EncounterRng(floor seed ^ salt), like the breakables (0x5bd1e995), the boss pick
@@ -39,6 +50,7 @@ export interface VaultTunables {
 	readonly roomWeight: Readonly<Partial<Record<EncounterRoomType, number>>>;
 	/** A vault room has at least this many floor tiles (EncounterRoom.floorTiles). */
 	readonly minRoomTiles: number;
+	/** How often a chest starts Legendary. */
 	readonly legendaryPercent: VaultLegendaryTunables;
 	/** Weight of each lock in the lock draw, VaultLock order (UNTOUCHED, SWIFT; append only). */
 	readonly lockWeights: ReadonlyArray<number>;
@@ -55,6 +67,7 @@ export interface VaultTunables {
 	readonly decorClearTiles: number;
 }
 
+/** The vault values. Changing one changes which endless floors hold a vault and what its chest is. */
 export const VAULT: VaultTunables = table.freeze({
 	salt: 0xb5297a4d,
 	fromFloor: 2,

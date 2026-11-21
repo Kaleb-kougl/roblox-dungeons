@@ -7,6 +7,8 @@
  * string lookup. Every key of the model's texts is rewritten, its varKeys too (an Upgrade's "was" line, a tooltip's
  * "Evolves into {evo}: {desc}"), so a key without an override, a player who is no character (M1's two weapons) or a
  * pack without the override all read exactly the base key. Pure (characterText.spec.ts).
+ *
+ * @module
  */
 import { characterOverrideKey } from "shared/theme";
 import type { BuildListRow } from "./buildHud";

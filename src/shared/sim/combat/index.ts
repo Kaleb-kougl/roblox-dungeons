@@ -1,6 +1,8 @@
 /**
  * Combat barrel (source: `src/sim/combat.ts`, `combatData.ts`, `patterns.ts`, `ctx.ts`, `actors/`, `weapons/`).
  * See ../README.md "Combat".
+ *
+ * @module
  */
 export * from "./combatData";
 export * from "./combat";

@@ -10,6 +10,8 @@
  *
  * gen.arc's sin / cos are V8's, from the generated arc table (./projectilePatterns.ts, ./arcTable.ts): a burst shape
  * the table does not hold errors ("arc table miss") instead of calling Luau's libm.
+ *
+ * @module
  */
 
 import { jsMax } from "shared/jsmath";
@@ -118,14 +120,29 @@ export const FULL_RING = math.pi * 2;
  *   scale   optional: drawn size multiplier (render only, never collision)
  */
 export interface BurstSpec {
+	/** Bullets in the burst. With `spread` it picks the arc-table shape, so a new pair needs a table row. */
 	readonly count: number;
+	/** Cone width in radians, edge to edge; `FULL_RING` or more fires an evenly spaced ring. */
 	readonly spread: number;
+	/** Bullet speed, world units per second (enemy bursts: before endless mode's speed scaling). */
 	readonly speed: number;
+	/** Seconds each bullet lives; range is `speed` x `life` unless a wall stops it first. */
 	readonly life: number;
+	/**
+	 * Enemy bullets: half-hearts dealt to the player. Player bullets: enemy hit points. A whole number from 0 to 63
+	 * (the payload's 6 bits).
+	 */
 	readonly damage: number;
+	/**
+	 * A `BulletKind` value (0 to 15): looks and audio, and the kinds the sim treats specially (goo, strike, hook,
+	 * ember).
+	 */
 	readonly kind: number;
+	/** Spawn offset from the origin along each bullet's own direction, world units. Absent: 0. */
 	readonly radius?: number;
+	/** Player bullets only: actors the bullet passes through before a hit consumes it, 0 to 7. Absent: 0. */
 	readonly pierce?: number;
+	/** Drawn size multiplier. Render only, never collision. Absent: 1. */
 	readonly scale?: number;
 }
 
@@ -288,7 +305,9 @@ export function fireBurstLimited(
 
 /** A writable 2D vector on the ground plane. Helpers write their result into one (no allocation). */
 export interface Dir {
+	/** X component (world x). A unit vector's when it holds a direction. */
 	x: number;
+	/** Z component (world z). */
 	z: number;
 }
 

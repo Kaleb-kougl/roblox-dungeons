@@ -13,6 +13,8 @@
  *
  * Starts are therefore written once per accepted daily run (folded into its finish write) plus at most once on leave,
  * never per start. A start of a later day drops the older day's unwritten starts (only today's count matters).
+ *
+ * @module
  */
 import { DAILY_LEDGER_OPEN_ATTEMPTS } from "./config";
 import { addDailyActivity, dailyStartsOn, finishedDailyOn, type DailyActivity, type DailyActivityDelta } from "./daily";
@@ -36,6 +38,10 @@ export interface DailyActivityNote {
 	readonly returning: boolean | undefined;
 }
 
+/**
+ * What `finished` answers for an accepted daily run: the attempt number and returning flag for telemetry, plus the
+ * delta RecordsService must now write to the player's records doc.
+ */
 export interface DailyFinishNote extends DailyActivityNote {
 	/** The write for this finish (the unwritten starts and the finished day). */
 	readonly delta: DailyActivityDelta;
@@ -56,6 +62,11 @@ interface LedgerEntry {
 /** The smallest attempt number (a finish whose start this server never counted is at least an attempt). */
 const FIRST_ATTEMPT = 1;
 
+/**
+ * What this server has added to each player's daily activity since they joined, keyed by UserId (see the file comment).
+ * One per server, held by RecordsService; nothing here is stored, the service writes the deltas it hands out. A
+ * player's entry lives until `forget`.
+ */
 export class DailyActivityLedger {
 	private readonly entries = new Map<number, LedgerEntry>();
 

@@ -21,6 +21,8 @@
  * band PORT_BAND_ENEMIES_4 = 7 (indices 24..26: `jackal, mender, mortar`). A later addition takes the next
  * band, so no index that a recording or fixture already holds ever moves. Specs may add test archetypes
  * (shared/sim/testing, band 0) in their own module world.
+ *
+ * @module
  */
 
 import { stableSort } from "shared/jsmath";
@@ -69,7 +71,13 @@ function check(cond: boolean, id: string, what: string): void {
 	if (!cond) error(`registerArchetype('${id}'): ${what}`, 0);
 }
 
-/** Registers an archetype (call once, at module load, from the archetype's own file). Returns `def`. */
+/**
+ * Registers an archetype (call once, at module load, from the archetype's own file). Returns `def`. The def is an
+ * {@link ArchetypeDef}: its {@link ArchetypeDef.data | data} and the hooks {@link ArchetypeDef.init | init},
+ * {@link ArchetypeDef.step | step}, {@link ArchetypeDef.stepDead | stepDead}, {@link ArchetypeDef.stepCorpse | stepCorpse},
+ * {@link ArchetypeDef.filterDamage | filterDamage}, {@link ArchetypeDef.onHit | onHit} and
+ * {@link ArchetypeDef.onDeath | onDeath}.
+ */
 export function registerArchetype<D extends ArchetypeData>(def: ArchetypeDef<D>): ArchetypeDef<D> {
 	const id = def.id;
 	check(isValidRegistryId(id), tostring(id), 'ids are lowercase dot-separated, e.g. "boss.warden"');

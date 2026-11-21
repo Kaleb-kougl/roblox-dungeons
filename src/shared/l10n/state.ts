@@ -2,10 +2,17 @@
  * The locale the client shows, as one value (docs/LOCALIZATION.md design 8, L6): what the client's `l10n` Reflex slice
  * holds and every font / alignment choice reads. Pure: the client hands in the Roblox locale ids, the Options override
  * and whether the player may pick hidden locales.
+ *
+ * @module
  */
 import { SOURCE_LOCALE, localeDef, type LocaleScript } from "./locales";
 import { pickLocale, type LocalePick, type PickLocaleOptions } from "./pick";
 
+/**
+ * The locale the client is showing, with the two facts every label derives from it: the script (which fonts) and the
+ * direction (which alignment). Held in the client's `l10n` Reflex slice; built by `resolveLocaleState` and compared
+ * with `sameLocaleState`.
+ */
 export interface LocaleState {
 	/** The locale code shown (a LOCALES code). */
 	readonly code: string;

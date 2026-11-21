@@ -13,6 +13,8 @@
  *
  * (breakables.spec.ts checks this table against SWORD_DATA / BOW_DATA.) Boons that scale damage (Sharpened) do not
  * apply: the pieces take the base numbers.
+ *
+ * @module
  */
 import { TILE_SIZE } from "../units";
 import { BOW_DATA } from "../combat/weapons/defs/bow";
@@ -24,6 +26,7 @@ import { BOW_DATA } from "../combat/weapons/defs/bow";
  * only through its openers (sim/secrets).
  */
 export const BreakableKind = { BARREL: 0, CRATE: 1, CHEST: 2, CRACKED_WALL: 3 } as const;
+/** A piece's kind index: one of BreakableKind's values (0 .. 3), the value stored in BreakablePiece.kind. */
 export type BreakableKindId = (typeof BreakableKind)[keyof typeof BreakableKind];
 
 /**
@@ -44,6 +47,10 @@ export const CRACKED_WALL_HP = 1;
  * still scores MELEE / PLAYER_BULLET only.
  */
 export const BreakableSource = { MELEE: 0, PLAYER_BULLET: 1, ENEMY_BULLET: 2, SLAM: 3, ROLL: 4, BUILD: 5 } as const;
+/**
+ * What dealt a piece's damage: one of BreakableSource's values (0 .. 5), the `source` damageBreakable takes and the
+ * knock feed records.
+ */
 export type BreakableSourceId = (typeof BreakableSource)[keyof typeof BreakableSource];
 
 /** B4: bow stream arrows that break a piece, by kind (barrel 2, crate 4). */

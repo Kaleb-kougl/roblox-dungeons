@@ -9,10 +9,14 @@
  *                  from the run, like a leaver) and the tick is decided among the rest
  *
  * A player who left never counts (reports from them are ignored). Pure.
+ *
+ * @module
  */
 import { isStateHash } from "shared/run";
 
+/** A reported tick on which the counted players' hashes were not all equal. */
 export interface HashDesync {
+	/** The tick the hashes are of. */
 	readonly tick: number;
 	/** Per player index: the reported hash, "" when that player was not counted. */
 	readonly hashes: ReadonlyArray<string>;
@@ -20,6 +24,7 @@ export interface HashDesync {
 	readonly outliers: ReadonlyArray<number>;
 }
 
+/** What one deciding pass of the ledger concluded. */
 export interface LedgerDecision {
 	/** Ticks agreed by this call, in order. */
 	readonly agreed: ReadonlyArray<{ readonly tick: number; readonly hash: string }>;
@@ -29,8 +34,13 @@ export interface LedgerDecision {
 	readonly stalled: ReadonlyArray<number>;
 }
 
+/** Why the ledger refused a hash report. */
 export type ReportProblem = "bad_tick" | "bad_hash" | "duplicate" | "already_decided";
 
+/**
+ * Collects the clients' hash reports and decides each reported tick in order: agreed, a desync, or players stalled.
+ * Built for `size` players reporting every `every` ticks, silent past `timeout` ticks meaning stalled.
+ */
 export class HashLedger {
 	private readonly reports = new Map<number, string[]>();
 	private readonly agreedHashes = new Map<number, string>();

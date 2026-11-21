@@ -4,6 +4,8 @@
  * tools, an older replay) falls back to the character the player's weapon sets are (shared/characters
  * characterOfWeapons), and anything else (M1's two weapons, test loadouts) draws ACTOR_VIEW.playerVisualId, the
  * Knight's visual, as before. Pure (the client's ActorRenderController and SimController read it).
+ *
+ * @module
  */
 import { characterDef, characterOfWeapons, isCharacterId, type CharacterId } from "shared/characters";
 import { partySize, weaponsAt, type SimState } from "shared/sim";

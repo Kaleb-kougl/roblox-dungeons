@@ -14,6 +14,8 @@
  *     >= minBulletContrast (WCAG) on both, at a depth band's light (`light`: the shoulder is lit like a wall, the bullet
  *     is self-lit Neon; validateManifest checks full light, shared/view/decor's profile spec every band);
  *   - the abyss never reads as a threat: >= minAbyssDifference (CIE76) from every `abyssAgainst` colour.
+ *
+ * @module
  */
 
 import {

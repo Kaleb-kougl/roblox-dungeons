@@ -13,6 +13,8 @@
  * `unlockFloors` (default true: the DSD9 rule these specs were written for) picks the roster and spender rule; false is
  * every endless world's live rule since docs/DAILY.md DSD18 (docs/NEW_ENEMIES_2.md NX6's census): no unlock floors, only
  * a kind's roomKindMinFloor (the Chainhook's 2, NXD4) holds, in the roster and in every room.
+ *
+ * @module
  */
 import {
 	ENDLESS_FIRST_FLOOR,
@@ -38,13 +40,17 @@ import {
 
 /** One census row: totals over every populated room of one floor across the sampled runs. */
 export interface PoolCensusRow {
+	/** The floor the row is for. */
 	readonly floor: number;
+	/** Party size the rooms were budgeted for. */
 	readonly party: number;
 	/** The roster / spender rule (see the file comment). */
 	readonly unlockFloors: boolean;
+	/** Runs sampled. */
 	runs: number;
 	/** Rooms with a budget (combat / elite, not the entrance or the boss room). */
 	rooms: number;
+	/** Enemies placed in those rooms. */
 	enemies: number;
 	/** Distinct kinds per room, summed over the rooms. */
 	distinct: number;
@@ -52,11 +58,13 @@ export interface PoolCensusRow {
 	readonly byKind: number[];
 	/** Encounter cost of the placed enemies, and the rooms' budgets. */
 	cost: number;
+	/** The rooms' budgets, summed. */
 	budget: number;
 	/** The most of a ENDLESS_ROOM_KINDS kind in one room, in its order. */
 	readonly maxPerRoom: number[];
 	/** Planned spawns an affix may go on, and those that got one. */
 	eligible: number;
+	/** Planned spawns that got an affix. */
 	affixed: number;
 	/** Runs whose roster on this floor holds each kind (ENDLESS_ROOM_KINDS order). */
 	readonly rosterRuns: number[];
@@ -64,12 +72,15 @@ export interface PoolCensusRow {
 	capBound: number;
 	/** Rooms of runs whose roster has no kind of the dearest room cost, and their placed cost and budgets. */
 	cheapRooms: number;
+	/** Those rooms' placed cost. */
 	cheapCost: number;
+	/** Those rooms' budgets. */
 	cheapBudget: number;
 	/** Rule breaks (see the file comment); the specs expect none. */
 	readonly breaks: string[];
 }
 
+/** An empty row for one floor and party size. */
 export function newCensusRow(floor: number, party: number, unlockFloors = true): PoolCensusRow {
 	return {
 		floor,

@@ -3,16 +3,28 @@
  * source). Data only: ./affixes.ts and ./stepAffixes.ts read it. Which spawn gets which affix is decided by the
  * dungeon (shared/dungeon affixes.ts, AFFIXES); the numeric ids are shared/dungeon AffixKind (theme AFFIX_IDS order).
  * Every percent is an integer (scalePercent / scaleTicks / combinedPercent).
+ *
+ * @module
  */
 import { secondsToTicks } from "../playerData";
 
+/**
+ * The affix rules a run plays under (SimConfig.affixes; AFFIX_RULES is the game's). Every percent is an integer where
+ * 100 leaves the value unchanged; durations are ticks at 60 Hz. Constant for the run and not hashed.
+ */
 export interface AffixRules {
 	/** Hulking: hp and radius at the stamp (before init), and its walk. */
 	readonly hulkingHpPercent: number;
+	/** Hulking: the actor's radius x this percent, applied once at the stamp (before init). */
 	readonly hulkingRadiusPercent: number;
+	/** Hulking: its walk step x this percent, every tick (below 100 slows it). */
 	readonly hulkingWalkPercent: number;
 	/** Swift: walk and attack cooldowns (never a telegraph, lunge, recover or strafe timer: EVD9). */
 	readonly swiftWalkPercent: number;
+	/**
+	 * Swift: its attack cooldowns x this percent (below 100 shortens them). Telegraph, lunge, recover and strafe timers
+	 * are never scaled (EVD9).
+	 */
 	readonly swiftCooldownPercent: number;
 	/** Shielded: a shield of this percent of its hp (at the stamp) absorbs damage first ... */
 	readonly shieldHpPercent: number;

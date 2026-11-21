@@ -15,6 +15,8 @@
  *   hidden      the tutorial, dev runs, M1 and every other world that never pays (nothing drawn)
  *
  * The goal: the cheapest next level (WalletStatus.goals' first), its `to go` against the balance after this run.
+ *
+ * @module
  */
 import { SILVER, type RunSilver, type SilverTunables } from "shared/silver";
 import { SILVER_RECAP_KEYS, type StringVars } from "shared/theme";
@@ -80,12 +82,21 @@ export function silverFiguresOf(b: Readonly<SilverGrantBreakdown>): SilverFigure
 /** One Silver row. */
 export type SilverRecapRowId = "run" | "prospector" | "topUp" | "firstRun" | "daily" | "bonuses" | "total" | "goal";
 
+/**
+ * One row of the run-over Silver block: which row it is (`id`), its theme string key and the key's variables (the
+ * amount, a level's name). The client's RunOverPanel renders it through the string lookup.
+ */
 export interface SilverRecapRow {
 	readonly id: SilverRecapRowId;
 	readonly key: string;
 	readonly vars: StringVars;
 }
 
+/**
+ * What the run-over panel draws for Silver, from `silverRecapModel` (see the file comment): `hidden` for a world that
+ * never pays (nothing drawn), `none` for a run that paid nothing (one line, its string key given), or `rows` with the
+ * rows to draw.
+ */
 export type SilverRecapModel =
 	| { readonly kind: "hidden" }
 	| { readonly kind: "none"; readonly key: string }

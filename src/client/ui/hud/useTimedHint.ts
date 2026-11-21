@@ -5,6 +5,10 @@ import { selectJuice } from "client/store";
 import { motionScale } from "shared/view/fx";
 import { HUD_HINTS, hintVisible } from "shared/view/hud";
 
+/**
+ * What `useTimedHint` returns to the component that draws the hint: whether to render it at all, and the binding its
+ * text transparency follows during the fade-out.
+ */
 export interface TimedHint {
 	/** True once the hint has faded out: render nothing (no layout space). */
 	readonly hidden: boolean;

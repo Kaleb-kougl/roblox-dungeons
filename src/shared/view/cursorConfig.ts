@@ -2,9 +2,16 @@
  * Tunables of the gauntlet cursor (docs/CURSOR.md section 3; logic in cursor.ts, the client's CursorController draws
  * it). Presentation only: nothing here reaches the sim, the lockstep wire or a hash. Roblox-port choices, no web
  * source.
+ *
+ * @module
  */
 import type { CursorSize } from "shared/settings";
 
+/**
+ * The gauntlet cursor's tunables: its GUI layer, theme ids, the whole-number scale rule (pixels of viewport height,
+ * scale steps per Cursor size), the click squeeze (seconds) and how often the hover test runs. Read by cursor.ts and
+ * the client's CursorController.
+ */
 export const CURSOR_VIEW = {
 	/**
 	 * The cursor ScreenGui's DisplayOrder: above every game layer (menus 15, pause / settings 20, tooltips 25, the

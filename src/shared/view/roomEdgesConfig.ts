@@ -3,16 +3,27 @@
  * playtest) and the per-frame look of one room's line (roomEdgeLook). The state ids are fixed here so roomEdgeState.ts
  * and the look helper share them. Presentation only: nothing here reaches the sim, the lockstep wire or a hash.
  * Roblox-port feature, no web source.
+ *
+ * @module
  */
 import { STUDS_PER_TILE } from "shared/config";
 
 /** A room's edge state (docs/ROOM_EDGES.md §2): no enemies or cleared / enemies not engaged yet / fight on. */
 export const RoomEdgeState = { SAFE: 0, WAITING: 1, LIVE: 2 } as const;
+/**
+ * One `RoomEdgeState` value (0 safe, 1 waiting, 2 live). Also the index into `ROOM_EDGE_VIEW.transparency` and
+ * `ROOM_EDGE_VIEW.roles`.
+ */
 export type RoomEdgeState = (typeof RoomEdgeState)[keyof typeof RoomEdgeState];
 
 const TAU = 2 * math.pi;
 const HALF = 0.5;
 
+/**
+ * The room edge line's tunables: the dash Part's size and lift (studs), its look per state (transparency 0..1 and
+ * colour role, indexed by RoomEdgeState), the live pulse and the state fade (seconds), and the floor's dash budget.
+ * Read by `roomEdgeLook` here and the client's RoomEdgeController.
+ */
 export const ROOM_EDGE_VIEW = {
 	/**
 	 * One dash Part, studs: `width` across the line, `height` its thickness, `length` along it, `gap` between dashes.

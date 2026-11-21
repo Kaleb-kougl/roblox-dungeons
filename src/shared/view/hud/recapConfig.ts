@@ -3,9 +3,15 @@
  * Presentation only (RRD1): nothing here reaches the sim, a hash or the leaderboard. Times are real seconds from the
  * run-over frame; thresholds are tuned at RR10. Owner decisions: RRD6 (the 0.6 s arm), RRD8 (boss <= 25 %, score gap
  * <= 15 %, <= 2 rooms).
+ *
+ * @module
  */
 import { SECRET_RECAP_KEY } from "shared/theme";
 
+/**
+ * The recap's tunables (`RECAP`; recap.ts takes another one in specs): the timeline's times in real seconds from the
+ * run-over frame, the near-miss thresholds, the highlight counts and the retry levers.
+ */
 export interface RecapConfig {
 	/** A confirm / FIRE press before this skips the timeline instead of retrying (RRD6). */
 	readonly retryArmSec: number;
@@ -42,6 +48,10 @@ export interface RecapConfig {
 	readonly retryStartSec: number | undefined;
 }
 
+/**
+ * The recap's tunables as shipped. Owner decisions: the 0.6 s arm (RRD6); a boss at 25 % health or less, a score gap of
+ * 15 % or less and 2 rooms or fewer left count as near misses (RRD8). The rest is tuned at RR10.
+ */
 export const RECAP: RecapConfig = {
 	retryArmSec: 0.6,
 	nearMissDelaySec: 0.3,

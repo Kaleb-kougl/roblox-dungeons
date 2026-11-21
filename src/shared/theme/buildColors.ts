@@ -8,6 +8,8 @@
  * `enemyOutline` and every boost role: a player effect must never read as danger, and danger never as decoration.
  * Then BUILD_APART_RULES (docs/BUILDS_V2.md BV10): the overcap points' gold is also >= 40 CIE76 from `newBest`, so an
  * overcap pop never reads as a record.
+ *
+ * @module
  */
 
 import { colorDifference, contrastRatio, isHexColor } from "./color";

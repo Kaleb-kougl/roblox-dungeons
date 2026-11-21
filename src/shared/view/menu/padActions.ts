@@ -11,6 +11,8 @@
  *   Right stick scroll the scope's main list (the engine moves nothing; `scroll` is FocusController's)
  *   Start       the pause overlay: resume
  * The D-pad and the left stick move the selection (the engine). Keys are Enum.KeyCode names.
+ *
+ * @module
  */
 import type { FocusLayer } from "./focus";
 

@@ -17,6 +17,8 @@
  *
  * Generators other than arc (ring, fibonacciSphere, galaxy, ...) and the acceleration / rotate / sequence modifiers
  * are not ported: nothing in the sim uses them, and all but `sequence` need trig.
+ *
+ * @module
  */
 
 import { u32 } from "shared/jsmath";
@@ -93,6 +95,10 @@ export function arcTrig(count: number, spread: number): ArcShape {
 // ---------------------------------------------------------------------------------------------
 // Generators, modifiers, compose
 
+/**
+ * The ported pattern generators of r3f-projectiles: each returns a fresh spawn list (records from the spawn data pool)
+ * for modifiers and `fireAt`. Only `arc` is ported, the one generator the sim uses.
+ */
 export const gen = {
 	/**
 	 * Bullets in a flat arc around `heading` (0 = +Z, growing toward +X; direction = (sin, 0, cos)). At
@@ -131,6 +137,10 @@ export const gen = {
 	},
 };
 
+/**
+ * The ported modifiers of r3f-projectiles: each call returns a `BulletModifier` that stamps one value on every bullet
+ * of a spawn list, for `compose`.
+ */
 export const mod = {
 	/** Same color on every bullet of the batch (24-bit hex). */
 	color(col: number): BulletModifier {

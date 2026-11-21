@@ -8,6 +8,8 @@
  * floor survive, on far walls). So "the boss ring by phase" (Phase 2 part 3) is drawn as FLAT fire pits at the Forge's
  * own brazier spots in the boss room: a floor-level glow (decor.fx.glow, flat) plus a PointLight, never a standing
  * sprite, so nothing in the arena can hide a bullet. The far-wall braziers the plan kept stay ordinary room braziers.
+ *
+ * @module
  */
 import { TileType, encounterRooms, gridToWorld, tileAt, type Dungeon, type WorldXZ } from "shared/dungeon";
 import type { DecorPlan, DecorPlanInput } from "./decorPlan";
@@ -23,6 +25,11 @@ export interface DecorPedestalSpot extends DecorSpot {
 	readonly room: number;
 }
 
+/**
+ * A floor's decor plan plus the floor facts the DecorDirector and the decor renderers react to (see the file comment),
+ * built once per floor by `decorScene`. Positions are world units (tiles) on the floor plane; room ids are
+ * Dungeon.rooms indices.
+ */
 export interface DecorScene {
 	readonly plan: DecorPlan;
 	/** The endless floor (plan.floor; 1 for M1 and tests). */

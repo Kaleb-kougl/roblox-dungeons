@@ -13,10 +13,18 @@
  *                                        that blend of the two interpolated poses. w >= 1: untouched (bit-exact).
  *
  * The predictor itself is untouched (predictMotion and its parity spec): only what is drawn changes.
+ *
+ * @module
  */
 import type { PlayerState } from "shared/sim";
 import type { PredictionViewTunables } from "./config";
 
+/**
+ * The blend weight between the merged and the predicted knight around a Chainhook's drag (see the file comment):
+ * `update(hooked, dt)` once per frame returns 0 (drawn merged) .. 1 (drawn predicted), `reset()` puts it back to 1.
+ * Times come from the tunables it is given (`PREDICTION_VIEW` in play). Owned by the client's SimController, which
+ * applies the weight with `blendTowardMerged`.
+ */
 export class PredictionResume {
 	private w = 1;
 

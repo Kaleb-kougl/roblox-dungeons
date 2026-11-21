@@ -49,6 +49,8 @@
  * JACKAL_ATTACK_LUNGE, aiTicks left) / JACKAL_LUNGE (aiTicks left; attack still JACKAL_ATTACK_LUNGE) / JACKAL_RECOVER /
  * JACKAL_HOP (spooked) / JACKAL_STAGGER (v[JACKAL_PHASE] ticks left in the last three); v slots JACKAL_DIR_X / _Z (the
  * lunge heading), JACKAL_HIT_BITS, JACKAL_TARGET (the locked target while winding up or lunging). Feeds (unhashed): SimEvents.lunges / spooks, and the guard feed above.
+ *
+ * @module
  */
 
 import { HIT_NORMAL, PLAYER_RADIUS, secondsToTicks } from "../../../playerData";
@@ -74,9 +76,16 @@ import {
 	stepCalm,
 	type RoomEnemyData,
 } from "./enemyShared";
+/**
+ * The Jackal's tuning on top of the room enemy rules: the circling band and pack spacing, the cones that allow and call
+ * off a lunge, and the lunge, hop, stagger and cooldown timings (ticks).
+ */
 export interface JackalData extends RoomEnemyData {
 	/** The circling band around its target (world units). */
 	readonly circleMin: number;
+	/**
+	 * The outer edge of the circling band (world units); the radial pull aims at the middle between circleMin and this.
+	 */
 	readonly circleMax: number;
 	/** Pushes away from every other Jackal within this (world units). */
 	readonly separation: number;
@@ -93,6 +102,10 @@ export interface JackalData extends RoomEnemyData {
 	readonly windupTicks: number;
 	/** The lunge: lungeDistance world units over lungeTicks along the locked heading. */
 	readonly lungeDistance: number;
+	/**
+	 * Ticks the lunge lasts: each tick it moves lungeDistance / lungeTicks along the locked heading (a wall ends it
+	 * early).
+	 */
 	readonly lungeTicks: number;
 	/** Half hearts the lunge deals, once per player. */
 	readonly lungeDamage: number;
@@ -100,12 +113,15 @@ export interface JackalData extends RoomEnemyData {
 	readonly recoverTicks: number;
 	/** Spooked: a hop back hopDistance over hopTicks, then spookCooldownTicks to the next try. */
 	readonly hopDistance: number;
+	/** Ticks the hop back lasts: each tick it moves hopDistance / hopTicks against the locked heading. */
 	readonly hopTicks: number;
+	/** Its cooldown after being spooked, ticks, before it may wind up again: fixed, no draw. */
 	readonly spookCooldownTicks: number;
 	/** Staggered by a sword guard (NTD9): standing still, taking full damage. */
 	readonly staggerTicks: number;
 	/** Ticks between lunges (random in [min, max], `enemyCooldown`), and before the first one. */
 	readonly lungeCooldownMin: number;
+	/** The longest wait between lunges, ticks (inclusive upper bound of the draw). */
 	readonly lungeCooldownMax: number;
 }
 
@@ -128,6 +144,7 @@ export const JACKAL_ATTACK_LUNGE = 1;
 export const JACKAL_PHASE = 3;
 /** The lunge heading (unit), locked when the wind-up starts. */
 export const JACKAL_DIR_X = 4;
+/** v[5]: the z component of the locked lunge heading (unit), the pair of JACKAL_DIR_X. */
 export const JACKAL_DIR_Z = 5;
 /** Players this lunge already hurt (bit k: player k). */
 export const JACKAL_HIT_BITS = 6;
@@ -139,6 +156,11 @@ export const JACKAL_TARGET = 7;
 
 const LUNGE_DISTANCE = 2.8;
 
+/**
+ * The registered 'jackal' archetype: circles its target with its pack, lunges at its back one at a time, is spooked by
+ * being faced and staggered by a sword guard. Its only draws are lunge cooldowns (one in init, one as each lunge
+ * starts).
+ */
 export const JACKAL = registerArchetype<JackalData>({
 	id: "jackal",
 	band: PORT_BAND_ENEMIES_4,

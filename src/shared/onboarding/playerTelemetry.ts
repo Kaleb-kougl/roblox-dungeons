@@ -36,6 +36,8 @@
  *     TUTORIAL_FUNNEL_MAX_STEP reports of 1-2 events) under the attempt and session budgets.
  *   - The gate report logs OnboardingGate once per session; `gateContradiction` names a reason that contradicts what
  *     the server knows (the service warns but logs it anyway: the client saw what it saw).
+ *
+ * @module
  */
 import { INVITE, type ArrivalJoinIntent } from "shared/invite";
 import { LEADERBOARD_DAILY_WORLDS, LEADERBOARD_ELIGIBLE_WORLDS } from "shared/leaderboard";
@@ -122,6 +124,10 @@ export function onboardingEntryOfIntent(intent: ArrivalJoinIntent): OnboardingEn
 	return intent === "lobby" ? "invited" : intent === "party" ? "party" : "organic";
 }
 
+/**
+ * True when `v` is one of the three join intents (`none`, `lobby`, `party`). The telemetry re-checks the intent the
+ * service passes in with it and ignores anything else.
+ */
 export function isArrivalJoinIntent(v: unknown): v is ArrivalJoinIntent {
 	return v === "none" || v === "lobby" || v === "party";
 }
@@ -165,6 +171,13 @@ function append(out: TelemetryBatch[], more: ReadonlyArray<TelemetryBatch>): voi
 	for (const b of more) out.push(b);
 }
 
+/**
+ * All tutorial and onboarding telemetry state of one player for one server session: an attempt tracker, an onboarding
+ * funnel tracker, the join load's facts and the latest join intent. OnboardingService creates one at PlayerAdded and
+ * calls a method per remote or server fact; each hands back the batches of event specs to log, alone or inside a result
+ * (a batch with an attempt id belongs to that tutorial attempt's funnel session). Remote payloads are passed in raw and
+ * re-read here.
+ */
 export class PlayerTutorialTelemetry {
 	private readonly attempt = new TutorialFunnelTracker();
 	private readonly onboarding = new OnboardingFunnelTracker();

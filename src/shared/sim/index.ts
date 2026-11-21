@@ -4,6 +4,12 @@
  * Everything reachable from `step()` lives here and must stay plain TypeScript: no Roblox services, Instances,
  * datatypes (Vector3, CFrame, ...), Flamework decorators, clocks (`os.clock`, `tick`, `time`) or `math.random`. The
  * headless test runner enforces this by loading src/shared/sim modules in a restricted environment (see CLAUDE.md).
+ *
+ * Where to start: {@link step} runs one tick of a solo run and {@link stepParty} one of a co-op run; {@link createSimState}
+ * builds the state a run starts from; {@link SimConfig} is what a world turns on; {@link SimState} is the whole state and
+ * {@link hashState} its hash, which replays and co-op clients compare.
+ *
+ * @module
  */
 export * from "./units";
 export * from "./jsnum";

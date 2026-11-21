@@ -6,6 +6,8 @@
  *
  * CONTRACT (IT skeleton): the types and signatures below are what the client builds against; IT1 / IT2 filled the
  * bodies and added `TooltipLine.varRoles`, `itemNameLine`, `clearZoneIn` and `sameTooltipTarget`.
+ *
+ * @module
  */
 import { BOONS, CURSES, DUOS, RELICS, boonMaxLevel } from "shared/sim";
 import { BOOST_KINDS, boostId, boostStringKey, type ColorRole } from "shared/theme";
@@ -41,6 +43,10 @@ export function itemRefKey(ref: ItemRef): string {
 	return `${ref.kind}:${ref.index}`;
 }
 
+/**
+ * Whether two refs name the same owned item (same kind and index). Two undefined refs are equal; one undefined ref
+ * equals nothing.
+ */
 export function itemRefsEqual(a: ItemRef | undefined, b: ItemRef | undefined): boolean {
 	if (a === undefined || b === undefined) return a === b;
 	return a.kind === b.kind && a.index === b.index;
@@ -60,6 +66,9 @@ export interface TooltipFacts {
 
 // --- Model (IT1) --------------------------------------------------------------------------------------------------
 
+/**
+ * One line of a tooltip: its text as a theme key plus vars (never composed here) and the colour role it is drawn in.
+ */
 export interface TooltipLine {
 	readonly text: HudText;
 	readonly role: ColorRole;
@@ -273,8 +282,13 @@ function boostTooltip(ref: ItemRef, facts: TooltipFacts): TooltipModel | undefin
 
 // --- Build list sections (IT1) ------------------------------------------------------------------------------------
 
+/** A section of the Build list, in the order `buildListSections` emits them. */
 export type BuildSectionKind = "boons" | "duos" | "relics" | "curses" | "boosts";
 
+/**
+ * One section of the pause / run-over Build list: its heading and its rows (never empty: `buildListSections` leaves an
+ * empty section out).
+ */
 export interface BuildListSection {
 	readonly kind: BuildSectionKind;
 	readonly title: HudText;
@@ -334,6 +348,9 @@ function plainRow(key: string, id: string, color: ColorRole, ref: ItemRef): Buil
 /** Who shows the tooltip: a modal list (pause, run over) or the live in-run HUD. */
 export type TooltipSource = "menu" | "hud";
 
+/**
+ * What `tooltipPlacement` reads. Every rect and size is in screen px in one coordinate space (the tooltip's ScreenGui).
+ */
 export interface PlacementInput {
 	/** The hovered / focused target. */
 	readonly anchor: ScreenRect;

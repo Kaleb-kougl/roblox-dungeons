@@ -2,6 +2,8 @@
  * Render-side PRNG (port of RenderRng in project-kaleb-vale src/fx/numbers/numberPool.ts and Rng / burstSeed in
  * src/fx/particles/particles.ts @ 42897e2): mulberry32 on its OWN state word, never the sim's rng and never
  * math.random. It reuses the sim's exact mulberry32 step (rngNext), so sequences match the web build's.
+ *
+ * @module
  */
 import { imul, u32 } from "shared/jsmath";
 import { rngNext, type RngHolder } from "shared/sim";
@@ -15,6 +17,11 @@ const ID_OFFSET = 1;
 const TICK_OFFSET = 7;
 const SALT_OFFSET = 3;
 
+/**
+ * The presentation side's random stream: mulberry32 on its own state word, for particle bursts, damage number jitter
+ * and other effects that must not draw from the sim's rng. `seed` restarts the sequence (0 falls back to a fixed
+ * non-zero seed), so a burst seeded with burstSeed replays the same in specs.
+ */
 export class RenderRng implements RngHolder {
 	rngState = ZERO_SEED;
 

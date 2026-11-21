@@ -5,6 +5,8 @@
  *
  * Index tables (BOONS, RELICS, CURSES) are APPEND ONLY: their indices are stored in the sim state and hashed.
  * Every multiplier that feeds the hash is an integer percent (or an exact binary fraction): see runMods.ts.
+ *
+ * @module
  */
 import { SQRT1_2 } from "../jsnum";
 import { secondsToTicks } from "../playerData";
@@ -15,18 +17,22 @@ import { BOW_WEAPON_ID, SWORD_WEAPON_ID } from "../combat/weapons/loadout";
 
 // --- Rarities ------------------------------------------------------------------------------------------
 
+/** Rarity indices (`BoonDef.rarity`; `RARITY_NAMES` order). A draft rolls one per offered card. */
 export const Rarity = {
 	COMMON: 0,
 	RARE: 1,
 	LEGENDARY: 2,
 } as const;
+/** A valid `Rarity` index. */
 export type RarityId = (typeof Rarity)[keyof typeof Rarity];
 /** Rarity names in index order (theme string keys `boon.rarity.<name>`). */
 export const RARITY_NAMES = ["common", "rare", "legendary"] as const;
 
 /** Per offered card: Common 70 %, Rare 25 %, Legendary 5 % (integer percent, summing to 100). */
 export const RARITY_PERCENT_COMMON = 70;
+/** Chance that an offered card is Rare, integer percent (25); the same on every floor. */
 export const RARITY_PERCENT_RARE = 25;
+/** Chance that an offered card is Legendary on the first floor, integer percent (5), before the per-floor rise. */
 export const RARITY_PERCENT_LEGENDARY = 5;
 /** Legendary +1 percentage point per floor cleared after the first, taken from Common ... */
 export const LEGENDARY_PERCENT_PER_FLOOR = 1;
@@ -46,18 +52,26 @@ export const DRAFT_OFFER_COUNT = 3;
  * against screenToWorld(1, 0)). right = moveX * x + moveZ * z, in AXIS units.
  */
 export const DRAFT_SCREEN_RIGHT_X = SQRT1_2;
+/** World z component of the screen-right unit vector (`DRAFT_SCREEN_RIGHT_X` is the x component). */
 export const DRAFT_SCREEN_RIGHT_Z = -SQRT1_2;
 /** |right| at or below this is the centre card (fraction of full stick deflection). */
 export const DRAFT_SELECT_DEAD_ZONE = 0.5;
+/**
+ * `DRAFT_SELECT_DEAD_ZONE` in the input frame's AXIS units: a screen-right value above it picks the right column, below
+ * its negative the left one.
+ */
 export const DRAFT_SELECT_DEAD_ZONE_AXIS = DRAFT_SELECT_DEAD_ZONE * AXIS_MAX;
 /** Confirm: a press edge of this button (the attack button: mouse 1 / RT). */
 export const DRAFT_CONFIRM_BUTTON = Button.FIRE;
 /** A confirm before the draft has been open this long is ignored (no pick by a held / mashed attack). */
 export const DRAFT_MIN_OPEN_SECONDS = 0.5;
+/** `DRAFT_MIN_OPEN_SECONDS` in ticks (30), compared with `draftTicks`. */
 export const DRAFT_MIN_OPEN_TICKS = secondsToTicks(DRAFT_MIN_OPEN_SECONDS); // 30
 /** Card columns: left, centre, right. */
 export const DRAFT_COLUMN_LEFT = 0;
+/** The centre column (the stick inside the dead zone); the card a draft opens on. */
 export const DRAFT_COLUMN_CENTRE = 1;
+/** The right column (the stick pushed screen-right past the dead zone). */
 export const DRAFT_COLUMN_RIGHT = 2;
 /** draftSelected when no card is under the stick (two cards offered, stick centred). */
 export const NO_SELECTION = -1;
@@ -91,14 +105,22 @@ export const Boon = {
 	BALLISTA: 18,
 	WRECKER: 19,
 } as const;
+/** A valid `Boon` index. */
 export type BoonId = (typeof Boon)[keyof typeof Boon];
 
+/** The design grouping of a boon (the 12 classic boons are 4 of each). No rule reads it. */
 export type BoonCategory = "offense" | "defense" | "score";
 
+/** One boon's data, an entry of `BOONS`: its theme id, its rarity, its category and the weapon it needs, if any. */
 export interface BoonDef {
 	/** Theme string keys: `<id>.name`, `<id>.desc`, `<id>.icon` (a short HUD label). */
 	readonly id: string;
+	/**
+	 * The rarity pool a draft draws this boon from (a card rolls its rarity first); a Legendary boon has one level only
+	 * (`boonMaxLevel`).
+	 */
 	readonly rarity: RarityId;
+	/** Design grouping only (offense / defense / score); no rule reads it. */
 	readonly category: BoonCategory;
 	/**
 	 * The weapon id a player must carry (in any set) to be dealt this boon (docs/ARCHER.md ARD4: Piercing Arrows and
@@ -131,6 +153,7 @@ export const BOONS: ReadonlyArray<BoonDef> = [
 	{ id: "boon.ballista", rarity: Rarity.RARE, category: "offense", requires: BOW_WEAPON_ID },
 	{ id: "boon.wrecker", rarity: Rarity.COMMON, category: "offense" },
 ];
+/** Number of boons, builds-only ones included (`CLASSIC_BOON_COUNT` is the classic draft's pool). */
 export const BOON_COUNT = BOONS.size();
 /**
  * The boons a draft without builds offers (drawBoonOffers: the tutorial, hand-built endless configs): the first 12,
@@ -174,8 +197,11 @@ export const BOW_PIERCE_BOON = 1;
 export const BOW_PIERCE_BOONS: ReadonlyArray<number> = [BOW_PIERCE_BOON, 2, 2];
 /** Ember Wake: a ring of player bullets on every roll start. 16 / FULL_RING is an arc-table shape (turret rings). */
 export const ROLL_RING_COUNT = 16;
+/** Ember Wake: the ring bullets' speed, world units per second. */
 export const ROLL_RING_SPEED = 12;
+/** Ember Wake: the ring bullets' life, seconds (range = speed x life, 3.6 world units). */
 export const ROLL_RING_LIFE = 0.3;
+/** Ember Wake: enemy hit points each ring bullet deals. */
 export const ROLL_RING_DAMAGE = 1;
 /** Hearty: +1 heart (max and current, in half hearts). */
 export const HEART_BOON_HALF_HEARTS = 2;
@@ -195,10 +221,15 @@ export const ARMOR_BOON_PIPS = 1;
 export const ARMOR_BOON_PIPS_TOTAL: ReadonlyArray<number> = [ARMOR_BOON_PIPS, 2, 2];
 /** Lingering: the combo lasts this long without a kill or graze (instead of COMBO_WINDOW_SECONDS). */
 export const COMBO_WINDOW_BOON_SECONDS = 9;
+/** Lingering I: ticks added to the combo window (180: 9 s minus `COMBO_WINDOW_SECONDS`). */
 export const COMBO_WINDOW_BOON_BONUS_TICKS =
 	secondsToTicks(COMBO_WINDOW_BOON_SECONDS) - secondsToTicks(COMBO_WINDOW_SECONDS); // 180
 /** Per level: the window in seconds (9 / 11 / 12) and the ticks it adds to COMBO_WINDOW_SECONDS (180 / 300 / 360). */
 export const COMBO_WINDOW_BOON_SECONDS_BY_LEVEL: ReadonlyArray<number> = [COMBO_WINDOW_BOON_SECONDS, 11, 12];
+/**
+ * Lingering per level: ticks added to the base combo window (180 / 300 / 360), derived from
+ * `COMBO_WINDOW_BOON_SECONDS_BY_LEVEL`.
+ */
 export const COMBO_WINDOW_BOON_BONUS_TICKS_BY_LEVEL: ReadonlyArray<number> = COMBO_WINDOW_BOON_SECONDS_BY_LEVEL.map(
 	(s) => secondsToTicks(s) - secondsToTicks(COMBO_WINDOW_SECONDS),
 );
@@ -224,6 +255,10 @@ export const BASTION_ARMOR_PIPS = 1;
  * melee.ts inCone tests dot >= halfCos x dist, so at exactly -1 a bullet straight behind could miss by one rounding step.
  */
 export const BASTION_GUARD_HALF_ANGLE_COS = -1;
+/**
+ * The half-angle cosine Bastion's guard sweep passes to the cone test: below -1 so every direction passes, a bullet
+ * straight behind included.
+ */
 export const BASTION_GUARD_SWEEP_HALF_ANGLE_COS = -2;
 /** Bastion: the guard lasts this many ticks (1.5 x SWORD_DATA.guardTicks 18; reach and cooldown unchanged). */
 export const BASTION_GUARD_TICKS = 27;
@@ -253,8 +288,10 @@ export const Relic = {
 	VAMPIRE_FANG: 2,
 	SECOND_WIND: 3,
 } as const;
+/** A valid `Relic` index. */
 export type RelicId = (typeof Relic)[keyof typeof Relic];
 
+/** One relic's data, an entry of `RELICS`: its theme id and the weapon it needs, if any. */
 export interface RelicDef {
 	/** Theme string keys `<id>.name`, `<id>.desc`, `<id>.icon`. */
 	readonly id: string;
@@ -262,25 +299,31 @@ export interface RelicDef {
 	readonly requires?: string;
 }
 
+/** Every relic, by Relic index. Append only: the indices are stored in the run state and hashed. */
 export const RELICS: ReadonlyArray<RelicDef> = [
 	{ id: "relic.mirrorCloak", requires: SWORD_WEAPON_ID },
 	{ id: "relic.hourglass" },
 	{ id: "relic.vampireFang" },
 	{ id: "relic.secondWind" },
 ];
+/** Number of relics. */
 export const RELIC_COUNT = RELICS.size();
 
 /** A TREASURE room's pedestal: its centre floor tile; walking within this distance of it collects the relic. */
 export const PEDESTAL_RADIUS = 0.5 * TILE_SIZE;
 /** Mirror Cloak: each enemy bullet the sword's guard erases comes back as a player bullet (its own speed). */
 export const MIRROR_BULLET_DAMAGE = 2;
+/** Mirror Cloak: a returned bullet's life, seconds. */
 export const MIRROR_BULLET_LIFE = 0.75;
 /** Hourglass: enemy bullets move at HOURGLASS_TIME_SCALE speed for this long after a hit lands on the player. */
 export const HOURGLASS_SECONDS = 1;
+/** `HOURGLASS_SECONDS` in ticks (60): what `hourglassTicks` is set to when a hit lands. */
 export const HOURGLASS_TICKS = secondsToTicks(HOURGLASS_SECONDS); // 60
+/** Hourglass: the factor on the enemy bullets' time step while it runs (0.7 = 70 % speed; 1 = unchanged). */
 export const HOURGLASS_TIME_SCALE = 0.7;
 /** Vampire Fang: every FANG_KILLS kills heal FANG_HEAL_HALF_HEARTS (up to the maximum). */
 export const FANG_KILLS = 25;
+/** Vampire Fang: half hearts each heal restores, never past the maximum. */
 export const FANG_HEAL_HALF_HEARTS = 1;
 /** Second Wind: once per floor, a lethal hit leaves the player at this many half hearts. */
 export const SECOND_WIND_HALF_HEARTS = 1;
@@ -294,19 +337,23 @@ export const Curse = {
 	IMPATIENCE: 2,
 	THIRST: 3,
 } as const;
+/** A valid `Curse` index. */
 export type CurseId = (typeof Curse)[keyof typeof Curse];
 
+/** One curse's data, an entry of `CURSES`: its theme id. */
 export interface CurseDef {
 	/** Theme string keys `<id>.name`, `<id>.desc`, `<id>.icon`. */
 	readonly id: string;
 }
 
+/** Every curse, by Curse index. Append only: the indices are stored in the run state and hashed. */
 export const CURSES: ReadonlyArray<CurseDef> = [
 	{ id: "curse.frailty" },
 	{ id: "curse.haste" },
 	{ id: "curse.impatience" },
 	{ id: "curse.thirst" },
 ];
+/** Number of curses. */
 export const CURSE_COUNT = CURSES.size();
 
 /** The SHRINE room's zone: within this distance of its centre floor tile. */
@@ -315,15 +362,19 @@ export const SHRINE_RADIUS = TILE_SIZE;
 export const SHRINE_BUTTON = Button.SKILL1;
 /** Frailty: -1 heart of maximum (half hearts), never below CURSE_MIN_HEARTS_MAX; current hearts capped to it. */
 export const CURSE_HEART_LOSS = 2;
+/** Frailty: the lowest maximum it can leave, half hearts (2 = one heart). */
 export const CURSE_MIN_HEARTS_MAX = 2;
 /** Haste: enemy bullet speed x this (with the floor scaling, still capped at BULLET_SPEED_MAX_MULTIPLIER). */
 export const CURSE_BULLET_SPEED_MULTIPLIER = 1.15;
 /** Impatience: the combo window is this much shorter (never below CURSE_MIN_COMBO_WINDOW_TICKS). */
 export const CURSE_COMBO_WINDOW_LOSS_SECONDS = 2;
+/** `CURSE_COMBO_WINDOW_LOSS_SECONDS` in ticks (120). */
 export const CURSE_COMBO_WINDOW_LOSS_TICKS = secondsToTicks(CURSE_COMBO_WINDOW_LOSS_SECONDS); // 120
+/** Impatience: the shortest combo window it can leave, ticks (1 s = 60). */
 export const CURSE_MIN_COMBO_WINDOW_TICKS = secondsToTicks(1);
 /** Thirst: -1 flask charge of maximum, never below CURSE_MIN_FLASK_MAX; current charges capped to it. */
 export const CURSE_FLASK_LOSS = 1;
+/** Thirst: the lowest flask maximum it can leave, charges. */
 export const CURSE_MIN_FLASK_MAX = 1;
 
 // --- Integer percent arithmetic ---------------------------------------------------------------------------

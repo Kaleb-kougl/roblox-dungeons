@@ -1,6 +1,8 @@
 /**
  * Sword spacing tunables (docs/SWORD_SPACING.md Design 1-2, 6, SPD5 / SPD8; a Roblox-port feature, no web source).
  * Data only: ./spacing.ts and ./spacingBrake.ts read it, nothing is inline in the logic. A LEAF (no imports).
+ *
+ * @module
  */
 
 /** How the Knight's walk and lunge are braked short of contact enemies (docs/SWORD_SPACING.md Design 2). */

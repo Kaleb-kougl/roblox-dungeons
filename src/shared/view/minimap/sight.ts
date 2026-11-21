@@ -15,6 +15,8 @@
  *   - Every lit cell is visited exactly once per call (cells on the quadrants' diagonals are scanned twice and
  *     de-duplicated), the origin first. An origin off the grid lights nothing.
  * Roblox-port feature, no web source.
+ *
+ * @module
  */
 import { MapTile, type MinimapTiles } from "./tiles";
 

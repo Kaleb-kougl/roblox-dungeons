@@ -2,8 +2,14 @@
  * Silver in crates on screen: presentation tunables (docs/SILVER.md SC3, "Silver in crates" player experience). Data
  * only: crateFx.ts reads it. The twinkle on a Silver piece is the boost pieces' own (BREAKABLE_LOOT_VIEW, OC8 /
  * SVD21): nothing here changes it.
+ *
+ * @module
  */
 
+/**
+ * The shape of the Silver crate effect's tunables: the `+N` pop, the coins flying to the counter, the clink and the
+ * Studio label.
+ */
 export interface SilverCrateFxTunables {
 	// --- The `+N` pop that rises from a broken Silver piece --------------------------------------------------------
 	/** How long a pop shows, seconds (real time). */
@@ -48,6 +54,12 @@ export interface SilverCrateFxTunables {
 	readonly labelAttribute: string;
 }
 
+/**
+ * The Silver crate effect in play (crateFx.ts reads it): a `+N` pop that rises 1.1 tiles over 0.9 s, 2 to 6 coins per
+ * piece (one per 2 Silver) that hop for 0.35 s and then fly to the counter in 0.45 s, and a clink that climbs 2
+ * semitones per break made within 0.6 s of the last, up to 6 steps. The per-frame caps (3 pops, 12 coins, 1 clink) keep
+ * a chain of breaks from flooding the screen.
+ */
 export const SILVER_CRATE_FX: SilverCrateFxTunables = table.freeze({
 	popSeconds: 0.9,
 	popRiseTiles: 1.1,
@@ -100,6 +112,11 @@ export interface SilverCounterTunables {
 	readonly minFloorText: number;
 }
 
+/**
+ * The live Silver counter in play (counter.ts and tracker.ts read it): the `+N` beside it shows 1.4 s after the last
+ * gain (fading over its last 0.5 s) and gains within 0.6 s add into it; the gain sound plays at most once per 0.15 s.
+ * Sizes are reference px; `glyphAspect` and `minFloorText` drive the row fit (`silverRowFit`).
+ */
 export const SILVER_COUNTER: SilverCounterTunables = table.freeze({
 	showSec: 1.4,
 	fadeSec: 0.5,
@@ -131,6 +148,11 @@ export interface SilverRecapTunables {
 	readonly dimTransparency: number;
 }
 
+/**
+ * The run-over Silver rows in play (recap.ts reads it): the run row starts counting up 0.3 s in and takes 0.8 s; the
+ * desktop panel draws 4 rows a line on up to 2 lines, the upright one 2 a line on up to 4, a landscape phone 2 a line
+ * on up to 2; the client's own (not yet confirmed) figures draw at 0.45 transparency.
+ */
 export const SILVER_RECAP: SilverRecapTunables = table.freeze({
 	delaySec: 0.3,
 	countSec: 0.8,
@@ -149,6 +171,10 @@ export interface SilverShopTunables {
 	readonly resultSec: number;
 }
 
+/**
+ * Buying with Silver in play (shared/view/menu armory.ts reads it): a buy is a 0.4 s hold, a purchase
+ * with no answer is given up after 10 s, and the result line shows for 2.5 s. All real-time seconds.
+ */
 export const SILVER_SHOP: SilverShopTunables = table.freeze({
 	holdSec: 0.4,
 	buyTimeoutSec: 10,
@@ -177,6 +203,10 @@ export interface SilverBurstViewTunables {
 	readonly clinkVolume: number;
 }
 
+/**
+ * The crate burst's drawing limits in play: at most 8 pops and 32 coins alive at once, a 7 px coin, pops at 0.85 of the
+ * score pops' size, and the clink at 0.8 volume. Pixel values are screen px.
+ */
 export const SILVER_BURST_VIEW: SilverBurstViewTunables = table.freeze({
 	maxAlivePops: 8,
 	maxAliveCoins: 32,

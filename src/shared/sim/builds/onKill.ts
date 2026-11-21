@@ -39,6 +39,8 @@
  *   Supernova    (Overkill + Volatile, LG4): a proc whose carry is at least SUPERNOVA_CARRY (2) bursts one Volatile ring
  *                larger (SUPERNOVA_BURSTS, or SUPERNOVA_SHRAPNEL_BURSTS with Shrapnel: I -> 12, II -> 16, III -> 16
  *                that pierce 2; the existing 12 / 16 @ FULL_RING arc rows only).
+ *
+ * @module
  */
 import type { SimCtx } from "../combat/ctx";
 import { NO_KIND } from "../combat/actors/types";

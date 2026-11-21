@@ -8,9 +8,15 @@
  * The real reader is the DEFAULT (`stateRunScore`), so client and server agree from the first run whatever the load
  * order of their modules. `setRunScoreReader` stays as an override (tests); SegmentedValidator also takes a reader per
  * run.
+ *
+ * @module
  */
 import type { SimState } from "shared/sim";
 
+/**
+ * A run's leaderboard numbers: its score and the deepest floor reached. Posted only from the server's replayed state;
+ * the client's own reading is only compared with it.
+ */
 export interface RunScore {
 	/** Non-negative integer score. */
 	readonly score: number;
@@ -18,6 +24,10 @@ export interface RunScore {
 	readonly floor: number;
 }
 
+/**
+ * Reads a run's `RunScore` from a sim state. The default is `stateRunScore`; tests replace it with `setRunScoreReader`,
+ * and a `SegmentedValidator` can take one per run.
+ */
 export type RunScoreReader = (state: Readonly<SimState>) => RunScore;
 
 /** What a run without scoring scores: nothing, on floor 1 (also a rejected run's placeholder). */

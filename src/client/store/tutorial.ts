@@ -67,6 +67,11 @@ function hudOf(state: TutorialState): TutorialHudState {
 	};
 }
 
+/**
+ * The tutorial slice (state: `TutorialState`). TutorialController writes it: `beginTutorial` at a tutorial run's start
+ * (everything fresh), the director's HUD view when it changed, `endTutorial` when the lessons are done, the outro card,
+ * the skip confirm and the ghost-heart pulse. `clearTutorial` resets it when another kind of run starts.
+ */
 export const tutorialSlice = createProducer(initialState, {
 	/** A tutorial run started (first join, Restart tutorial, a replay): everything fresh, the first step's HUD. */
 	beginTutorial: (_state, hud: TutorialHudState) => ({
@@ -116,18 +121,41 @@ export const tutorialSlice = createProducer(initialState, {
 	clearTutorial: (state) => (state === initialState ? state : initialState),
 });
 
+/**
+ * The whole tutorial HUD state: active or not, the step counts, the prompt id, the objective card, the highlight and
+ * marker, and the end, outro and skip-confirm flags. The tutorial panel, the objective card and the pause overlay read
+ * it.
+ */
 export const selectTutorial = (state: { tutorial: TutorialState }) => state.tutorial;
+/**
+ * A tutorial run is the current run: true from its start, through the outro, until another kind of run starts. False
+ * otherwise.
+ */
 export const selectTutorialActive = (state: { tutorial: TutorialState }) => state.tutorial.active;
+/**
+ * The HUD element the current tutorial step rings, undefined when it rings none (and always once the tutorial ended or
+ * outside one).
+ */
 export const selectTutorialHighlight = (state: { tutorial: TutorialState }) => state.tutorial.highlight;
 /** The prompt id on screen ("" none; not resolved per device): the touch controls ring the control it names. */
 export const selectTutorialPrompt = (state: { tutorial: TutorialState }) => state.tutorial.prompt;
+/**
+ * The tutorial's lessons are finished: the run is frozen and the outro follows. The draft overlay draws nothing once
+ * it is true, and the pause button's visibility rule takes it. False outside a tutorial and until that point.
+ */
 export const selectTutorialEnded = (state: { tutorial: TutorialState }) => state.tutorial.ended;
+/** The tutorial's outro card is up. It is a menu: gamepad selection is on while it shows. */
 export const selectTutorialOutroOpen = (state: { tutorial: TutorialState }) => state.tutorial.outroOpen;
+/** The pause overlay is asking "Skip the tutorial?". False by default; the tutorial ending closes it. */
 export const selectTutorialSkipConfirm = (state: { tutorial: TutorialState }) => state.tutorial.skipConfirmOpen;
+/**
+ * A token for the ghost half heart's flash: 0 until the first flash of this tutorial run, then one more per flash. The
+ * status panel remounts the flash when it changes, and the touch strip only asks whether it is above 0.
+ */
 export const selectGhostHeart = (state: { tutorial: TutorialState }) => state.tutorial.ghostHeart;
 
 /** What selectTutorialPromptKey reads: this slice and the game slice's last-used device. */
-interface PromptKeyState {
+export interface PromptKeyState {
 	readonly tutorial: TutorialState;
 	readonly game: { readonly inputDevice: InputDeviceKind };
 }

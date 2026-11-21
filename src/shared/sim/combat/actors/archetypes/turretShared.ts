@@ -3,6 +3,8 @@
  * `src/sim/actors/archetypes/turretShared.ts`): stationary, awake only while the living player is within
  * TURRET_WAKE_RADIUS (no line-of-sight test), a burst every periodTicks, dead for TURRET_RESPAWN_TICKS then back at
  * full hp. Each turret archetype is its own file (turretSprayer.ts, ...).
+ *
+ * @module
  */
 
 import { ENEMY_BULLET_DAMAGE, ENEMY_BULLET_LIFE } from "../../combatData";
@@ -18,11 +20,13 @@ export const TURRET_RADIUS = 0.45;
 export const TURRET_HP = 12;
 /** A dead turret comes back after this long, so the sandbox keeps working. */
 export const TURRET_RESPAWN_SECONDS = 6;
+/** TURRET_RESPAWN_SECONDS in ticks: `turretStepDead` revives the turret once its deadTicks reach this. */
 export const TURRET_RESPAWN_TICKS = secondsToTicks(TURRET_RESPAWN_SECONDS); // 360
 /** Turrets only count down and fire while the (living) player is within this distance. */
 export const TURRET_WAKE_RADIUS = 9;
 const WAKE_R2 = TURRET_WAKE_RADIUS * TURRET_WAKE_RADIUS;
 
+/** Data of a turret archetype: its one burst and the timing of it. Built by `turretData`. */
 export interface TurretData extends ArchetypeData {
 	/** The burst (life ENEMY_BULLET_LIFE, damage ENEMY_BULLET_DAMAGE). */
 	burst: BurstSpec;
@@ -37,6 +41,7 @@ export interface TurretData extends ArchetypeData {
 // ActorState.v slots.
 /** Burst heading, a unit vector: the sniper's last aim, the sprayer's / caster's turning phase. */
 export const TURRET_DIR_X = 0;
+/** v slot: Z component of the burst heading (the pair of TURRET_DIR_X). Starts at 1: the heading starts as +Z. */
 export const TURRET_DIR_Z = 1;
 
 /** A burst spec with the shared enemy bullet life and damage. */

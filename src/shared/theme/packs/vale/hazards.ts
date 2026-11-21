@@ -7,6 +7,8 @@
  * Each layout becomes a one-facing Pixelated `sprites` set (contract.ts BULLET_ART hazard sprite: the strike's `flash`
  * / `scorch`, the ember's `burn`) at the layout's own texel density, carrying the pipeline's grey `meanColor` and the
  * strike's hit rim `rimPx` or the ember's patch `lit` for hazardArt.ts `hazardArtReport` and the renderer's size.
+ *
+ * @module
  */
 import type { SpriteSetAsset } from "../../types";
 import { sortedKeys } from "../../util";

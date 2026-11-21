@@ -16,6 +16,11 @@ function perCell<T>(initial: T, n: number = RECAP.maxHighlights): RecapUiValue<T
 	return out;
 }
 
+/**
+ * Every per-frame value of the run-over recap (see the comment on `RecapUiValue`): the near-miss line's counted text
+ * and fade, each highlight cell's value and fade, and the same for the You tab's contribution cells. RecapController
+ * writes them; the panel's components bind to them.
+ */
 export const RECAP_BINDINGS = {
 	/** The near-miss line's text at its counted value (shared/view/hud recapNearMissText). */
 	nearMissText: new RecapUiValue(""),

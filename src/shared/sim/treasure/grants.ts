@@ -12,6 +12,8 @@
  * TREASURE.boostOffsets in front of the chest (`origin`: its centre, forward along its facing (fx, fz), side along
  * (-fz, fx); landed in this open's order), events.dropped + fromChest, or with every slot taken is given straight to that
  * player (giveBoost, GIVEN_DROP_SLOT). So the draws never depend on the ground. Scoring is the caller's.
+ *
+ * @module
  */
 import { VaultTier } from "shared/dungeon";
 import { rngInt, type RngHolder } from "../rng";
@@ -26,15 +28,21 @@ import { TREASURE, TREASURE_UNSET } from "./treasureData";
 
 /** Where a chest stands and faces (world centre, facing into the room or chamber). */
 export interface ChestOrigin {
+	/** The chest's centre, world x. */
 	readonly x: number;
+	/** The chest's centre, world z. */
 	readonly z: number;
+	/** The x part of the facing: boosts land `forward` along (fx, fz) and `side` along (-fz, fx) from the centre. */
 	readonly fx: number;
+	/** The z part of the facing. */
 	readonly fz: number;
 }
 
 /** The chest tunables the shares read (TreasureConfig's and SecretsConfig's). */
 export interface ChestGrantConfig {
+	/** Boost draws per living present player, by tier (VaultTier order). */
 	readonly boosts: ReadonlyArray<number>;
+	/** Boost draws a relic share makes instead when its player already owns every relic. */
 	readonly relicFallbackBoosts: number;
 }
 

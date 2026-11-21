@@ -9,6 +9,8 @@
  * (shared/settings resolveJuiceSettings). Every feature reads it only through these helpers.
  *
  * Port change (docs/FEEL.md J8): screenShakeOn also reads the port's screenShake setting.
+ *
+ * @module
  */
 import type { JuiceSettings, ParticlesLevel } from "shared/settings";
 

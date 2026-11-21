@@ -46,6 +46,8 @@
  * whatever its position. A Charger held mid-charge waits; released outside its room's box, its next charge tick's box
  * bound cuts the step to 0 (a stun), and outside a charge it cannot start a lane until it walks back inside the box. The
  * Goldling is never pinned (its walk mask is its own).
+ *
+ * @module
  */
 import type { SimCtx } from "../combat/ctx";
 import type { SimState } from "../state";

@@ -1,6 +1,8 @@
 /**
  * Melee arcs (E1.8, GDD: melee swings delete enemy bullets inside their arc; source: `src/sim/weapons/melee.ts`).
  * Trig-free: the arc is a direction (unit vector), a reach and the COSINE of its half-angle (0.5 = 120-degree swing).
+ *
+ * @module
  */
 
 import type { SimCtx } from "../ctx";
@@ -33,7 +35,9 @@ let arcCtx: SimCtx | undefined;
  * erased bullet, its position at the erase, pushed in the walk's order. Never hashed, never read by the sim.
  */
 export interface ArcEraseSink {
+	/** World x of each erased bullet at the erase, appended in the walk's order (the sweep never clears it). */
 	x: number[];
+	/** World z of each erased bullet, same index as `x`. */
 	z: number[];
 }
 

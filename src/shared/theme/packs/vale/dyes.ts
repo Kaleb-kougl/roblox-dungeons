@@ -3,6 +3,8 @@
  * cosmeticReport: a dye's dyed mean is its colour x the mean value; rule 3's baseline is the undyed region's mean
  * colour). Written by the atlas pipeline into the generated layout (`dyeMeanValue` / `dyeSourceMean` on the sets with a
  * `dye`, art/atlases.json); undefined until `art:build` measured the set.
+ *
+ * @module
  */
 import type { HexColor } from "../../types";
 import { VALE_SPRITE_LAYOUTS } from "./layout";

@@ -22,6 +22,10 @@ export function mulberry32Step(a: number): LuaTuple<[number, number]> {
 	return $tuple(s, bit32.bxor(t, bit32.rshift(t, 14)) / TWO_32);
 }
 
+/**
+ * A mulberry32 generator from `seed` (its uint32): each call returns the next float in [0, 1). The Forge's only source
+ * of randomness.
+ */
 export function mulberry32(seed: number): RandomFn {
 	let a = u32(seed);
 	return () => {
@@ -31,6 +35,7 @@ export function mulberry32(seed: number): RandomFn {
 	};
 }
 
+/** The draw helpers the generator uses. Each documents how many draws it makes: the count is part of seed parity. */
 export interface Rng {
 	/** Float in [a, b). One draw. */
 	f: (a: number, b: number) => number;
@@ -40,11 +45,13 @@ export interface Rng {
 	pick: <T>(arr: ReadonlyArray<T>) => T;
 	/** True with probability p. Always one draw, even for p = 0 (seed parity depends on it). */
 	chance: (p: number) => boolean;
+	/** The underlying generator: one float in [0, 1) per call. */
 	raw: RandomFn;
 	// The original's gauss() (Box-Muller: Math.log / Math.cos) is not ported: the generator never calls it, and
 	// platform libm calls would not be deterministic across Roblox clients.
 }
 
+/** An Rng over mulberry32(seed). */
 export function makeRng(seed: number): Rng {
 	const r = mulberry32(seed);
 	return {

@@ -11,6 +11,8 @@
  *              a steady FEEL_LOW_HEALTH.steady instead
  *   envelope   LowHealthPulse fades the pulse in when it turns on and out when it turns off over fadeSec, and scales
  *              it by FEEL_HURT.spectateScale while spectating, like the flash
+ *
+ * @module
  */
 import { aegisPips, playerAt, type PlayerState, type SimState } from "shared/sim";
 import { FEEL_HURT, FEEL_LOW_HEALTH } from "./hurtConfig";

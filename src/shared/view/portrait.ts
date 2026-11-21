@@ -9,11 +9,18 @@
  *
  * The lift (PD5): upright with the touch controls on, the thumbs cover the bottom PORTRAIT.controlBandShare of the
  * screen, so the view is shifted until the player sits centred in what is left: liftTiles along the camera's up axis.
+ *
+ * @module
  */
 import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG, STUDS_PER_TILE, VIEW_TILES_HIGH } from "shared/config";
 import { GAME_CAMERA } from "./config";
 import { degToRad, distanceForFov, isoBasis, type IsoBasis } from "./iso";
 
+/**
+ * Portrait play's tunables: the orientation mode asked of touch devices, the tallest aspect framed in full, the shares
+ * (0..1 of the safe area) the upright touch controls, move zone and pause map take, and the camera's distance cap in
+ * studs. Read by `cameraFraming` here, the client's TouchControlsController and the upright HUD layouts.
+ */
 export const PORTRAIT = {
 	/** PlayerGui.ScreenOrientation on touch devices (Enum.ScreenOrientation name; PD1: follow the device). */
 	screenOrientation: "Sensor",
@@ -50,6 +57,11 @@ export function viewTilesWide(w: number, h: number): number {
 	return (viewTilesHigh(w, h) * w) / h;
 }
 
+/**
+ * The game camera's framing for one viewport, from `cameraFraming`: how many tiles show top to bottom, where the camera
+ * stands and how wide it looks, and how far the followed player is lifted above the screen's centre. The client's
+ * CameraController applies it.
+ */
 export interface CameraFraming {
 	/** Tiles top to bottom (viewTilesHigh). */
 	readonly tilesHigh: number;

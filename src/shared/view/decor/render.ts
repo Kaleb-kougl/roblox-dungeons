@@ -2,6 +2,8 @@
  * Pure helpers of the decor renderers (docs/DECOR.md R4, R9): which direction a piece faces, the bodies that fade tall
  * pieces, the fade tween, a flame's frame with its per-piece phase, a standing piece's footprint (debug), and the
  * biome's ambient emitter numbers. DecorController / DecorFxController only copy the results onto Instances.
+ *
+ * @module
  */
 import { drawnOrMerged, type DrawnPlayerOf } from "shared/view/predict";
 import { THEMES, type ThemeKey } from "shared/dungeon";

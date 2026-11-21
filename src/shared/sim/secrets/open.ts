@@ -15,6 +15,8 @@
  * the breakables' break bookkeeping (no breakablesBroken / brokenSlots, no breakable score, loot, smash proc or Goldling
  * release), HIDDEN -> OPEN, openTick / openedBy / openHow, found += 1, byHow[how] += 1, SECRET points (the open's award,
  * combo-neutral) and events.opened. No rng.
+ *
+ * @module
  */
 import { cellKey, gridToWorld, worldToGrid } from "shared/dungeon";
 import type { SimState } from "../state";

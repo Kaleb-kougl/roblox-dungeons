@@ -9,6 +9,13 @@
  *
  * The string keys are built inside a function (silverStringKeys) so this module adds one top-level local to the
  * compiled Luau of any module that spreads it.
+ *
+ * The contract lists named above:
+ * {@link shared/theme/contract/strings!REQUIRED_STRING_KEYS | REQUIRED_STRING_KEYS},
+ * {@link shared/theme/contract/ids!PORT_AUDIO_EVENTS | PORT_AUDIO_EVENTS},
+ * {@link shared/theme/contract/fx!FX_IDS | FX_IDS}.
+ *
+ * @module
  */
 
 import type { ColorRole } from "./types";
@@ -177,6 +184,10 @@ export const SILVER_AUDIO_IDS: ReadonlyArray<string> = [
  * reads as score.
  */
 export const SILVER_ROLE: ColorRole = "silver";
+/**
+ * Every Silver colour role, the `roles` list of silverColors.ts SILVER_COLOR_RULES (the roles `silverReport` checks, in
+ * this order). One entry today.
+ */
 export const SILVER_ROLES: ReadonlyArray<ColorRole> = [SILVER_ROLE];
 
 /**

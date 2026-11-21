@@ -5,6 +5,8 @@
  *
  * `lineOfSight` (the tile DDA) is the one in `shared/dungeon` (collision.ts), ported from this same source file; it is
  * re-exported here so archetype code finds every helper in one place.
+ *
+ * @module
  */
 
 import { MAX_MOVE_STEP } from "../../playerData";
@@ -18,11 +20,15 @@ export { lineOfSight } from "shared/dungeon";
 export interface ToPlayer {
 	/** Player minus actor. */
 	dx: number;
+	/** Player z minus actor z (world units). */
 	dz: number;
+	/** Squared distance actor -> player (world units squared): `dx * dx + dz * dz`. */
 	dist2: number;
+	/** Distance actor -> player (world units): the square root of `dist2`. */
 	dist: number;
 	/** Unit direction actor -> player; the actor's facing when they coincide. */
 	dirX: number;
+	/** Z component of the unit direction actor -> player (the actor's `faceZ` when they coincide). */
 	dirZ: number;
 }
 

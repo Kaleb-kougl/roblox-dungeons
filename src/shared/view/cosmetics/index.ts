@@ -4,6 +4,8 @@
  * channels, the dye x tint, a dye's character and set, the stage's dyed sets). The Armory's Cosmetics tab and its
  * preview are shared/view/menu cosmetics.ts. Presentation only; tested headlessly (cosmetics.spec.ts). Not in the
  * shared/view barrel (like shared/view/silver): import "shared/view/cosmetics".
+ *
+ * @module
  */
 export * from "./config";
 export * from "./looks";

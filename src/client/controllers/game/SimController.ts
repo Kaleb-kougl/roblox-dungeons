@@ -221,6 +221,11 @@ export interface RunContext {
 	readonly predictOff?: boolean;
 }
 
+/**
+ * A subscriber to the run: called with the run's context by `onRunStarted` (now if a run exists, and at every run
+ * start) or by `onFloorChanged` (after the run moved to another floor, with the new floor's context). The render and UI
+ * controllers rebuild their views from it.
+ */
 export type RunListener = (ctx: RunContext) => void;
 
 /**

@@ -1,0 +1,38 @@
+{
+	"$schema": "https://typedoc.org/schema.json",
+	"name": "Kaleb-Vale (Roblox)",
+	"entryPoints": ["src"],
+	"entryPointStrategy": "expand",
+	"exclude": ["**/*.spec.ts", "**/*.spec.tsx", "**/fixtures-generated/**"],
+	"out": "build/api",
+	"readme": "README.md",
+	"projectDocuments": ["docs/*.md"],
+	"plugin": ["./scripts/typedoc-doc-links.mjs"],
+	"highlightLanguages": [
+		"bash",
+		"console",
+		"css",
+		"html",
+		"javascript",
+		"json",
+		"jsonc",
+		"json5",
+		"yaml",
+		"tsx",
+		"typescript",
+		"lua",
+		"csv"
+	],
+	"disableSources": true,
+	"excludeInternal": false,
+	"blockTags": ["@module", "@param", "@returns", "@remarks", "@example", "@see", "@throws", "@deprecated"],
+	"inlineTags": ["@link"],
+	"modifierTags": ["@internal"],
+	"intentionallyNotExported": ["AssetIds", "SpriteInputOf", "src/shared/dungeon/pellets.ts:Cell"],
+	"validation": {
+		"notExported": true,
+		"invalidLink": true,
+		"notDocumented": false
+	},
+	"treatWarningsAsErrors": true
+}

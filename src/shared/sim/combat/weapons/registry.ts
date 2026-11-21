@@ -3,6 +3,8 @@
  * files call registerWeapon(def) at module load, ./defs/index.ts imports them all, combat.ts imports that index.
  * A weapon's numeric index (stored in WeaponSlotState.weapon and in player bullets' payload `source` - 1) is its
  * position among the registered ids in code-unit order. Sealed when the first run starts.
+ *
+ * @module
  */
 
 import { stableSort } from "shared/jsmath";
@@ -18,7 +20,12 @@ function check(cond: boolean, id: string, what: string): void {
 	if (!cond) error(`registerWeapon('${id}'): ${what}`, 0);
 }
 
-/** Registers a weapon (call once, at module load, from the weapon's own file). Returns `def`. */
+/**
+ * Registers a weapon (call once, at module load, from the weapon's own file). Returns `def`. The def is a
+ * {@link WeaponDef}: its {@link WeaponDef.data | data} and the hooks {@link WeaponDef.fire | fire},
+ * {@link WeaponDef.step | step}, {@link WeaponDef.moveMultiplier | moveMultiplier} and
+ * {@link WeaponDef.spacing | spacing}.
+ */
 export function registerWeapon<D extends WeaponData>(def: WeaponDef<D>): WeaponDef<D> {
 	const id = def.id;
 	check(isValidRegistryId(id), tostring(id), 'ids are lowercase dot-separated, e.g. "weapon.bow"');
@@ -72,6 +79,10 @@ export function weaponAt(index: number): WeaponDef {
 	return def;
 }
 
+/**
+ * True when a weapon with this id is registered. Unlike `weaponIndex` it never throws, so it is the test for an id that
+ * may be unknown.
+ */
 export function hasWeapon(id: string): boolean {
 	return byId.has(id);
 }

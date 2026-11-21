@@ -76,6 +76,10 @@ const LINE_SLACK = 4;
  */
 const SKIN_Z = { art: 1, fill: 2, label: 3, corners: 4 } as const;
 
+/**
+ * `Text`'s props. The text and its transparency may be bindings, for values written every frame. Sizes and `width` are
+ * reference px; with neither `width`, `fill` nor `wrap` the label sizes to its content.
+ */
 export interface TextProps {
 	/** A binding for a value written every frame (the rolling score): changes one property, never re-renders. */
 	text: string | React.Binding<string>;
@@ -145,6 +149,11 @@ export function Text(props: TextProps) {
 	);
 }
 
+/**
+ * `Panel`'s props: where it sits (an explicit position, or a HUD corner with its occlusion fade), how it lays out its
+ * children (a vertical list unless `horizontal`), and which frame art it takes when the pack has it. Sizes are
+ * reference px.
+ */
 export interface PanelProps {
 	/** Explicit placement; ignored when `corner` is given. Default: the parent's top left. */
 	position?: UDim2;
@@ -584,6 +593,11 @@ export function Pip(props: {
 	);
 }
 
+/**
+ * `SlicedImage`'s props: the theme ui image to draw, what to draw while the pack has none, how its 9-slice is scaled (a
+ * fixed `sliceScale`, or `snap` to whole screen px), and the usual placement. It may hold children, as a skinned Panel
+ * does.
+ */
 export interface SlicedImageProps {
 	/** A theme ui image id (shared/theme ImageRef: its asset, size and optional 9-slice insets). */
 	id: string;
@@ -663,6 +677,10 @@ function slicedLabel(props: SlicedImageProps, ref: ImageRef, sliceScale: number)
 	);
 }
 
+/**
+ * `ArtImage`'s props: the theme ui image and the `box` (reference px) the layout gives it. The frame is always the box;
+ * the art is centred in it at a whole screen-px scale, so `box` is a layout size and not the drawn size of the art.
+ */
 export interface ArtImageProps {
 	/** A theme ui image id: an icon-atlas cut (`rect`) or a whole image. */
 	id: string;
@@ -839,6 +857,11 @@ function IconLabel(props: {
 	);
 }
 
+/**
+ * `MenuButton`'s props: its label, layout order and what a press does, plus its states (the current choice, disabled,
+ * skipped by the gamepad selection) and optional extras (an icon beside the label, a hold's fill, a count badge).
+ * `size` and `textSize` are reference px.
+ */
 export interface MenuButtonProps {
 	text: string;
 	order: number;

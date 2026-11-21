@@ -12,6 +12,8 @@
  *                the aura art's frame, size (each rank's ring on its disc's radius) and transparency (BAD3)
  *   HUD          the snapshot's boost entries (secondsLeft in tenths, fraction), their equality, the row's blink, the
  *                tutorial's highlight id
+ *
+ * @module
  */
 import { STUDS_PER_TILE } from "shared/config";
 import { NO_BOOST, SIM_HZ, activeBoosts, type ActiveBoost, type GroundDrop, type SimState } from "shared/sim";

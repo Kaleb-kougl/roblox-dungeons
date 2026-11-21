@@ -26,6 +26,8 @@
  * This module holds the state, its floor fill, clone and hash. The rules: ./stepPacts.ts (the altars: Greed's curse and
  * Legendary deal, Horde's take; the second wave) and the leaf ./pactRooms.ts (the room hooks endless.ts and score.ts
  * call: the horde room roused, its record held, its x2).
+ *
+ * @module
  */
 import type { FloorPacts } from "shared/dungeon";
 import type { SimState } from "../state";
@@ -68,7 +70,9 @@ export const ENDLESS_PACTS_CONFIG: PactsConfig = table.freeze({
 
 /** One player's pact state at this floor's shrine. Every field hashed. */
 export interface PactsPlayerState {
+	/** 1 once this player took Greed at this floor's shrine, else 0. Reset by `pactsOnFloor`. */
 	greedTaken: number;
+	/** 1 once this player took Horde at this floor's shrine, else 0. Reset by `pactsOnFloor`. */
 	hordeTaken: number;
 	/** PactKind.GREED while the player's last draft this floor was Greed's deal, else NO_PACT. */
 	draftKind: number;
@@ -76,14 +80,32 @@ export interface PactsPlayerState {
 
 /** The Pact of the Horde on this floor. Every field hashed. */
 export interface HordeState {
+	/** 1 from the take until a room is roused (the next enemy room someone enters becomes the horde room), else 0. */
 	armed: number;
+	/** The horde room's encounter room id; `HORDE_NONE` until a room is roused. */
 	room: number;
+	/**
+	 * Index into `state.score.rooms` of the horde room's record (the one whose awards are multiplied); `HORDE_NONE`
+	 * until roused.
+	 */
 	record: number;
+	/**
+	 * How many members the record had when the room spawned: entries 0 .. `firstWave` - 1 are the first wave, and wave
+	 * 2 triggers when at most half of them (rounded down) still live.
+	 */
 	firstWave: number;
+	/** The `state.tick` wave 2 spawns at (the trigger's tick + the telegraph); `HORDE_NONE` until the trigger. */
 	waveDueTick: number;
+	/** Wave 2's archetype indices, chosen at the trigger; parallel to `waveX` / `waveZ`. */
 	waveKinds: number[];
+	/** World x of each wave 2 enemy's spawn tile (where the telegraph ring shows). */
 	waveX: number[];
+	/** World z of each wave 2 enemy's spawn tile. */
 	waveZ: number[];
+	/**
+	 * `HORDE_WAVE_PENDING` until wave 2 has spawned, then how many of its enemies got an actor slot (0..the wave's
+	 * size).
+	 */
 	spawned: number;
 }
 
@@ -91,7 +113,9 @@ export interface HordeState {
 export interface PactsEvents {
 	/** Greed taken this tick: the player, the curse (Curse index) and the cards dealt. */
 	greedPlayer: number[];
+	/** Per Greed take this tick: the Curse index the player accepted (parallel to `greedPlayer`). */
 	greedCurse: number[];
+	/** Per Greed take this tick: how many cards its deal offered (parallel to `greedPlayer`). */
 	greedCards: number[];
 	/** Horde taken this tick: the player. */
 	hordePlayer: number[];
@@ -107,13 +131,27 @@ export interface PactsEvents {
 
 /** SimState.pacts. */
 export interface PactsState {
+	/** The run's pact rules, validated at creation (constant for the run: not hashed). */
 	readonly config: PactsConfig;
+	/**
+	 * Encounter room id of this floor's shrine room when its altars were placed, -1 for none (the classic shrine runs).
+	 * Hashed.
+	 */
 	room: number;
+	/**
+	 * The floor seed the altars came with (0 without altars): it picks the curse Greed shows (`pactCurseIndex`).
+	 * Hashed.
+	 */
 	seed: number;
+	/** World x of each altar's centre, by PactKind index; empty without altars. Hashed. */
 	altarX: number[];
+	/** World z of each altar's centre, by PactKind index; empty without altars. Hashed. */
 	altarZ: number[];
+	/** One per player, party index order (solo: one). Hashed. */
 	players: PactsPlayerState[];
+	/** The Pact of the Horde on this floor; replaced by a fresh one at every floor start. Hashed. */
 	horde: HordeState;
+	/** Run counters: pacts taken so far, by PactKind index. Never reset by a floor change. Hashed. */
 	taken: number[];
 	/** Not hashed. */
 	events: PactsEvents;
@@ -227,6 +265,7 @@ export function clearPactsEvents(p: PactsState): void {
 	e.hordeCleared = 0;
 }
 
+/** A deep copy of the pacts state, this tick's events included; only `config` is shared. No rng. */
 export function clonePactsState(p: Readonly<PactsState>): PactsState {
 	const h = p.horde;
 	const e = p.events;
@@ -264,6 +303,10 @@ export const PACT_PLAYER_FIELDS = ["greedTaken", "hordeTaken", "draftKind"] as c
 /** Hashed HordeState scalars, in order. Append only. */
 export const HORDE_SCALARS = ["armed", "room", "record", "firstWave", "waveDueTick", "spawned"] as const;
 
+/**
+ * Appends the `pacts` hash group to `out` in the order of the comment above (`pactsHashNames` gives the matching
+ * names). `config` and `events` are not hashed.
+ */
 export function writePactsHash(p: Readonly<PactsState>, out: number[]): void {
 	out.push(p.room, p.seed, p.altarX.size());
 	for (let k = 0; k < p.altarX.size(); k++) out.push(p.altarX[k], p.altarZ[k]);

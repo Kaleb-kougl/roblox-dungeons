@@ -1,8 +1,15 @@
 /**
  * The training dummy's sprite tunables (docs/DUMMY_ART.md). Presentation only: nothing here feeds `step()`.
+ *
+ * @module
  */
 import { DUMMY } from "shared/sim";
 
+/**
+ * The training dummy's sprite tunables (docs/DUMMY_ART.md): how long its hit wobble plays on the view's own clock.
+ * Reaches ActorRenderController through `VIEW_HIT_CLIP_SEC`; a longer `hitSec` slows the wobble, it never changes the
+ * dummy's sim.
+ */
 export const DUMMY_SPRITE_VIEW = {
 	/**
 	 * Seconds the `hit` wobble plays over (DD1): the pack's 7 frames at its own 10 fps (preview.gif, 100 ms a frame).

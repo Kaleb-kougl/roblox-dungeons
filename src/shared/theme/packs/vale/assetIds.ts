@@ -24,6 +24,8 @@
  * Audio (art/README.md, "Audio"): `npm run audio:build` writes art/build/audio/*.ogg; paste each file's ID here the same
  * way ("sfx-player-hurt.ogg": "rbxassetid://<digits>"). A sound ID switches on once ALL of its files (its variants)
  * have IDs (audioLayout.ts lists them).
+ *
+ * @module
  */
 import type { RobloxAssetId } from "../../types";
 

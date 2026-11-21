@@ -6,6 +6,8 @@
  * Roblox keeps Escape (and the pad's Start) for its own menu and a game cannot take it. A solo run pauses while
  * that menu is open, the pause overlay stays hidden under it (one menu at a time), and closing it leaves the run
  * paused with the overlay up, so the player resumes when ready (P / Start / Resume) instead of landing in live bullets.
+ *
+ * @module
  */
 import { PAUSE_BUTTON_VIEW } from "./config";
 

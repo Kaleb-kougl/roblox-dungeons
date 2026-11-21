@@ -10,6 +10,8 @@
  *
  * Rule: nothing in here carries gameplay values. Hitboxes, bullet radii, speeds and timings live
  * in gameplay data, so swapping a pack can never change difficulty (the validator enforces it).
+ *
+ * @module
  */
 
 import type { BiomeMaterial, BiomeMaterialSurface, DecorLayer } from "./contract";
@@ -270,6 +272,10 @@ export const COLOR_ROLES = [
 	"silver",
 ] as const;
 
+/**
+ * A colour role's name (a COLOR_ROLES entry): the key of a manifest's `colors` and what code passes to ask the pack for
+ * a colour.
+ */
 export type ColorRole = (typeof COLOR_ROLES)[number];
 
 /** '#rrggbb' (the only color format packs may use; keeps the contrast check exact). */
@@ -378,6 +384,10 @@ export interface ParticleFlipbook {
 	mode: ParticleFlipbookMode;
 }
 
+/**
+ * One animation of a 16 px `spritesheet` asset (SpriteSheetAsset.animations): which row of the sheet it is, how many
+ * cells and how it plays. A sprite set's animations are SpriteAnimationDef.
+ */
 export interface AnimationDef {
 	/** Row of the sheet (0 = top) holding this animation's frames, left to right. */
 	row: number;
@@ -387,6 +397,10 @@ export interface AnimationDef {
 	loop: boolean;
 }
 
+/**
+ * A point in a cell or image, in art pixels from its top-left. What it marks depends on the field: an actor's feet, the
+ * spot a world piece stands on, a ui image's anchor, a glow's attach point, an outline's vertex.
+ */
 export interface Pivot {
 	/** Pixels from the cell's left edge. */
 	x: number;
@@ -407,6 +421,10 @@ export interface SpriteSheetAsset {
 	pivot: Pivot;
 }
 
+/**
+ * An audio event mapped to an uploaded sound (the `sfx.`, `music.` and `amb.` slots). ThemeCore.sound resolves it to a
+ * SoundRef. Presentation only.
+ */
 export interface SoundAsset {
 	kind: "sound";
 	assetId: RobloxAssetId;
@@ -523,12 +541,21 @@ export interface SpriteSetAsset {
 	ringPx?: Array<number>;
 }
 
+/**
+ * The directions a sprite set is drawn in. Facing `d` of `count` points at `zeroDeg + d * 360 / count` degrees in
+ * screen space (0 = screen right, 90 = screen up), counter-clockwise when `ccw`; `count` 1 means not directional. See
+ * SpriteSetAsset.
+ */
 export interface SpriteFacings {
 	count: 1 | 4 | 8 | 16;
 	zeroDeg: number;
 	ccw: boolean;
 }
 
+/**
+ * One uploaded atlas of a sprite set (an entry of SpriteSetAsset.sheets; an animation names its sheet by index). `w`
+ * and `h` are the whole image in pixels, which fixes how many cells a row holds.
+ */
 export interface SpriteSheetImage {
 	assetId: RobloxAssetId;
 	w: number;
@@ -559,6 +586,10 @@ export interface SpriteSheetImage {
 	pivot?: Pivot;
 }
 
+/**
+ * One base animation of a sprite set (SpriteSetAsset.animations): where its cells are and how it plays. Frame `f` of
+ * facing `d` is cell `start + d * (stride ?? frames) + f` of its sheet, counted row-major from the top-left.
+ */
 export interface SpriteAnimationDef {
 	/** Index into `sheets`. */
 	sheet: number;
@@ -572,9 +603,16 @@ export interface SpriteAnimationDef {
 	loop: boolean;
 }
 
+/** An asset entry of a visual slot: an image, a 16 px spritesheet, a sprite set, or a placeholder. */
 export type VisualAsset = ImageAsset | SpriteSheetAsset | SpriteSetAsset | PlaceholderAsset;
+/** An asset entry of an audio slot: a sound, or silent. */
 export type AudioAsset = SoundAsset | SilentAsset;
+/**
+ * Any entry of a manifest's `assets`. Its `kind` says which shape it is; the entry's slot (by ID prefix) says which
+ * kinds are allowed.
+ */
 export type AssetDef = VisualAsset | AudioAsset;
+/** The `kind` tag of an asset entry. A slot lists the kinds it accepts (SlotContract.kinds). */
 export type AssetKind = AssetDef["kind"];
 
 // ---------------------------------------------------------------------------------------------
@@ -582,6 +620,10 @@ export type AssetKind = AssetDef["kind"];
 
 /** Tile asset IDs every biome provides. */
 export const BIOME_TILE_KEYS = ["floor", "wall"] as const;
+/**
+ * A tile every biome provides (a BIOME_TILE_KEYS entry): the key of BiomeDef.tiles and the surface a tile placeholder
+ * takes its colour from.
+ */
 export type BiomeTileKey = (typeof BIOME_TILE_KEYS)[number];
 
 /**
@@ -591,6 +633,11 @@ export type BiomeTileKey = (typeof BIOME_TILE_KEYS)[number];
  */
 export type BiomeMaterials = Partial<Record<BiomeMaterialSurface, BiomeMaterial>>;
 
+/**
+ * One biome of a manifest (`biomes[<biome ID>]`): its place name, its surface and void colours, its tile asset IDs and
+ * optional materials. ThemeCore.biome resolves it to a BiomeTheme. The enemy-bullet contrast rule is checked against
+ * `floor` and `wall`.
+ */
 export interface BiomeDef {
 	/** String-table key for the place name. */
 	name: string;
@@ -618,6 +665,10 @@ export interface BiomeDef {
 // ---------------------------------------------------------------------------------------------
 // Manifest
 
+/**
+ * A theme pack as data: what `packs/<id>/manifest.ts` exports and `validateManifest` checks. Maps every logical ID the
+ * game asks for (colour roles, biomes, assets, strings) to this pack's content. Carries no gameplay values.
+ */
 export interface ThemeManifest {
 	format: number;
 	/** Must match the pack's folder name. */

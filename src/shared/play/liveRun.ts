@@ -28,6 +28,8 @@
  * server's replay reproduces the death without trusting the client.
  *
  * Restart = a new LiveRun from the same setup (fresh state, fresh recording).
+ *
+ * @module
  */
 import {
 	ALL_EVENT_FIELDS,
@@ -92,6 +94,11 @@ import {
 	type NewEnemy3FrameSource,
 } from "shared/view/fx";
 
+/**
+ * Everything a LiveRun is created from, and all a restart needs to create the next one: the seed, the spawn point (sim
+ * units), the run's config and, for a ranked run, the server's run id with the segment cutting rules. Built by the
+ * client's SimController; never changed during the run.
+ */
 export interface LiveRunSetup {
 	readonly seed: number;
 	readonly spawnX: number;
@@ -111,6 +118,10 @@ export interface LiveRunSetup {
 	readonly segmentFallbackTicks?: number;
 }
 
+/**
+ * How the run stands (LiveRun `outcome()`): `playing` until the player dies (`dead`) or the boss does first
+ * (`victory`). Endless runs never reach `victory`: only a death ends them.
+ */
 export type RunOutcome = "playing" | "dead" | "victory";
 
 /**
@@ -119,6 +130,10 @@ export type RunOutcome = "playing" | "dead" | "victory";
  */
 export type RunEventKind = "boon" | "relic" | "curse" | "secondWind" | "fang" | "boost";
 
+/**
+ * One progression event of the local player (or one boost pickup) from the last frame's ticks, as the toasts and audio
+ * read it from `RunView.runEvents`. Presentation only.
+ */
 export interface RunEventRecord {
 	readonly kind: RunEventKind;
 	/**
@@ -223,6 +238,10 @@ export type FrameEvents = { [K in keyof SimEvents]: number };
 /** Events whose value is a number to keep (last set wins), not a count. lastHitSource is handled apart (-1 default). */
 const LAST_VALUE_EVENTS: ReadonlyArray<keyof SimEvents> = ["bossPhase", "floorChanged", "depthChanged", "roomEntered"];
 
+/**
+ * The result of the debug replay check (LiveRun `replayCheck()`, F8): whether re-simulating the recording from scratch
+ * ended on the same state hash as the live run, both hashes for the log, and how many ticks were replayed.
+ */
 export interface ReplayCheck {
 	readonly match: boolean;
 	readonly liveHash: string;
@@ -254,6 +273,11 @@ export function accumulateEvents(into: FrameEvents, e: Readonly<SimEvents>): voi
 	}
 }
 
+/**
+ * Puts every field of the frame totals back to its default in place (0, or -1 for lastHitSource), so the same object is
+ * reused. LiveRun and the co-op LockstepClient call it at the start of every frame, before the frame's ticks are
+ * accumulated.
+ */
 export function resetFrameEvents(e: FrameEvents): void {
 	for (const f of ALL_EVENT_FIELDS) e[f] = eventDefault(f);
 }
@@ -330,6 +354,12 @@ export class SegmentCutter {
 	}
 }
 
+/**
+ * A solo run being played (see the file comment): the sim state, the fixed-step loop and the input recording, plus the
+ * per-frame event totals the views read. The client's SimController creates one per run from a LiveRunSetup, calls
+ * `frame` once per rendered frame, and replaces it with a new one on a restart. Co-op runs use shared/lockstep
+ * LockstepClient instead; both are a RunView.
+ */
 export class LiveRun implements RunView {
 	readonly setup: LiveRunSetup;
 	readonly state: SimState;

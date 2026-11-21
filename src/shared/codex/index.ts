@@ -5,6 +5,8 @@
  * Studio fake parser and the tunables (CX2); the `codexStatus` payload and the remotes' pure rules (CX3); the client's
  * send queue (outbox.ts: batching and pacing of claims and views) and the menu's counts (progress.ts) (CX6). Plain
  * TypeScript, headlessly tested; CodexService wraps the doc, CodexController the outbox.
+ *
+ * @module
  */
 export * from "./catalog";
 export * from "./config";

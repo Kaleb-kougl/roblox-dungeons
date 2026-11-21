@@ -9,6 +9,11 @@
  * archetypes' block, before the affixes: NE1's rule) with their shared/onboarding sighting ids (NTD13). No new bullet
  * visual (NTD12): the shell draws as the strike, the shrapnel the small look, the Mender's bolt (BulletKind.CASTER) the
  * medium one.
+ *
+ * The contract lists named above:
+ * {@link shared/theme/contract/ids!PORT_AUDIO_EVENTS | PORT_AUDIO_EVENTS}.
+ *
+ * @module
  */
 
 import type { ColorRole } from "./types";

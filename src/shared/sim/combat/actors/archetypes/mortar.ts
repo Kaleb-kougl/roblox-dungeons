@@ -40,6 +40,8 @@
  * corpse); attack id MORTAR_ATTACK_LOB (the draw and the flight); v slots MORTAR_LAND_X / _Z (the landing point),
  * MORTAR_FLIGHT_TICKS (flight ticks left), MORTAR_STRAFE (+1 / -1). The impact tick is the one whose events.shells > 0;
  * the shell's payload source is the Mortar's kind + 1.
+ *
+ * @module
  */
 
 import { HIT_NORMAL, secondsToTicks } from "../../../playerData";
@@ -67,9 +69,14 @@ import {
 	type RoomEnemyData,
 } from "./enemyShared";
 
+/**
+ * Tuning of the Mortar: its keep range, the lob's cooldown, draw, flight and lead, the shell and its shrapnel.
+ * Distances in world units, times in ticks.
+ */
 export interface MortarData extends RoomEnemyData {
 	/** Preferred distance band to its target (world units; NT0 finding 12). */
 	readonly keepMin: number;
+	/** Far edge of the keep band (world units): it closes in on its target past this, with or without line of sight. */
 	readonly keepMax: number;
 	/** Weight of the sideways component of the keep-range move (radial is 1). */
 	readonly strafeWeight: number;
@@ -79,6 +86,7 @@ export interface MortarData extends RoomEnemyData {
 	readonly tooClose: number;
 	/** Ticks between lobs (random in [min, max], `enemyCooldown`), and before the first one. */
 	readonly lobCooldownMin: number;
+	/** Longest cooldown between lobs and before the first one (ticks, inclusive); the shortest is `lobCooldownMin`. */
 	readonly lobCooldownMax: number;
 	/** The draw: the telegraph's ticks (the bow drawn skyward). */
 	readonly drawTicks: number;
@@ -86,6 +94,10 @@ export interface MortarData extends RoomEnemyData {
 	readonly flightTicks: number;
 	/** The lead: the target's last tick of motion x leadTicks (flightTicks x leadShare), at most maxLead long. */
 	readonly leadTicks: number;
+	/**
+	 * Longest lead (world units): the landing point is never farther than this from where the target stands at the
+	 * release.
+	 */
 	readonly maxLead: number;
 	/** The shell: one stationary STRIKE bullet at the landing point (the Stormcaller's rules, NTD4). */
 	readonly shell: BurstSpec;
@@ -106,6 +118,7 @@ export const MORTAR_ATTACK_LOB = 1;
 // --- v[] slots (0..2 shared)
 /** The landing point (world), fixed at the release. */
 export const MORTAR_LAND_X = 3;
+/** v slot: world Z of the landing point (the pair of MORTAR_LAND_X). */
 export const MORTAR_LAND_Z = 4;
 /** Flight ticks left (counted down by the living Mortar and, NTD5, by its corpse). */
 export const MORTAR_FLIGHT_TICKS = 5;
@@ -120,6 +133,10 @@ const SHRAPNEL_COUNT = 6;
 /** A move shorter than this fraction of the step means a wall: flip the strafe side. */
 const STRAFE_BLOCKED = 0.3;
 
+/**
+ * The registered `mortar` archetype (band PORT_BAND_ENEMIES_4): its data and hooks, with `stepCorpse` landing a shell
+ * whose Mortar died mid-flight.
+ */
 export const MORTAR = registerArchetype<MortarData>({
 	id: "mortar",
 	band: PORT_BAND_ENEMIES_4,

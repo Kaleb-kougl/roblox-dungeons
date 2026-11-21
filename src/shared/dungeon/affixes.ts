@@ -21,6 +21,8 @@
  *
  * Output: an affix id per planned spawn (index = room id, then spawn index; AffixKind.NONE = none), the same shape as
  * the room spawns.
+ *
+ * @module
  */
 import { u32 } from "shared/jsmath";
 import { EncounterRng } from "./encounter";

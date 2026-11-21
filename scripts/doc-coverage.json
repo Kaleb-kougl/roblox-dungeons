@@ -1,0 +1,38 @@
+{
+	"exports": {
+		"client": [],
+		"server": [],
+		"shared": [],
+		"shared/characters": [],
+		"shared/codex": [],
+		"shared/config": [],
+		"shared/cosmetics": [],
+		"shared/crypto": [],
+		"shared/daily": [],
+		"shared/devmode": [],
+		"shared/dungeon": [],
+		"shared/invite": [],
+		"shared/jsmath": [],
+		"shared/l10n": [],
+		"shared/leaderboard": [],
+		"shared/lobby": [],
+		"shared/lockstep": [],
+		"shared/onboarding": [],
+		"shared/play": [],
+		"shared/records": [],
+		"shared/run": [],
+		"shared/settings": [],
+		"shared/silver": [],
+		"shared/sim": [],
+		"shared/spikes": [],
+		"shared/theme": [],
+		"shared/tutorial": [],
+		"shared/view": [],
+		"shared/wallet": []
+	},
+	"fields": {
+		"shared/dungeon": [],
+		"shared/lockstep": [],
+		"shared/sim": []
+	}
+}

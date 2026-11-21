@@ -36,6 +36,11 @@ const initialState: LeaderboardState = {
 	loading: false,
 };
 
+/**
+ * The leaderboard panel's slice (state: `LeaderboardState`). LeaderboardController writes it: open or closed, the tabs,
+ * the request in flight, and each view the server sends, which is filed under its all-time board or, for a daily or
+ * friends view, under its request key, and ends the loading flag. Views are kept for the session.
+ */
 export const leaderboardSlice = createProducer(initialState, {
 	setLeaderboardOpen: (state, open: boolean) => (state.open === open ? state : { ...state, open }),
 	setLeaderboardBoard: (state, board: LeaderboardBoard) => (state.board === board ? state : { ...state, board }),
@@ -57,7 +62,15 @@ export const leaderboardSlice = createProducer(initialState, {
 	},
 });
 
+/**
+ * The leaderboard panel is open (false at start). LeaderboardController reads it to toggle the panel on its key; with
+ * the Options screen it makes `selectAnyPanelOpen`.
+ */
 export const selectLeaderboardOpen = (state: { leaderboard: LeaderboardState }) => state.leaderboard.open;
+/**
+ * The leaderboard panel's whole state: open, the tabs (`board`, `scope`, `friends`), the last all-time view per board
+ * and the daily views by request key (undefined until one arrives), and whether a request is in flight.
+ */
 export const selectLeaderboard = (state: { leaderboard: LeaderboardState }) => state.leaderboard;
 
 /** A menu panel that takes the controls is open (juice settings or leaderboards): the run pauses under it. */

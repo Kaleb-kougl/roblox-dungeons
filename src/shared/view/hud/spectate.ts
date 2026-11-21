@@ -3,11 +3,16 @@
  * roles, fade-in and line rules. Roblox-port feature, no web source. Pure, checked headlessly (spectateHud.spec.ts).
  * The switch keys follow the player's bindings (shared/play spectateHint); the snapshot fields it reads come from
  * shared/play takeSnapshot (`spectating`, `spectateName`, `spectatePosition`, `spectateCount`).
+ *
+ * @module
  */
 import type { ColorRole, SliceInsets } from "shared/theme";
 import { snappedSliceScale, type SkinBox } from "./skin";
 import { UI_ART } from "./skinConfig";
 
+/**
+ * The spectate bar's theme string keys (`hud.spectate.*`): the two watching lines, the switch hint and the back line.
+ */
 export const SPECTATE_HUD_STRINGS = {
 	/** "Spectating {name}  ·  {pos} / {count}". */
 	watching: "hud.spectate.watching",

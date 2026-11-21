@@ -5,6 +5,8 @@
  * every frame, as they do PelletFrameEvents. The pact renderer (the take pulse, the shouts), the audio cue mapper and
  * the room clear read it once per frame. Presentation only: plain numbers copied out, read-only on the sim. A leaf
  * (types and pure reads from shared/sim only).
+ *
+ * @module
  */
 import { PactKind, type SimState } from "shared/sim";
 

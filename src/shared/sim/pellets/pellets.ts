@@ -19,6 +19,8 @@
  * stepPellets.ts (PL3 / PL4, a tick step between stepDrops and stepScore); live / gone / sweep in the leaf
  * pelletRooms.ts, called from stepScore. Score awards (scorePellet / scoreSweep / scorePowerBullets) live in
  * score/score.ts, which reads `state.pellets.config` through the state types only (never requires this module).
+ *
+ * @module
  */
 import { NO_POWER_PELLET, cellKey, worldToGrid, type FloorPellets } from "shared/dungeon";
 import type { SimState } from "../state";
@@ -80,17 +82,25 @@ export interface PelletRoom {
 
 /** A pellet taken this tick (presentation: the score pop, the chomp). */
 export interface PelletEaten {
+	/** The pellet's index (into `PelletsState.x` / `z` / `taken`). */
 	readonly index: number;
+	/** World x of the pellet's centre. */
 	readonly x: number;
+	/** World z of the pellet's centre. */
 	readonly z: number;
+	/** Party index of the player who took it. */
 	readonly player: number;
+	/** Points the pickup paid (what `scorePellet` awarded). */
 	readonly points: number;
 }
 
 /** The power pellet's conversion this tick (presentation: the fly-in): the picker and each erased bullet's position. */
 export interface PelletPowerEvent {
+	/** Party index of the player who took the power pellet. */
 	readonly player: number;
+	/** World x of each erased enemy bullet (parallel to `z`). */
 	readonly x: number[];
+	/** World z of each erased enemy bullet. */
 	readonly z: number[];
 	/** Points paid in all. */
 	points: number;
@@ -98,16 +108,21 @@ export interface PelletPowerEvent {
 
 /** A pellet a Snatcher ate this tick (docs/NEW_ENEMIES_2.md NX4; presentation: the gulp): its index and centre. */
 export interface PelletStolen {
+	/** The pellet's index (into `PelletsState.x` / `z` / `taken`). */
 	readonly index: number;
+	/** World x of the pellet's centre. */
 	readonly x: number;
+	/** World z of the pellet's centre. */
 	readonly z: number;
 }
 
 /** A pellet a Snatcher's death put back this tick (presentation: the fly-back from its corpse to the pellet's cell). */
 export interface PelletReturned {
+	/** Index of the pellet that is on the floor again (its `taken` back to 0). */
 	readonly index: number;
 	/** Where it flies from: the Snatcher's position at its death. */
 	readonly fromX: number;
+	/** World z of the Snatcher at its death (`fromX` is the world x). */
 	readonly fromZ: number;
 }
 
@@ -115,6 +130,7 @@ export interface PelletReturned {
 export interface PelletSwallowed {
 	/** The Snatcher's position. */
 	readonly x: number;
+	/** World z of the Snatcher (`x` is the world x). */
 	readonly z: number;
 	/** The pellets digested (taken = PELLET_DIGESTED), ascending. */
 	readonly indices: number[];
@@ -122,6 +138,7 @@ export interface PelletSwallowed {
 
 /** Per-tick pellet events for presentation. Cleared at the start of every tick; NOT hashed. */
 export interface PelletEvents {
+	/** Regular pellets players took this tick, in pickup order. */
 	eaten: PelletEaten[];
 	/** Score record indices whose pellets went live this tick. */
 	live: number[];
@@ -133,16 +150,24 @@ export interface PelletEvents {
 	power?: PelletPowerEvent;
 	/** Snatchers (docs/NEW_ENEMIES_2.md NX4): pellets eaten, put back at a death, and swallows, this tick. */
 	stolen: PelletStolen[];
+	/** Stolen pellets a Snatcher's death put back on the floor this tick. */
 	returned: PelletReturned[];
+	/** Snatcher swallows this tick (their carried pellets digested for good). */
 	swallowed: PelletSwallowed[];
 }
 
 /** SimState.pellets: plain numbers (hashed: taken, power, per room left / phase / swept) plus floor data. */
 export interface PelletsState {
+	/** The run's pellet rules (constant for the run: not hashed). */
 	readonly config: PelletsConfig;
 	/** Per pellet (floor data, hashed as a count): world centre and its room's score record index (or NO_PELLET_RECORD). */
 	x: number[];
+	/** Per pellet: world z of its centre (parallel to `x`). Floor data, not hashed. */
 	z: number[];
+	/**
+	 * Per pellet: index of its room's record in `state.score.rooms`, or `NO_PELLET_RECORD` (such a pellet never goes
+	 * live). Floor data, not hashed.
+	 */
 	rec: number[];
 	/**
 	 * Per pellet: 0 on the floor, 1 once taken by a player; a Snatcher's PELLET_STOLEN (carried) / PELLET_DIGESTED
@@ -243,6 +268,9 @@ export function clearPelletsEvents(p: PelletsState): void {
 	e.swallowed.clear();
 }
 
+/**
+ * A deep copy of the pellets state, the cell lookup and this tick's events included; only `config` is shared. No rng.
+ */
 export function clonePelletsState(p: Readonly<PelletsState>): PelletsState {
 	const byCell = new Map<number, number>();
 	for (const [k, v] of p.byCell) byCell.set(k, v);

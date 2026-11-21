@@ -29,6 +29,8 @@
  * docs/ARCHER.md AR2: an optional boon mask (`eligible`, sim eligibleBoonMask of a character's loadout) is passed to
  * every drawCardOffers / drawLegendaryOffers call, and every card dealt is tallied per boon and per duo (any kind,
  * drafts and Greed deals), so a spec can check what a character is never dealt.
+ *
+ * @module
  */
 import { isBossFloor } from "shared/dungeon";
 import {
@@ -54,6 +56,10 @@ import {
 	type CardKindId,
 } from "shared/sim";
 
+/**
+ * Spec support. How a simulated player picks from a draft's offers in `simulateOffers` (the file comment's Policies):
+ * `greedy`, `random` or `duo-seeking`. `pickOffer` implements them.
+ */
 export type PickPolicy = "greedy" | "random" | "duo-seeking";
 
 /** A card's kind for a player with `levels` (buildsData CardKind; -1 for no card). */
@@ -149,6 +155,10 @@ export interface BossDuoTally {
 	available: number;
 }
 
+/**
+ * Spec support. What `simulateOffers` measured for one policy: a tally per checkpoint floor (the build a player walks
+ * onto that floor with), the boss floors' guaranteed-duo tallies, and the picks by card kind over every draft.
+ */
 export interface OfferStats {
 	readonly policy: PickPolicy;
 	readonly checkpoints: OfferCheckpoint[];
@@ -357,6 +367,10 @@ export function simulateOffers(
 const pct = (a: number, b: number) => (b > 0 ? string.format("%.1f%%", (100 * a) / b) : "-");
 const mean = (a: number, b: number) => (b > 0 ? string.format("%.2f", a / b) : "-");
 
+/**
+ * Spec support. Markdown header of the offer table that `formatOfferRow` fills: one row per policy and checkpoint
+ * floor.
+ */
 export function offerHeader(): string {
 	return (
 		"| policy | by floor | runs with >= 1 evolution | runs with >= 1 duo | mean evolutions | mean duos | " +
@@ -364,6 +378,11 @@ export function offerHeader(): string {
 	);
 }
 
+/**
+ * Spec support. One Markdown row of the offer table for a checkpoint: shares of runs with an evolution or a duo, mean
+ * evolutions, duos, boons and levels per run, shares of drafts offering each, and how often the upgrade pity fired. A
+ * share over zero runs or drafts prints `-`.
+ */
 export function formatOfferRow(policy: PickPolicy, t: OfferCheckpoint): string {
 	return (
 		`| ${policy} | ${t.floor} | ${pct(t.runsWithEvolution, t.runs)} | ${pct(t.runsWithDuo, t.runs)} | ` +
@@ -376,12 +395,20 @@ export function formatOfferRow(policy: PickPolicy, t: OfferCheckpoint): string {
 	);
 }
 
+/**
+ * Spec support. One log line per policy: for every boss floor, the share of double drafts whose first deal had a duo
+ * available to guarantee.
+ */
 export function formatBossDuo(policy: PickPolicy, stats: OfferStats): string {
 	return stats.bossDuo
 		.map((t) => `${policy} floor ${t.floor}: guaranteed duo available ${pct(t.available, t.deals)}`)
 		.join("; ");
 }
 
+/**
+ * Spec support. One log line per policy: the share of all picks that were a new boon, an upgrade, an evolution and a
+ * duo.
+ */
 export function formatPicks(policy: PickPolicy, stats: OfferStats): string {
 	const total = stats.picks.reduce((a, b) => a + b, 0);
 	return (
@@ -406,6 +433,10 @@ function shortName(b: number): string {
 	return id.sub(1, 5) === "boon." ? id.sub(6) : id;
 }
 
+/**
+ * Spec support. Markdown header of the legendary table (docs/LEGENDARIES.md LG7) that `formatLegendaryRow` fills. Its
+ * per-boon columns name the legendary boons in `legendaryBoons` order.
+ */
 export function legendaryHeader(): string {
 	const names = legendaryBoons()
 		.map((b) => shortName(b))
@@ -417,6 +448,11 @@ export function legendaryHeader(): string {
 	);
 }
 
+/**
+ * Spec support. One Markdown row of the legendary table for a checkpoint: mean legendaries owned, runs owning and
+ * drafts / runs offered each legendary boon, and Greed's deal for the build at the checkpoint (mean cards by kind,
+ * deals with a new legendary, deals holding each boon).
+ */
 export function formatLegendaryRow(policy: PickPolicy, t: OfferCheckpoint): string {
 	const ls = legendaryBoons();
 	const of = (xs: ReadonlyArray<number>, total: number) => ls.map((b) => pct(xs[b], total)).join(" / ");

@@ -9,6 +9,8 @@
  * Same contract as moveCircle: pure, deterministic (fixed scan order, sqrt only, no trig), no allocation beyond the
  * result (module scratch, read before the next call), and the result is never farther from the start than the step.
  * Tunables: ./slideData.ts (PLAYER_SLIDE).
+ *
+ * @module
  */
 import type { Dungeon } from "./forge";
 import {

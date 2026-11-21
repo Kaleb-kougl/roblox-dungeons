@@ -26,14 +26,32 @@ const initialState: RecordsState = {
 	baselineRun: 0,
 };
 
+/**
+ * The personal records slice (state: `RecordsState`). NewBestController writes it: the latest `records` status from
+ * the server replaces the one before, and each run's frozen baseline is stored with its run counter at run start.
+ * Neither is cleared.
+ */
 export const recordsSlice = createProducer(initialState, {
 	setRecordsStatus: (state, status: RecordsStatus) => ({ ...state, status }),
 	/** A run started: its frozen baseline (NewBestController). */
 	setRunBaseline: (state, baseline: RunBaseline, run: number) => ({ ...state, baseline, baselineRun: run }),
 });
 
+/**
+ * The personal records as the server last sent them (loaded or not, the solo and co-op records), undefined until the
+ * first message arrives.
+ */
 export const selectRecordsStatus = (state: { records: RecordsState }) => state.records.status;
+/**
+ * The current run's new-best baseline: the records as they stood when the run started, which a records update mid-run
+ * never moves. Its kind is `unranked` when there is no run or the run is not in the ranked world. Only valid for the
+ * run `selectBaselineRun` names.
+ */
 export const selectRunBaseline = (state: { records: RecordsState }) => state.records.baseline;
+/**
+ * The run counter (`RunInfo.run`) the baseline was frozen for, 0 before the first run. The run-over panel and the pause
+ * overlay check it against the run on screen before using the baseline.
+ */
 export const selectBaselineRun = (state: { records: RecordsState }) => state.records.baselineRun;
 /** The solo board's record for the main menu: only once loaded and present. */
 export const selectSoloBest = (state: { records: RecordsState }): NewBestRecord | undefined => {

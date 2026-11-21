@@ -16,6 +16,8 @@
  *   secretChamberBuild    what SecretRenderController builds HIDDEN at floor load and shows at the open: the chamber
  *                         floor (one rect), the chamber's own walls (the ring cells WALL in the carved grid that are not
  *                         WALL in the Forge's, greedy-merged), two torch spots on the back wall facing in, the chest
+ *
+ * @module
  */
 import { TileType, tileAt, type Dungeon, type FloorSecret } from "shared/dungeon";
 import { greedyRects, type TileRect } from "../tileMerge";

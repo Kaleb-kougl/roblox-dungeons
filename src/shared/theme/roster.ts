@@ -2,6 +2,11 @@
  * Roblox port (docs/DAILY.md DS2, section 9): the seeded roster's theme keys. Pure data with no runtime import, so
  * contract.ts takes its string list (ROSTER_STRING_KEYS) for REQUIRED_STRING_KEYS with one import: its compiled Luau sits
  * near Luau's 200-locals-per-function limit.
+ *
+ * The contract lists named above:
+ * {@link shared/theme/contract/strings!REQUIRED_STRING_KEYS | REQUIRED_STRING_KEYS}.
+ *
+ * @module
  */
 
 /**

@@ -7,6 +7,8 @@
  * every damaging hit's flash, `death` on the catch (an escape frees the actor: no death plays, the dive puff covers it).
  * It never attacks. Its own module, imported by FILE from sprites.ts: sprites.luau sits near Luau's 200 top-level
  * locals, and this keeps its cost there at one import. A leaf (shared/sim, types only from sprites.ts): no require cycle.
+ *
+ * @module
  */
 import { CORPSE_TICKS, GOLDEN, GOLDEN_SPEED, SIM_HZ, type ActorState } from "shared/sim";
 import type { ActorSpriteInput } from "../sprites";

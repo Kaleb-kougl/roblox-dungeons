@@ -6,6 +6,8 @@
  *  - no trig (sin/cos/atan2 can differ between engines); + - * / and math.sqrt are IEEE-exact,
  *  - no reading render state, frame delta, or device state: the InputFrame is the only input,
  *  - iterate in a fixed order (arrays, not Map/Set of objects keyed by identity).
+ *
+ * @module
  */
 
 import { EMPTY_INPUT, type InputFrame } from "./input";
@@ -50,10 +52,18 @@ import type { SpacingConfig } from "./combat/spacingData";
 
 export { PLAYER_RADIUS, PLAYER_SPEED } from "./playerData";
 
+/**
+ * An axis-aligned rectangle on the ground plane, world units, that a mover's center is clamped into when the config has
+ * no world collision. The edges are inclusive.
+ */
 export interface SimBounds {
+	/** Least world x a center may have. */
 	minX: number;
+	/** Greatest world x a center may have. */
 	maxX: number;
+	/** Least world z a center may have. */
 	minZ: number;
+	/** Greatest world z a center may have. */
 	maxZ: number;
 }
 
@@ -96,8 +106,11 @@ export type ActorMover = (
 
 /** Stress mode (E1.6, `?stress=N`): keep about `bullets` enemy bullets alive, in rings from (x, z). */
 export interface StressConfig {
+	/** How many enemy bullets to keep alive (floored to an integer). 0 or less turns stress mode off. */
 	bullets: number;
+	/** World x the rings are fired from. */
 	x: number;
+	/** World z the rings are fired from. */
 	z: number;
 }
 
@@ -160,16 +173,22 @@ export interface SimConfig {
 	 * Endless mode (Roblox port, endless.ts): the world changes per floor. When set, every tick runs with
 	 * `endless.worldForFloor(state.endless.floor).config` instead of this config's own world fields, createSimState
 	 * starts on floor 1, and stepEndless runs after stepCombat. Absent: everything as in the web build.
+	 *
+	 * State: {@link SimState.endless}. Stepped by {@link stepEndless}.
 	 */
 	endless?: EndlessConfig;
 	/**
 	 * Scoring (M2, score/score.ts). Absent: no score state, nothing extra hashed (every M1 golden run). Present:
 	 * state.score is created, updated each tick and hashed as the "score" subsystem.
+	 *
+	 * State: {@link SimState.score}. Stepped by {@link stepScore}.
 	 */
 	scoring?: ScoringConfig;
 	/**
 	 * Co-op (M4, party.ts): `party.size` players (2..8) share the run; every tick then takes one InputFrame per player
 	 * (stepParty). Absent or size 1: a solo run, exactly as before (no party state, nothing extra hashed).
+	 *
+	 * State: {@link SimState.party}. Stepped by {@link stepParty}.
 	 */
 	party?: PartyConfig;
 	/**
@@ -177,6 +196,8 @@ export interface SimConfig {
 	 * invulnerability, combo cut, on-hit hooks) but never take armor or hearts or kill; `startHalfHearts` sets every
 	 * player's start hearts. Absent: no tutorial state, nothing extra hashed (every fixture and run unchanged). Present:
 	 * state.tutorial is created and hashed as the "tutorial" subsystem, after "party".
+	 *
+	 * State: {@link SimState.tutorial}.
 	 */
 	tutorial?: TutorialSimConfig;
 	/**
@@ -185,6 +206,8 @@ export interface SimConfig {
 	 * `breakables.pieces` without endless mode. Absent: no breakables state, nothing extra hashed, every mover and
 	 * blocker takes its grid-only path (every fixture, M1, the tutorial). Present: state.breakables is created and
 	 * hashed as the "breakables" subsystem, appended after every other group but "drops".
+	 *
+	 * State: {@link SimState.breakables}.
 	 */
 	breakables?: BreakablesConfig;
 	/**
@@ -192,6 +215,8 @@ export interface SimConfig {
 	 * Aegis) from their own rng stream; walking over one boosts that player for a few seconds. Absent: no drops state,
 	 * every boost read neutral, nothing extra hashed (every fixture, M1). Present: state.drops is created, stepped
 	 * (stepDrops) and hashed as the "drops" subsystem, appended after every other group.
+	 *
+	 * State: {@link SimState.drops}. Stepped by {@link stepDrops}.
 	 */
 	drops?: DropsConfig;
 	/**
@@ -200,6 +225,8 @@ export interface SimConfig {
 	 * Absent: no affixes state, every affix read neutral, nothing extra hashed (every fixture, M1, the tutorial).
 	 * Present: state.affixes is created, stepped (stepAffixes, inside stepCombat) and hashed as the "affixes"
 	 * subsystem, appended after every other group (after "drops").
+	 *
+	 * State: {@link SimState.affixes}.
 	 */
 	affixes?: AffixesConfig;
 	/**
@@ -207,6 +234,8 @@ export interface SimConfig {
 	 * DEV_GOD_BUTTON toggles it). Only the client's local `dev` world sets it (shared/run, refused by the server).
 	 * Absent: no dev state, nothing extra hashed (every fixture and every other run unchanged). Present: state.dev is
 	 * created and hashed as the "dev" subsystem, appended after "affixes".
+	 *
+	 * State: {@link SimState.dev}. Stepped by {@link stepDevToggle}.
 	 */
 	dev?: DevSimConfig;
 	/**
@@ -214,6 +243,8 @@ export interface SimConfig {
 	 * state, today's boon draft (drawBoonOffers, every boon level I), nothing extra hashed (every fixture, M1, the
 	 * tutorial). Present: state.builds is created and hashed as the "builds" subsystem, appended after every other group
 	 * (after "dev"); the draft deals cards (levels, evolutions, duos) and a boss floor's draft is dealt twice.
+	 *
+	 * State: {@link SimState.builds}.
 	 */
 	builds?: BuildsConfig;
 	/**
@@ -222,6 +253,8 @@ export interface SimConfig {
 	 * without endless mode. Absent: no pellets state, nothing extra hashed, no pellet score sources (every fixture, M1,
 	 * the tutorial, every world today). Present: state.pellets is created and hashed as the "pellets" subsystem,
 	 * appended after every other group (after "builds"), and a scored run's points / counts gain PELLETS / SWEEP.
+	 *
+	 * State: {@link SimState.pellets}. Stepped by {@link stepPellets}.
 	 */
 	pellets?: PelletsConfig;
 	/**
@@ -231,6 +264,8 @@ export interface SimConfig {
 	 * state, nothing extra hashed, no treasure score source (every fixture, M1, the tutorial, every world until TR5).
 	 * Present: state.treasure is created, stepped (stepTreasure, after stepScore) and hashed as the "treasure"
 	 * subsystem, after "pellets" ("pacts" and "golden" after it), and a scored run's points / counts gain TREASURE.
+	 *
+	 * State: {@link SimState.treasure}. Stepped by {@link stepTreasure}.
 	 */
 	treasure?: TreasureConfig;
 	/**
@@ -240,6 +275,8 @@ export interface SimConfig {
 	 * M1, the tutorial). Present: state.pacts is created and hashed as the "pacts" subsystem, after "treasure" (only
 	 * "golden" after it); on a floor whose altars stand the classic shrine zone is off and the altars take its place
 	 * (stepPacts, right after stepRun), and the Horde's second wave runs in stepPactsWave (before stepScore).
+	 *
+	 * State: {@link SimState.pacts}. Stepped by {@link stepPacts}.
 	 */
 	pacts?: PactsConfig;
 	/**
@@ -248,6 +285,8 @@ export interface SimConfig {
 	 * nothing extra hashed, no Goldling ever spawns (every fixture, M1, the tutorial). Present: state.golden is created,
 	 * stepped (stepGolden, after stepScore) and hashed as the "golden" subsystem, appended after every other group
 	 * (after "pacts").
+	 *
+	 * State: {@link SimState.golden}. Stepped by {@link stepGolden}.
 	 */
 	golden?: GoldenConfig;
 	/**
@@ -259,6 +298,8 @@ export interface SimConfig {
 	 * (secrets/open.ts: the sword's finisher, a Wrecker roll, a heavy arrow or Siege Bolt's slam, a Charger's charge), its
 	 * chest is stepped (stepSecrets, after stepGolden) and it is hashed as the "secrets" subsystem, appended after every
 	 * other group (after "golden"), and a scored run's points / counts gain SECRET last.
+	 *
+	 * State: {@link SimState.secrets}. Stepped by {@link stepSecrets}.
 	 */
 	secrets?: SecretsConfig;
 	/**
@@ -268,6 +309,8 @@ export interface SimConfig {
 	 * piece pays its stack into state.silver.total when it breaks (any source; silverOnBreak on damageBreakable's break
 	 * line), and it is hashed as the "silver" subsystem, appended after every other group (after "secrets"). No score
 	 * source, no rng.
+	 *
+	 * State: {@link SimState.silver}.
 	 */
 	silver?: SilverConfig;
 	/**

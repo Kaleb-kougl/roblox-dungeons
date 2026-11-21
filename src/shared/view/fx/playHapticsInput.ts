@@ -25,6 +25,8 @@
  *   hurt        the view player's hurt edge (StateWatch.hurtKind, through hurtKindLanded as the flash and freeze read it).
  *   boss        the frame's tracker events, by the freeze rules' own edges: a `bossPhase` whose freeze is asked
  *               (phase >= 2: the phase break, HPD4) and a `bossDefeated` (the death freeze and slow-mo, HPD5).
+ *
+ * @module
  */
 import type { InputDeviceKind } from "shared/play";
 // By file: the shared/settings barrel reaches shared/play, whose run views import this barrel (a require cycle).

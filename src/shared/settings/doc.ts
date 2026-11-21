@@ -3,10 +3,11 @@
  * settings group, overrides-only (what the player changed; absent = the defaults).
  *
  *   juice     JuiceOverrides     (juice.ts: health bars, damage numbers, freeze frame, screen shake, particles, reduced
- *                                motion)
+ *                                motion, the room clear celebration)
  *   controls  ControlsOverrides  (shared/play bindings.ts: the key bindings that differ from DEFAULT_BINDINGS)
  *   audio     AudioOverrides     (audio.ts: master / music / sfx volume)
- *   display   DisplayOverrides   (display.ts: HUD scale, room edges, HUD fade, minimap)
+ *   display   DisplayOverrides   (display.ts: every DisplaySettings key; HUD scale, room edges, HUD fade and the
+ *                                minimap were the first)
  *
  * Versions: v1 (task 8 / 9) was `{ v: 1, juice }`; v2 (task L4) is `{ v: 2, juice, controls, audio, display }`. A v1
  * document MIGRATES on read (its juice is kept, the new groups start empty) and is written back as v2 the next time
@@ -15,6 +16,8 @@
  *
  * Patches (`updateSettings`): every group PRESENT in a patch replaces that group (sanitized); absent groups are kept.
  * The client always sends a whole group (its optimistic copy after the change), so a group's reset is `{ juice: {} }`.
+ *
+ * @module
  */
 import { KBM_ACTIONS, PAD_ACTIONS, sanitizeControlsOverrides, type ControlsOverrides } from "shared/play";
 import { AUDIO_SETTING_KEYS, sameAudioOverrides, sanitizeAudioOverrides, type AudioOverrides } from "./audio";
@@ -26,7 +29,11 @@ export const SETTINGS_DOC_VERSION = 2;
 /** The task-8 document: `{ v: 1, juice }`. */
 export const SETTINGS_DOC_V1 = 1;
 
+/**
+ * The settings groups, one per kind of setting; each is stored, patched and reset as a whole (see the file comment).
+ */
 export type SettingsGroup = "juice" | "controls" | "audio" | "display";
+/** Every settings group, in the fixed order the sanitizers and the patch walk them. */
 export const SETTINGS_GROUPS: ReadonlyArray<SettingsGroup> = ["juice", "controls", "audio", "display"];
 
 /** Every group a player changed (empty groups are left out). The remotes' payload and the session cache's document. */
@@ -37,6 +44,11 @@ export interface SettingsOverrides {
 	display?: DisplayOverrides;
 }
 
+/**
+ * The value written to the settings DataStore (`encodeSettingsDoc`): the version and every group, an unchanged group as
+ * an empty table. One per player, owned by the server's SettingsService. In memory the game works with
+ * SettingsOverrides instead; `decodeSettingsDoc` reads the stored value back and never trusts its shape.
+ */
 export interface SettingsDoc {
 	v: number;
 	juice: JuiceOverrides;

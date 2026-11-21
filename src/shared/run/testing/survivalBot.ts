@@ -21,6 +21,8 @@
  *           debug floor button and counted (`stuck`).
  * Shrines, pacts, pedestals, vault chests, pellets and boosts on the ground are ignored (a vault room is fought like any
  * room; boosts are picked up only when walked over).
+ *
+ * @module
  */
 import { bulletBlocker, gridToWorld, lineOfSight, worldToGrid } from "shared/dungeon";
 import {
@@ -59,9 +61,14 @@ import { Driver, bossOf, distanceField, frame, walkDir, type Field } from "./end
 
 /** A room fight ends after this long (s), the boss fight after SURVIVAL_BOSS_SECONDS. */
 export const SURVIVAL_ROOM_SECONDS = 120;
+/** Spec support. The survival bot gives up a boss fight after this many seconds of sim time. */
 export const SURVIVAL_BOSS_SECONDS = 420;
 /** Walks: to a room (until it engages), to the boss room, to the stairwell (ticks). */
 export const SURVIVAL_WALK_TICKS = 2400;
+/**
+ * Spec support. Ticks the survival bot may spend trying to leave a floor by its stairwell. Past this the floor is
+ * skipped with the debug floor button and counted as `stuck`.
+ */
 export const SURVIVAL_STAIR_TICKS = 4000;
 /** A target farther than this (no room member alive) is not chased: the room is over for the bot. */
 const STRAY_RANGE = 14;
@@ -109,6 +116,10 @@ export interface SurvivalRun {
 	readonly duos: number;
 }
 
+/**
+ * Spec support. Options of `survivalRun`: how deep the descent goes, plus what a census adds (an observer, immortality,
+ * its own fighter).
+ */
 export interface SurvivalOptions {
 	readonly maxFloor: number;
 	/** Called after every step (Driver.onStep): a census's observer (docs/SILVER.md SV1). */
@@ -398,6 +409,11 @@ function bandOf(floor: number): number {
 	return SURVIVAL_BANDS.size() - 1;
 }
 
+/**
+ * Spec support. Sums one character's survival runs into the census table's numbers: runs alive on entering each floor
+ * up to `maxFloor` + 1, the mean and median floor reached, deaths by where they happened, room fights by floor band,
+ * boss fights, and the fighter's rolls, guards and heavy shots.
+ */
 export function summarizeSurvival(
 	who: TuneCharacter,
 	runs: ReadonlyArray<SurvivalRun>,

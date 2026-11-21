@@ -3,6 +3,8 @@
  * predictor's heads (shared/lockstep predict.ts) into the drawn pose, the drawn player the views read (drawn.ts:
  * writeDrawnPlayer, DrawnPlayerOf, drawnOrMerged), enemy bullets drawn ahead with the knight (bulletAhead.ts, LP10),
  * prediction suspended while the local player is hooked (resume.ts, docs/NEW_ENEMIES_2.md NX7) and their tunables. Presentation only; tested headlessly (smoother.spec.ts, drawn.spec.ts, bulletAhead.spec.ts).
+ *
+ * @module
  */
 export * from "./config";
 export * from "./smoother";

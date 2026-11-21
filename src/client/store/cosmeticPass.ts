@@ -18,6 +18,11 @@ export interface CosmeticPassState {
 
 const initialState: CosmeticPassState = { prices: new Map(), pending: undefined, granted: undefined };
 
+/**
+ * The Robux-only cosmetics slice (state: `CosmeticPassState`). CosmeticPassController writes it: a price as Roblox
+ * answers for an item, the item whose purchase is pending, and each grant, which clears the pending item when it is the
+ * one granted and bumps the grant serial. Nothing resets it within a session.
+ */
 export const cosmeticPassSlice = createProducer(initialState, {
 	setCosmeticPassPrice: (state, itemId: string, price: CosmeticRobuxPrice): CosmeticPassState => {
 		const prices = new Map<string, CosmeticRobuxPrice>();
@@ -34,4 +39,8 @@ export const cosmeticPassSlice = createProducer(initialState, {
 	}),
 });
 
+/**
+ * The whole Robux-only cosmetics state for the Armory's Cosmetics tab: the prices read so far (an empty map before the
+ * read), the item being bought (undefined: none) and the last grant with its serial (undefined: none this session).
+ */
 export const selectCosmeticPass = (state: { cosmeticPass: CosmeticPassState }) => state.cosmeticPass;

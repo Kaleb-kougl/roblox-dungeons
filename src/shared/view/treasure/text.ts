@@ -5,6 +5,8 @@
  * `pack.str` or a spec's fake), so it is tested headlessly (text.spec.ts). Numbers: ASCII digits through shared/l10n
  * (seconds with one decimal: formatTenths, points grouped: formatThousands); never upper-cased in code (the strings
  * are written in caps where they are caps).
+ *
+ * @module
  */
 import { formatThousands, formatTenths } from "shared/l10n";
 import { VaultLock } from "shared/dungeon";
@@ -106,6 +108,11 @@ export interface PlatePips {
 	readonly spent: number;
 }
 
+/**
+ * The UNTOUCHED lock plate's pips for a lock that allows `allowance` hits after `hits` were taken: one more pip than
+ * the allowance, with the hits taken marked spent (never more than the total; a negative allowance reads as 0).
+ * TreasureRenderController draws them when the plate has no clock.
+ */
 export function platePips(allowance: number, hits: number): PlatePips {
 	const total = math.max(0, allowance) + 1;
 	return { total, spent: math.clamp(hits, 0, total) };

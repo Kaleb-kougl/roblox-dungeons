@@ -8,6 +8,8 @@
  *   throws       Chainhook throws (a hook in flight), latches, ends by reason (arrived = the yank, timed out, broken)
  *   pyres        pyres lit, shots each pyre fired (its reload restarting while lit), pyres the player killed / withered
  *   life         per new kind: the ticks from the fight's start to its death (-1: alive at the end)
+ *
+ * @module
  */
 import { AffixKind } from "shared/dungeon";
 import {
@@ -44,8 +46,16 @@ import {
 	type TuneCharacter,
 } from "./characterTune";
 
+/**
+ * Spec support. The four docs/NEW_ENEMIES_2.md room kinds by archetype id, in the order of `Nx12Tally`'s per-kind
+ * arrays and the table's life column.
+ */
 export const NX12_KINDS = ["bulwark", "chainhook", "snatcher", "pyrekeeper"] as const;
 
+/**
+ * Spec support. What `nx12Fight` counted in one arena fight (the file comment's list), or the means of several
+ * (`meanTally`). Counts are events over the whole fight.
+ */
 export interface Nx12Tally {
 	/** Seconds to the clear (-1: not within the fight's cap). */
 	seconds: number;
@@ -260,6 +270,7 @@ export function formatNx12Row(label: string, who: string, t: Nx12Tally): string 
 	);
 }
 
+/** Spec support. Markdown header of the NX12 fight table that `formatNx12Row` fills. */
 export function nx12Header(): string {
 	return (
 		"| room | who | s | hits | player bullets | heavies | blocks / breaks | throws / latches / arrived / timed out / " +

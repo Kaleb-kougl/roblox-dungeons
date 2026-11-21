@@ -7,6 +7,11 @@
  *
  * The string keys are built inside a function (silverShopStringKeys) so this module adds one top-level local to the
  * compiled Luau of any module that spreads it.
+ *
+ * The contract lists named above:
+ * {@link shared/theme/contract/strings!REQUIRED_STRING_KEYS | REQUIRED_STRING_KEYS}.
+ *
+ * @module
  */
 
 /** The Get Silver panel's and the `+` button's strings. */

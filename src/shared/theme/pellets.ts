@@ -8,12 +8,22 @@
  *
  * Asset IDs need two segments (validate.ts isAssetId), so the plan's `pellet` is `pellet.normal`; each kind's colour
  * role has the same ID as its asset (like `boost.<kind>`).
+ *
+ * The contract lists named above:
+ * {@link shared/theme/contract/ids!PORT_AUDIO_EVENTS | PORT_AUDIO_EVENTS},
+ * {@link shared/theme/contract/ids!REQUIRED_ASSET_IDS | REQUIRED_ASSET_IDS}.
+ *
+ * @module
  */
 
 import type { ColorRole } from "./types";
 
 /** The pellet kinds: the room's ordinary pellet and the rare power pellet (docs/PELLETS.md PD4). */
 export const PELLET_KINDS = ["normal", "power"] as const;
+/**
+ * A pellet kind's name (a PELLET_KINDS entry): the segment after `pellet.` in the kind's asset and colour role ID, and
+ * the key renderers ask the pack for a pellet's look by.
+ */
 export type PelletKind = (typeof PELLET_KINDS)[number];
 
 /** Asset (and colour role) ID of a pellet kind: `pellet.normal`, `pellet.power`. */

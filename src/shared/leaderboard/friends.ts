@@ -10,6 +10,8 @@
  * friends were never read yet (`pending`), so the client can say it is filling in.
  *
  * Pure: time is passed in; the service pumps `take` / `resolve` / `failed`.
+ *
+ * @module
  */
 import { DAILY_FRIENDS } from "shared/daily";
 import { SlidingWindowLimiter } from "shared/run";

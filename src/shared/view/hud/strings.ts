@@ -2,6 +2,8 @@
  * Every theme string key the HUD, the pause overlay, the post-run panel and the juice settings panel read. The React
  * components take their keys from here, and hud.spec.ts checks each one exists in the placeholder pack, so a missing
  * key fails the build instead of showing the raw key in game.
+ *
+ * @module
  */
 import {
 	BUILD_SCORE_SOURCE_NAMES,
@@ -14,6 +16,12 @@ import {
 	TREASURE_SCORE_SOURCE_NAMES,
 } from "shared/sim";
 import { LEAD_DEBUG_STRINGS, PACING_DEBUG_STRINGS, PREDICTION_DEBUG_STRINGS } from "../latencyProbeConfig";
+/**
+ * The theme string keys of the in-run HUD, the pause overlay, the run-over panel and the debug lines: status labels,
+ * the weapon panel, the boss phase, the pause and run-over lines and buttons, the run stats, the latency probes' parts,
+ * the score panel and breakdown, and the full map overlay. The juice settings panel's and the leaderboard's keys are
+ * `SETTINGS_STRINGS` and `LEADERBOARD_STRINGS`.
+ */
 export const HUD_STRINGS = {
 	title: "game.title",
 	health: "hud.health",

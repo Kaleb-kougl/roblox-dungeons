@@ -3,6 +3,8 @@
  * never as a literal in logic (CLAUDE.md, "No magic numbers").
  *
  * Import through the directory (`shared/config`), never the file.
+ *
+ * @module
  */
 export * from "./spikes";
 export * from "./view";

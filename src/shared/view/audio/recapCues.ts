@@ -12,6 +12,8 @@
  *     the next one.
  *   - Reduced motion: the timeline itself counts nothing and lands once at the end (RecapTimeline), so one land.
  * Ranked as in SFX_PRIORITY (land 60, tick 30: under every jingle), RECAP_AUDIO's volumes below the jingle's 1.
+ *
+ * @module
  */
 import { SFX } from "./cues";
 
@@ -29,6 +31,11 @@ export interface RecapCue {
 	volume: number;
 }
 
+/**
+ * The recap's volume scales (0..1, AudioController.play's `scale`), read by `recapCue`. Both stay under the run-over
+ * jingle's 1 so the count never covers it; raising one makes that sound louder on the run-over screen only (the room
+ * clear tally plays the same ids at 1).
+ */
 export const RECAP_AUDIO = {
 	/** sfx.score.tick's volume scale on the recap (the room tally plays it at 1; the recap is a quieter count). */
 	tickVolume: 0.6,

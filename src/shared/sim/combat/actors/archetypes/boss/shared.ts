@@ -23,6 +23,8 @@
  * than BOSS_MAX_REPEAT times in a row). Every other v[] slot is the boss's own.
  *
  * Deterministic: all state is in ActorState, randomness via ctx.random*, no trig.
+ *
+ * @module
  */
 
 import { SIM_DT, TILE_SIZE } from "../../../../units";
@@ -69,6 +71,7 @@ export const SEAL_OVERLAP_TOLERANCE = 1e-6;
 
 /** v[] slots: the last attack started, and how many times in a row. */
 export const BOSS_V_LAST = 5;
+/** v[6]: how many times in a row the attack in v[BOSS_V_LAST] has been started (never more than BOSS_MAX_REPEAT). */
 export const BOSS_V_REPEAT = 6;
 
 /** Without encounter rooms (unit tests), the boss wakes when the player comes this close. */
@@ -123,6 +126,7 @@ export interface BossFightSpec {
  * A boss's own code, called by stepBossFight. Implement every hook with method syntax (roblox-ts calls them with `:`).
  */
 export interface BossFightHooks<D extends BossFightData> {
+	/** The boss's tables the skeleton reads: each phase's first attack and the attack id shown while roaring. */
 	readonly spec: BossFightSpec;
 	/**
 	 * Picks (pickBossAttack) and starts the next attack: ctx.telegraph, or one of the boss's own states. The skeleton

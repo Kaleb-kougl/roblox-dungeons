@@ -1,6 +1,8 @@
 /**
  * Menu shell and lobby UI tunables (client/ui/menu), in the HUD's reference pixels (shared/view/hud HUD_VIEW: the
  * 1280x720 layout under the HUD's UIScale), plus the menu's fixed keys.
+ *
+ * @module
  */
 import type { HapticMotor } from "../fx/haptics";
 
@@ -16,6 +18,11 @@ export const MENU_BACK_HINT = { keyboard: "Backspace", gamepad: "B" } as const;
  */
 export const PAD_CONFIRM_LABEL = "A";
 
+/**
+ * The menu shell's and the lobby screens' layout tunables, in the HUD's reference px (seconds for the durations): panel
+ * and list sizes, row columns, button sizes and the count badge, where the invite toasts and lobby notices sit and how
+ * long they stay, and the display orders and ZIndex that layer the shell, its backdrop and its pointer sink.
+ */
 export const MENU_VIEW = {
 	/** Backdrop over the world while a menu screen is up (uiPanel / background roles). */
 	backdropTransparency: 0.15,
@@ -202,6 +209,10 @@ export interface MenuHapticPulse {
 
 /** The menu's haptic cues (GM9). No haptic on focus moves (the console guidelines warn against overuse). */
 export type MenuHaptic = "confirm" | "disabled" | "listEnd" | "holdComplete";
+/**
+ * Every menu haptic cue, as a list to iterate: padFeedback.ts builds each cue's pulses from it once, and the specs
+ * check every cue against `MENU_HAPTIC_MAX_PULSE_SEC`.
+ */
 export const MENU_HAPTIC_KINDS: ReadonlyArray<MenuHaptic> = ["confirm", "disabled", "listEnd", "holdComplete"];
 
 /** Longest single pulse a menu cue may play: a tick, never a rumble. */

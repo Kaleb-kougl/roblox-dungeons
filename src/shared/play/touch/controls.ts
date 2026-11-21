@@ -2,11 +2,17 @@
  * Touch controls state machine (docs/MOBILE_IMPL.md MB3, docs/MOBILE.md): fingers in, one TouchSnapshot per frame out.
  * Pure: no Roblox API, so controls.spec.ts runs it headlessly. The client's TouchControlsController feeds it touch
  * events and the frame environment, and the InputController merges its snapshot with the other devices.
+ *
+ * @module
  */
 import { TOUCH } from "shared/config";
 import { Button, DRAFT_COLUMN_CENTRE } from "shared/sim";
 import { clampUnit, screenToWorld, type Vec2 } from "../inputMapping";
 
+/**
+ * The on-screen touch controls a finger can begin on: the move stick, the action buttons (attack and alt are also aim
+ * sticks), the shrine prompt's button, and spectating's Next / Prev.
+ */
 export type TouchControlId =
 	| "move"
 	| "attack"
@@ -41,11 +47,20 @@ export interface TouchSnapshot {
 	readonly buttons: number;
 }
 
+/**
+ * A vector on the ground plane in world space (sim units): the touch aim, and the player-to-target vector the
+ * auto-target supplies.
+ */
 export interface WorldVec {
 	readonly x: number;
 	readonly z: number;
 }
 
+/**
+ * What the touch state machine needs from outside for one frame: the frame time, the stick size in pixels, the
+ * auto-target setting and lookup, the player's facing and the open draft's state. Built each frame by the client's
+ * TouchControlsController.
+ */
 export interface TouchFrameEnv {
 	/** Seconds since the previous frame() (already clamped by the caller). */
 	readonly dt: number;

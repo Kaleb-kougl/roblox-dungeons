@@ -13,6 +13,8 @@
  * Claims for one entry collapse to the highest tier (its floor with it); views collapse per id. A flush sends at most
  * every CODEX_OUTBOX.flushSeconds unless hurried (run over, the screen closing), and each remote at most
  * CODEX_OUTBOX.callsPerWindow calls per windowSeconds; what does not fit waits for a later flush (still hurried).
+ *
+ * @module
  */
 import { CODEX, CODEX_OUTBOX, type CodexOutboxTunables } from "./config";
 import type { CodexClaim } from "./doc";
@@ -42,6 +44,11 @@ class CallWindow {
 	}
 }
 
+/**
+ * The client's queue of Codex claims and viewed ids waiting to be sent (states and pacing in the file comment). One per
+ * client, owned by CodexController, which passes the clock in. The pacing, the claim batch size and the viewed batch
+ * size default to `CODEX_OUTBOX`, `CODEX.claimMaxItems` and `CODEX.viewedMaxIds`.
+ */
 export class CodexOutbox {
 	private state: OutboxState = "pending";
 	private readonly claimIds: string[] = [];

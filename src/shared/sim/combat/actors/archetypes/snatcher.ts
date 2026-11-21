@@ -35,6 +35,8 @@
  * counts it down); attack id SNATCHER_ATTACK_SWALLOW; v slots SNATCHER_CARRIED (the belly glow's count),
  * SNATCHER_SINCE (ticks since the first steal of this belly), SNATCHER_FLEEING (1 while fleeing); the pellets' events
  * `stolen` / `returned` / `swallowed` (sim/pellets pellets.ts).
+ *
+ * @module
  */
 
 import { GOLDEN_FLEE, type EncounterRoom } from "shared/dungeon";
@@ -68,16 +70,27 @@ import {
 } from "./enemyShared";
 import { SNATCHER_FLEE_TARGET, snatcherFleeTarget, snatcherInRoomBox } from "./snatcherField";
 
+/**
+ * Tuning of the Snatcher: its pellet reach, when it flees and when it swallows what it carries. Distances in world
+ * units, times in ticks.
+ */
 export interface SnatcherData extends RoomEnemyData {
 	/** Eats a pellet whose centre is within this of its centre (world units: a player's pickup reach). */
 	readonly eatRadius: number;
 	/** Flees while a living player is within fleeRadius, until none is within fleeRelease (world units). */
 	readonly fleeRadius: number;
+	/**
+	 * Once fleeing, it keeps fleeing until its target is farther than this (world units). Larger than `fleeRadius`, so
+	 * it does not flicker at the edge.
+	 */
 	readonly fleeRelease: number;
 	/** shared/dungeon fleeField's factor (the Goldling's). */
 	readonly fleeFactor: number;
 	/** Swallows at this many carried pellets, or this many ticks after its first steal. */
 	readonly stomach: number;
+	/**
+	 * Ticks after the first steal of this belly at which the swallow telegraph starts, however few pellets it carries.
+	 */
 	readonly swallowAfterTicks: number;
 	/** The swallow's telegraph (it stands still: the window to kill it). */
 	readonly swallowTicks: number;
@@ -99,6 +112,10 @@ export const SNATCHER_SINCE = 4;
 /** 1 while fleeing. */
 export const SNATCHER_FLEEING = 6;
 
+/**
+ * The registered `snatcher` archetype (band PORT_BAND_ENEMIES_3): a harmless pellet thief that never attacks and
+ * touches no rng stream.
+ */
 export const SNATCHER = registerArchetype<SnatcherData>({
 	id: SNATCHER_KIND,
 	band: PORT_BAND_ENEMIES_3,

@@ -6,6 +6,10 @@ const HIDDEN = 1;
 /** UIGradient's default runs left to right; a beam is tall, so its gradient runs top to bottom. */
 const ALONG_BEAM_DEG = 90;
 
+/**
+ * `DraftRays`' props. Everything that animates is a binding (DraftOverlay passes the draft reveal's per-frame values),
+ * so the ring fades, turns and scales without a re-render; `zIndex` places it on the card row's ray layer.
+ */
 export interface DraftRaysProps {
 	readonly color: Color3 | React.Binding<Color3>;
 	readonly visible: React.Binding<boolean>;

@@ -24,6 +24,8 @@
  * horde record's, the only record that doubles), and its `hordePoints` (the HORDE points since its engagement) is the
  * tally's last segment, the doubled half; `hordeBonusPoints`, the HORDE points of the clear tick (the bonuses' doubled
  * half), flies with the bonus. Both 0 in every other clear and run.
+ *
+ * @module
  */
 import { NO_KIND, ScoreSource, type RoomScore, type ScoreState, type SimState } from "shared/sim";
 
@@ -99,6 +101,12 @@ function lastKilledMember(state: Readonly<SimState>, r: Readonly<RoomScore>): nu
 	return best;
 }
 
+/**
+ * The per-frame collector of room clears. The run views (LiveRun, LockstepClient) call `reset` at the start of a
+ * rendered frame and `collect` after each sim tick; afterwards `clears` holds the frame's clears with their points
+ * split by source and `engaged` the number of rooms whose fight started. It keeps the previous tick's score totals to
+ * take the deltas. Read-only on the sim; does nothing in an unscored run.
+ */
 export class RoomClearEvents implements RoomClearSource {
 	readonly clears: RoomClear[] = [];
 	engaged = 0;

@@ -33,6 +33,8 @@
  * episode ends on progress or on a prompt change (the finish clears the prompt, so it ends there too); one that lasted
  * >= TUTORIAL.stuckSeconds reports { prompt, seconds } (rounded like lesson seconds), at most once per prompt id per
  * run. flush() ends the open episode for a client leaving early (a skip): call it right before sending the skip.
+ *
+ * @module
  */
 import { TUTORIAL } from "shared/config";
 import { SOLO_PLAYER, ScoreSource, type SimState } from "shared/sim";
@@ -56,6 +58,10 @@ export interface TutorialStuckReport {
 	readonly seconds: number;
 }
 
+/**
+ * Overrides for a `TutorialMetrics` (and, passed through, for the director that owns it). The specs and the tutorial
+ * bot set their own stuck threshold with it; the client passes none.
+ */
 export interface TutorialMetricsOptions {
 	/** The stuck threshold, real seconds (default TUTORIAL.stuckSeconds). */
 	readonly stuckSeconds?: number;
@@ -106,6 +112,13 @@ function scoreCount(state: Readonly<SimState>, source: number): number {
 	return state.score?.counts[source] ?? 0;
 }
 
+/**
+ * The tutorial's lesson clocks and stuck-episode detector (definitions in the module comment). The director owns one
+ * per run and calls `update` at the end of each of its own updates with the frame and the resolved view. Each update
+ * refills `newLessonReports` and `newStuckReports` with that frame's reports only (the arrays are reused, so copy what
+ * you keep); the client sends them to the server as `tutorialLesson` / `tutorialStuck`. `flush` ends an open stuck
+ * episode before a skip.
+ */
 export class TutorialMetrics {
 	/** Reused every update (see TutorialView.newLessonReports / newStuckReports). */
 	readonly newLessonReports: TutorialLessonReport[] = [];

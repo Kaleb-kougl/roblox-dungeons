@@ -13,6 +13,8 @@
  *                       (stageAuditMisses)
  *   stageMergedAssets   several stage inputs' manifests as one StageAssetSet in input order, each id once (the menu /
  *                       lobby prefetch of every possible first-floor biome)
+ *
+ * @module
  */
 import type { PreloadSource } from "./preload";
 import { stageAssetsInOrder, stageAuditMisses, type StageAssetInput, type StageAssetSet } from "./stageAssets";
@@ -23,6 +25,10 @@ import { stageEntriesMatch } from "./stageGroups";
 /** How a watched lookup names its logical id. */
 export type StageAuditKey = "arg" | "result" | "biome";
 
+/**
+ * The shape of `STAGE_AUDIT`: which ThemePack lookups the `KV_StageAssetAudit` recording watches and how each call's
+ * logical id is read, and how many misses the report prints.
+ */
 export interface StageAuditConfig {
 	/** ThemePack method name -> how its logical id is read. */
 	readonly methods: ReadonlyArray<readonly [method: string, key: StageAuditKey]>;
@@ -30,6 +36,11 @@ export interface StageAuditConfig {
 	readonly maxMissLines: number;
 }
 
+/**
+ * The audit's watch list in play (see the file comment). A new ThemePack lookup that resolves art or sound must be
+ * added here or the audit cannot see what it used; the spec fails on a name that is not a ThemePack method. At most 40
+ * misses print one per line.
+ */
 export const STAGE_AUDIT: StageAuditConfig = {
 	methods: [
 		["texture", "arg"],

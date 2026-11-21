@@ -8,6 +8,8 @@
  * number is free to move at the CB9 tuning pass.
  *
  * Units: HUD sizes are reference px (HUD_VIEW); floor sizes are tiles; times are real seconds.
+ *
+ * @module
  */
 import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG } from "shared/config";
 import { degToRad } from "../iso";

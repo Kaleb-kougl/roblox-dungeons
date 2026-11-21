@@ -12,6 +12,8 @@
  * What the spec holds (HUD scale <= 100 %, every HUD_TEST_VIEWPORTS entry, ten-foot on and off): no always-on box in
  * the clear zone, the centre column and centre row never covered. Above 100 % (110 / 125 %) a box may reach into the
  * clear zone on some viewports; the spec prints those combinations rather than failing (the player chose a bigger HUD).
+ *
+ * @module
  */
 import type { HudCorner } from "./corners";
 import { PROGRESSION_VIEW, SIGHTING_CARD } from "./progression";
@@ -23,8 +25,16 @@ import { TUTORIAL_VIEW } from "./tutorial";
 
 /** The always-on in-run panels, in a fixed order (iterate ALWAYS_ON_PANELS, never the record). */
 export type AlwaysOnPanel = "status" | "score" | "weapons" | "minimap";
+/**
+ * The always-on panels in their fixed order: what `footprintRects` and `footprintReport` iterate, so the spec's output
+ * never depends on a record's key order.
+ */
 export const ALWAYS_ON_PANELS: ReadonlyArray<AlwaysOnPanel> = ["status", "score", "weapons", "minimap"];
 
+/**
+ * An always-on panel's budget box: the screen corner it sits in (`HUD_VIEW.margin` from both edges) and the largest
+ * size it may take. The values are `HUD_FOOTPRINT`.
+ */
 export interface FootprintBox {
 	readonly corner: HudCorner;
 	/** Largest size the panel may take, reference px. */
@@ -59,6 +69,7 @@ export type TransientPanel =
 	| "roomClear"
 	| "roomClearChip"
 	| "sighting";
+/** The transient panels in their fixed order: what `transientRects` iterates (never the `HUD_TRANSIENT` record). */
 export const TRANSIENT_PANELS: ReadonlyArray<TransientPanel> = [
 	"bossBar",
 	"bossBarLow",
@@ -78,6 +89,10 @@ export const TRANSIENT_PANELS: ReadonlyArray<TransientPanel> = [
  */
 export type TransientAnchor = "topCentre" | "bottomCentre" | "topLeft" | "topRight" | "bottomRight";
 
+/**
+ * A transient panel's box at its fullest, in reference px before the HUD scale: where it hangs and how large it gets.
+ * The values are `HUD_TRANSIENT`; `transientRects` turns them into screen rects.
+ */
 export interface TransientBox {
 	readonly anchor: TransientAnchor;
 	/** Reference px from the anchored screen edge (top or bottom) to the box's near edge. */
@@ -158,6 +173,12 @@ export const VERDICT_BOX = {
 const BOSS_BAR_HEIGHT = stack([line(HUD_VIEW.titleText), HUD_VIEW.bossBarHeight]);
 const SPECTATE_BAR_HEIGHT = stack([line(HUD_VIEW.textSize), line(HUD_VIEW.smallText), line(HUD_VIEW.smallText)]);
 
+/**
+ * Every transient panel's box (reference px before the HUD scale), by panel: the boss bar in its top and bottom spots,
+ * the toasts, the tutorial prompt, the spectate bar, the verdict line, the room clear stamp and chips, and the
+ * first-sighting card. Heights are estimates at the panel's fullest; footprint.spec.ts checks none lands on an
+ * always-on box.
+ */
 export const HUD_TRANSIENT = {
 	bossBar: {
 		anchor: "topCentre",
@@ -257,6 +278,7 @@ export const TOUCH_SIGHTING_BOX: TransientBox = { ...HUD_TRANSIENT.sighting, edg
 /** The middle of the safe area always-on panels never enter, as fractions of its width and height. */
 export const HUD_CLEAR_ZONE = { x0: 0.25, x1: 0.75, y0: 0.22, y1: 0.78 } as const;
 
+/** The budget's caps that footprint.spec.ts holds on every test viewport. */
 export const HUD_FOOTPRINT_LIMITS = {
 	/**
 	 * The always-on boxes together cover at most this share of the safe area (HUD scale 100 %). 0.12 until the corner
@@ -313,6 +335,10 @@ function transientRect(box: TransientBox, vw: number, vh: number, scale: number)
 	return { x: vw - edge - w, y: vh - edge - h, w, h };
 }
 
+/**
+ * One panel's screen rect in px (origin at the viewport's top left): an entry of `footprintRects` (always-on panels) or
+ * `transientRects` (transient ones).
+ */
 export interface PanelRect<P> {
 	readonly panel: P;
 	readonly rect: ScreenRect;
@@ -371,6 +397,7 @@ export function rectsOverlap(a: ScreenRect, b: ScreenRect): boolean {
 	return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 }
 
+/** One always-on panel's line of `footprintReport`. */
 export interface FootprintEntry {
 	readonly panel: AlwaysOnPanel;
 	/** The budget box reaches into HUD_CLEAR_ZONE. */
@@ -379,6 +406,11 @@ export interface FootprintEntry {
 	readonly coverShare: number;
 }
 
+/**
+ * What `footprintReport` returns for a viewport and HUD scale: each always-on box against `HUD_CLEAR_ZONE` and the
+ * shares of the safe area they cover (0..1). footprint.spec.ts holds `intrudes` false and `totalShare` under
+ * `HUD_FOOTPRINT_LIMITS.maxCoverShare`.
+ */
 export interface FootprintReport {
 	readonly panels: ReadonlyArray<FootprintEntry>;
 	/** Every always-on box together (they never overlap each other). */

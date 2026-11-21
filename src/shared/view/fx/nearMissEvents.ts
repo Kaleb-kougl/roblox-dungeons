@@ -13,6 +13,8 @@
  *
  * Read-only on the sim. No allocation in steady state: records come from pools that only grow when a frame holds more
  * than any frame before it. Presentation only: nothing here is hashed or written back.
+ *
+ * @module
  */
 import type { SimState } from "shared/sim";
 

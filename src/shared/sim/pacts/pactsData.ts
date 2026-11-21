@@ -3,6 +3,8 @@
  * Data only, a LEAF: pacts.ts builds ENDLESS_PACTS_CONFIG from these; score.ts and endless.ts read the run's config
  * through state.pacts. Where the altars stand and which curse Greed shows are floor data (shared/dungeon pactsData.ts
  * PACTS, pactCurseIndex); the PactKind indices live there too (re-exported here).
+ *
+ * @module
  */
 import { secondsToTicks } from "../playerData";
 
@@ -14,6 +16,7 @@ export const PACT_LEGENDARY_CARDS = 3;
 export const HORDE_MAX_WAVE = 10;
 /** Horde's second wave: the telegraph (spawn rings at its tiles) lasts this long before it spawns (FD7: 1 s). */
 export const HORDE_WAVE_TELEGRAPH_SECONDS = 1;
+/** `HORDE_WAVE_TELEGRAPH_SECONDS` in ticks (60): the game's `PactsConfig.waveTelegraphTicks`. */
 export const HORDE_WAVE_TELEGRAPH_TICKS = secondsToTicks(HORDE_WAVE_TELEGRAPH_SECONDS); // 60
 /**
  * Horde's pay (FD8): every award of the horde room's record x this / 100, through awardPoints' bonusPercent (an exact
@@ -48,6 +51,7 @@ export const PactDim = {
 	/** The player cannot take anything (dead, or left the party). */
 	UNABLE: 5,
 } as const;
+/** A valid `PactDim` value. */
 export type PactDimId = (typeof PactDim)[keyof typeof PactDim];
 /** Names in index order (theme string keys `pact.dim.<name>`). */
 export const PACT_DIM_NAMES = ["none", "taken", "noCurse", "noLegendary", "noRoom", "unable"] as const;

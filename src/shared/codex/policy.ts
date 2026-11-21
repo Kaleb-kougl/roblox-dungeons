@@ -9,11 +9,17 @@
  * and never a run started with KV_Debug on, a dev run (`ctx.dev`) or a stress run (R9). Private servers claim. Studio
  * claims too (the session cache; with KV_FakeCodex for tests): only the server's DataStore WRITE is gated there
  * (codexWritesAllowed, CODEX.writeFromStudio).
+ *
+ * @module
  */
 import { DAILY_WORLD_KIND } from "shared/daily";
 import { ENDLESS_WORLD_KIND, TUTORIAL_WORLD_KIND, type RunWorldKind } from "shared/run";
 import { CODEX } from "./config";
 
+/**
+ * The rules for which runs record Codex entries and whether Studio writes the store, as data so a spec can flip one
+ * rule. The live values are `CODEX_POLICY`.
+ */
 export interface CodexPolicy {
 	/** Worlds whose runs claim and show codex toasts. */
 	readonly toastWorlds: ReadonlyArray<RunWorldKind>;
@@ -29,6 +35,11 @@ export interface CodexPolicy {
 	readonly writeFromStudio: boolean;
 }
 
+/**
+ * The live policy: endless and Daily runs claim with toasts, the tutorial claims silently, no other world claims;
+ * debug, dev and stress runs never claim; Studio writes the DataStore only when `CODEX.writeFromStudio` is on (it is
+ * off).
+ */
 export const CODEX_POLICY: CodexPolicy = table.freeze({
 	toastWorlds: table.freeze([ENDLESS_WORLD_KIND, DAILY_WORLD_KIND]),
 	silentWorlds: table.freeze([TUTORIAL_WORLD_KIND]),
@@ -52,6 +63,10 @@ export interface CodexRunContext {
 	readonly studio: boolean;
 }
 
+/**
+ * The answer of `codexEligibility` for one run: whether it records entries at all and whether it may show the Codex's
+ * in-run presentation. `toasts` is never true without `claims`.
+ */
 export interface CodexEligibility {
 	/** The run records Codex entries. */
 	readonly claims: boolean;
@@ -63,6 +78,11 @@ const NONE: CodexEligibility = table.freeze({ claims: false, toasts: false });
 const SILENT: CodexEligibility = table.freeze({ claims: true, toasts: false });
 const FULL: CodexEligibility = table.freeze({ claims: true, toasts: true });
 
+/**
+ * Whether a run claims Codex entries, decided once at run start on the client. A debug, dev or stress run claims
+ * nothing whatever its world (unless the policy allows it); otherwise a toast world claims with toasts, a silent world
+ * claims without, and any other world claims nothing. `ctx.studio` is not read: Studio runs claim like any other.
+ */
 export function codexEligibility(ctx: CodexRunContext, policy: CodexPolicy = CODEX_POLICY): CodexEligibility {
 	if (ctx.debug && !policy.claimDebug) return NONE;
 	if (ctx.dev && !policy.claimDev) return NONE;

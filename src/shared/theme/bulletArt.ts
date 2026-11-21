@@ -17,6 +17,8 @@
  *   - the floor sprites (BULLET_ART.floorSpriteIds: the goo puddle, docs/GOO_ART.md GA2) are not flying bullets: no
  *     entry here, gooArt.ts `gooArtReport` holds them to their own rules.
  * The set's own fields (cells in range, fps, sheets) are validate.ts validateSpriteSet's, as for every sprites set.
+ *
+ * @module
  */
 
 import { colorDifference, contrastRatio, isHexColor } from "./color";

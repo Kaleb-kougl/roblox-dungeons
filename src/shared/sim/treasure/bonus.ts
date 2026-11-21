@@ -2,6 +2,8 @@
  * A Legendary chest's bonus deal (docs/TREASURE.md TR4, TRD9, TR0 correction 7). A LEAF (state types only):
  * progression.ts's stepRun step 1 adds these to the floor's deals when it opens each present player's draft, so it never
  * imports the treasure step.
+ *
+ * @module
  */
 import type { SimState } from "../state";
 

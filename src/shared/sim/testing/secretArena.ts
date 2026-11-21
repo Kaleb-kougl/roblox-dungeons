@@ -5,6 +5,8 @@
  * void outside. The grid is the CARVED one (shared/dungeon carveSecret's output: the crack cells and the chamber FLOOR),
  * as the sim steps on it; the pieces are `extra` (slots 0 ..), then the two crack pieces, then the chest. Run as an
  * endless run so the floor's world carries the pieces and the plan (EndlessFloorWorld.breakables / .secret).
+ *
+ * @module
  */
 import {
 	TileType,
@@ -26,6 +28,10 @@ import type { SimConfig } from "../step";
 import { BREAKABLES_CONFIG } from "../breakables/breakables";
 import { PLAYER_RADIUS } from "../playerData";
 
+/**
+ * The arena's layout numbers, in grid cells (gx, gz; 1 cell = 1 world unit): a W x H grid, rectangles with inclusive
+ * `x0..x1` / `z0..z1` for the room and origin plus size for the chamber. The spawn is in world units.
+ */
 export const ARENA = {
 	W: 40,
 	H: 32,
@@ -114,6 +120,7 @@ export function arenaPieces(extra: ReadonlyArray<BreakablePlacement> = []): Brea
 	return out;
 }
 
+/** What a spec may vary when it builds the arena's world or config; every field is optional. */
 export interface ArenaOptions {
 	/** Pieces before the crack (slots 0 ..). */
 	readonly extra?: ReadonlyArray<BreakablePlacement>;

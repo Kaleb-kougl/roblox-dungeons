@@ -12,6 +12,8 @@
  * tether; docs/RUN_RECAP.md Part B). The pure logic
  * is shared/view/fx (and shared/view/hud for the combo, the PARRY! text and the draft reveal); these only draw it.
  * docs/CLIENT.md "Juice".
+ *
+ * @module
  */
 export * from "./FxTrackerController";
 export * from "./FreezeFrameController";

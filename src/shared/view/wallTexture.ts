@@ -9,11 +9,17 @@
  * How each side face's U / V run in the world and which way OffsetStudsU/V shift the pattern are Roblox conventions
  * this module does not assume: they are the `WallTextureUV` passed in (GAME_WORLD.wallTextureUV, to be confirmed in
  * Studio: no seams at wall joins, the image upright). The wall Parts are axis-aligned (no rotation).
+ *
+ * @module
  */
 import { floorTextureOffsets, textureAxisOffset, type TopFaceUV } from "./floorTexture";
 
 /** The side faces of an axis-aligned Part (Enum.NormalId names): Front -Z, Back +Z, Left -X, Right +X. */
 export const WALL_SIDE_FACES = ["Front", "Back", "Left", "Right"] as const;
+/**
+ * One side face of a wall Part: an entry of `WALL_SIDE_FACES` (an Enum.NormalId name), and a key of the per-face
+ * mapping in `WallTextureUV`.
+ */
 export type WallSideFace = (typeof WALL_SIDE_FACES)[number];
 /** A wall face that can carry the texture (Enum.NormalId names; the Bottom face lies on the floor, never seen). */
 export type WallTextureFace = "Top" | WallSideFace;

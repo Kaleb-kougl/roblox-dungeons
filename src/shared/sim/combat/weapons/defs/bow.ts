@@ -17,6 +17,8 @@
  * WEB_BOW_TUNING 4 + 1) and is aim-assisted: released, it flies straight at the living enemy nearest the facing within
  * heavyAssistConeCos (10 degrees) and its reach, in line of sight (bowAssistAim; none: the facing as before). Every golden
  * fixture was recorded with the web bow, so the parity specs replay under setBowTuning(WEB_BOW_TUNING).
+ *
+ * @module
  */
 
 import { PLAYER_MUZZLE_OFFSET, TURN_COS } from "../../combatData";
@@ -37,18 +39,29 @@ import { jsMin } from "shared/jsmath";
 import { runMods, scaleTicks } from "../../../progression/runMods";
 import type { SimState } from "../../../state";
 
+/**
+ * The bow's gameplay data: the stream arrow, the charged heavy arrow and its aim assist. Speeds are world units per
+ * second, lifetimes seconds, timers ticks at 60 Hz.
+ */
 export interface BowData extends WeaponData {
 	/** Stream: ticks between arrows while FIRE is held (= cooldownTicks). */
 	streamTicks: number;
 	/** Stream arrow speed (world units / s) and lifetime (s). */
 	speed: number;
+	/** Stream arrow lifetime, seconds (range = `speed` x `life`). */
 	life: number;
 	/** Charged shot: ticks ALT must be held. */
 	chargeTicks: number;
 	/** Walking speed multiplier while charging. */
 	chargeMoveMultiplier: number;
+	/**
+	 * Heavy arrow damage per actor hit, enemy hit points. Retuned by the port (`BOW_HEAVY_DAMAGE`; `WEB_BOW_TUNING`
+	 * restores the web value).
+	 */
 	heavyDamage: number;
+	/** Heavy arrow speed, world units per second. */
 	heavySpeed: number;
+	/** Heavy arrow lifetime, seconds. `heavySpeed` x `heavyLife` is also the aim assist's reach. */
 	heavyLife: number;
 	/** Actors the heavy arrow passes through (it can hit heavyPierce + 1). */
 	heavyPierce: number;
@@ -65,6 +78,10 @@ export interface BowData extends WeaponData {
 /** The port's heavy arrow damage (the web build's 4 + 1). */
 export const BOW_HEAVY_DAMAGE = 5;
 
+/**
+ * The bow's live tuning, read by the sim on every shot. Mutable only through `setBowTuning` (specs), which swaps
+ * `heavyDamage` and `heavyAssist`; the defaults here are the port's retuned values, not the web build's.
+ */
 export const BOW_DATA: BowData = {
 	cooldownTicks: secondsToTicks(0.2), // 12: 5 arrows / s
 	streamTicks: secondsToTicks(0.2),
@@ -87,7 +104,9 @@ export const BOW_DATA: BowData = {
 
 /** The bow values the port retuned (CLAUDE.md decision log): the heavy arrow's damage and its aim assist. */
 export interface BowTuning {
+	/** Heavy arrow damage, enemy hit points (web 4, port 5). */
 	readonly heavyDamage: number;
+	/** Whether the heavy arrow's aim assist is on (web: off, port: on). */
 	readonly heavyAssist: boolean;
 }
 
@@ -99,7 +118,12 @@ export const WEB_BOW_TUNING: BowTuning = { heavyDamage: 4, heavyAssist: false };
 
 /** Scratch slots (slot.v). */
 export const BOW_V_CHARGE = 0;
+/** `slot.v` index of the stream's wobble step, 0 to 3: advanced (wrapping) by every stream arrow fired. */
 export const BOW_V_SHOT = 1;
+/**
+ * `slot.v` index of the tick after the last heavy arrow was released (0 = none yet). Read by the view for the release
+ * flash; hashed with the rest of `slot.v`.
+ */
 export const BOW_V_HEAVY_TICK = 2;
 
 const ARROW: BurstSpec = {
@@ -178,6 +202,10 @@ halfRotation(wobble.x, wobble);
 halfRotation(wobble.x, wobble);
 /** cos / sin of the stream's side step. */
 export const BOW_WOBBLE_COS = wobble.x;
+/**
+ * Sine of the stream's side step (about 1.78 degrees). The stream turns the facing by plus or minus this angle with
+ * `rotateDir`, no trig call.
+ */
 export const BOW_WOBBLE_SIN = wobble.z;
 /** Side step per stream arrow: 0, +1, 0, -1 (times the wobble angle). */
 const WOBBLE_PATTERN = [0, 1, 0, -1] as const;
@@ -239,6 +267,10 @@ function muzzleFire(ctx: SimCtx, slot: WeaponSlotState, dirX: number, dirZ: numb
 	return ctx.firePlayer(slot, p.x + dirX * PLAYER_MUZZLE_OFFSET, p.z + dirZ * PLAYER_MUZZLE_OFFSET, dirX, dirZ, spec);
 }
 
+/**
+ * The registered `weapon.bow` def. Trigger `hold`: `fire` is the stream; `step` runs the ALT charge and releases the
+ * heavy arrow; `moveMultiplier` slows the walk while charging.
+ */
 export const BOW = registerWeapon<BowData>({
 	id: "weapon.bow",
 	data: BOW_DATA,

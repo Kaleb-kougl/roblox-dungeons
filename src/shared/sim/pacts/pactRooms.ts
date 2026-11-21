@@ -12,6 +12,8 @@
  *   pactKillPercent     scoreKill: the x2 for a kill of one of the horde record's members (adopted children and the
  *                       second wave included)
  *   pactRoomCleared     clearRoom: the horde record cleared (events.hordeCleared)
+ *
+ * @module
  */
 import type { SimState } from "../state";
 import type { ActorState } from "../combat/actors/types";

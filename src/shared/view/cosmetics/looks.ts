@@ -4,6 +4,8 @@
  * the view's clock, held at its first stop under reduced motion), whole 0..255 channels so a caller rewrites a property
  * only when a channel moves (`rgb8Key`), the dye x tint the sprite's dye label shows, which character a dye belongs to,
  * and the sprite sets whose dye sheets a stage loads (`stageDyeSets`). No Roblox types: the client builds Color3s.
+ *
+ * @module
  */
 import { CHARACTER_IDS, type CharacterId } from "shared/characters";
 import { DYE_SLOTS, NO_LOOK, cosmeticItem, isPrismaticItem, type CosmeticLook } from "shared/cosmetics";

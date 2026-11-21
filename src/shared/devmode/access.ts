@@ -1,6 +1,8 @@
 /**
  * Who may use developer mode (docs/DEV_MODE.md): the pure rule DevModeService applies to each joining player (the
  * client never decides; it reads the player attribute the server sets). Plain data in, boolean out: tested headlessly.
+ *
+ * @module
  */
 import { DEV_MODE } from "shared/config";
 

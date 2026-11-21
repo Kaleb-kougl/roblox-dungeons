@@ -36,6 +36,8 @@
  *            per step; every spacingTiles-th step
  *
  * Output: FloorPellets, pellets in (room id, path) order, world tile centres.
+ *
+ * @module
  */
 import { u32 } from "shared/jsmath";
 import { TileType, type Dungeon } from "./forge";

@@ -57,9 +57,12 @@ const UI_NAV_KEYS = new Set(["ButtonA", "ButtonB", "DPadUp", "DPadDown", "DPadLe
 /** The weapon buttons (Attack, Alt) in a sampled frame: what the item tooltips' shy HUD rule reads (weaponHeld). */
 const WEAPON_BUTTONS = bit32.bor(Button.FIRE, Button.ALT);
 
-type DriverListener = (action: Exclude<DriverKeyAction, undefined>) => void;
-type MapListener = () => void;
-type MenuPadListener = (input: MenuPadInput) => void;
+/** Called with each driver key press (restart, replay check): `onDriverAction`. */
+export type DriverListener = (action: Exclude<DriverKeyAction, undefined>) => void;
+/** Called when the bound `map` input is pressed: `onMapAction`. */
+export type MapListener = () => void;
+/** Called with each menu-only gamepad input while a menu owns the pad: `onMenuPadInput`. */
+export type MenuPadListener = (input: MenuPadInput) => void;
 
 /** What a touch frame needs from the run (SimController passes it to sample). */
 export interface TouchAimContext {
@@ -105,6 +108,13 @@ function activePad(pads: ReadonlyArray<Enum.UserInputType>): Enum.UserInputType 
 	return pads.includes(Enum.UserInputType.Gamepad1) ? Enum.UserInputType.Gamepad1 : pads[0];
 }
 
+/** A TextBox has focus: one of ours / legacy chat (GetFocusedTextBox) or the TextChatService input bar (CoreGui). */
+function chatFocused(): boolean {
+	if (UserInputService.GetFocusedTextBox() !== undefined) return true;
+	const bar = TextChatService.FindFirstChildOfClass("ChatInputBarConfiguration");
+	return bar !== undefined && bar.IsFocused;
+}
+
 /**
  * Roblox devices -> one quantized InputFrame per rendered frame (the pure mapping is shared/play inputMapping.ts, a
  * port of the web build's devices.ts). Keyboard and mouse buttons and the gamepad are POLLED in `sample` (no stuck
@@ -126,13 +136,6 @@ function activePad(pads: ReadonlyArray<Enum.UserInputType>): Enum.UserInputType 
  * captured into a slot (or moved to another action) does not fire. While a rebind capture owns the input
  * (`options.inputCaptured`) the sink swallows everything and reports no driver keys (R would otherwise restart).
  */
-/** A TextBox has focus: one of ours / legacy chat (GetFocusedTextBox) or the TextChatService input bar (CoreGui). */
-function chatFocused(): boolean {
-	if (UserInputService.GetFocusedTextBox() !== undefined) return true;
-	const bar = TextChatService.FindFirstChildOfClass("ChatInputBarConfiguration");
-	return bar !== undefined && bar.IsFocused;
-}
-
 @Controller({})
 export class InputController implements OnStart {
 	private readonly tracker = new InputDeviceTracker();

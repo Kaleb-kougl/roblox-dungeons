@@ -13,10 +13,13 @@
  * `pack` ORs `(v & mask) << shift` in field order. Every payload is a non-negative integer < 2^28 (stored as a double).
  *
  * Built with the ported `definePayload` (./projectilePatterns.ts); the pool is ./bullets.ts.
+ *
+ * @module
  */
 
 import { definePayload } from "./projectilePatterns";
 
+/** Names of the bullet payload's bit fields (the file comment gives each one's width and meaning). */
 export type PayloadField = "damage" | "kind" | "source" | "pierce" | "lastHit";
 
 /** Field order and widths, lowest bits first. */
@@ -28,6 +31,10 @@ export const PAYLOAD_FIELDS: ReadonlyArray<readonly [PayloadField, number]> = [
 	["lastHit", 7],
 ];
 
+/**
+ * Field values to pack into a payload; a missing field packs as 0. Each must be a whole number that fits its field's
+ * width.
+ */
 export type PayloadValues = { [K in PayloadField]?: number };
 
 /**

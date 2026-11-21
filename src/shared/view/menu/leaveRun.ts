@@ -10,6 +10,8 @@
  * and ends the run on this client (LockstepClient.end with LEFT_RUN_END_REASON): nothing more is stepped or sent, and
  * its run-over panel shows the run up to the leave. Back to lobby then goes at once: the party's verdict comes only
  * when the rest of the party is done, and a player who left does not wait for it (partyExitStep).
+ *
+ * @module
  */
 
 /** LockstepClient.end's reason for a party run this client left. */

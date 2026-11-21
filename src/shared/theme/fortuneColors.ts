@@ -16,6 +16,8 @@
  *     outline red; the closest today is enemy.charger vs enemyBulletOutline, 41.6): a harmless runner must never read
  *     as a threat cue. Gold sits next to the telegraph orange, so this one is checked. No floor check (enemy colours
  *     have none: the actor outline carries them).
+ *
+ * @module
  */
 
 import { ENEMY_BULLET_ROLES, MIN_DECOR_FX_BULLET_DIFFERENCE } from "./contract";

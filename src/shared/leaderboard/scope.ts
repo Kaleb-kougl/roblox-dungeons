@@ -4,6 +4,8 @@
  * plus the client's request shape (`getLeaderboard`) and how the server resolves it with its own clock.
  *
  * Pure. The all-time ref keeps every key the M5 code used (cache key = the board name, details key `<board>_u_<id>`).
+ *
+ * @module
  */
 import { DAILY, dailyScope, type DailyRunKey } from "shared/daily";
 import {
@@ -15,6 +17,7 @@ import {
 
 /** What the client asks for: the all-time boards, today's daily board or yesterday's (by the server's clock). */
 export type LeaderboardScope = "alltime" | "today" | "yesterday";
+/** Every scope a client may ask for, the list `parseLeaderboardRequest` checks a remote argument's `scope` against. */
 export const LEADERBOARD_SCOPES: ReadonlyArray<LeaderboardScope> = ["alltime", "today", "yesterday"];
 
 /** The scope string of the all-time boards (their stores are unscoped: GetOrderedDataStore(name)). */
@@ -35,14 +38,26 @@ export interface LeaderboardRequest {
 	friends?: boolean;
 }
 
+/**
+ * The ref of an all-time board (solo or co-op): unscoped, so its cache and details keys are the ones the game used
+ * before daily boards existed.
+ */
 export function alltimeBoard(board: LeaderboardBoard): BoardRef {
 	return { board, scope: ALLTIME_SCOPE };
 }
 
+/**
+ * The ref of a daily board for the day and ruleset in `key`: the scope is `dailyScope(day, ruleset)` and the ref
+ * carries its own copy of the day and ruleset (never the caller's object).
+ */
 export function dailyBoard(board: LeaderboardBoard, key: DailyRunKey): BoardRef {
 	return { board, scope: dailyScope(key.day, key.ruleset), daily: { day: key.day, ruleset: key.ruleset } };
 }
 
+/**
+ * True for a daily board's ref, false for an all-time one. Decided by the scope string alone, so a ref rebuilt from a
+ * write job (`jobBoard`, which has no `daily` field) answers the same.
+ */
 export function isDailyBoard(ref: BoardRef): boolean {
 	return ref.scope !== ALLTIME_SCOPE;
 }

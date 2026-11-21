@@ -11,6 +11,8 @@
  * Inter-arrival gaps run from one batch to the next, across windows (a window's first gap is measured from the last
  * batch of the window before). Quantiles are nearest rank: the smallest gap with at least that share at or below it.
  * formatArrivalLine turns a window and the client's pacing numbers into the line SimController prints.
+ *
+ * @module
  */
 import { SIM_DT, isFiniteNumber } from "shared/sim";
 import { ARRIVAL_LOG, type ArrivalLogTunables } from "./config";
@@ -21,21 +23,27 @@ const MS_PER_SEC = 1000;
 const PERCENT = 100;
 const NONE = "-";
 
+/** One window of the arrival log: what `ArrivalLog.take` returns and the KV_Debug line prints. */
 export interface ArrivalWindow {
 	/** The window's length, seconds of local clock. */
 	readonly seconds: number;
 	/** Batches that arrived in it, and the ticks they carried. */
 	readonly batches: number;
+	/** The ticks those batches carried, in total. */
 	readonly ticks: number;
 	/** Inter-arrival gaps (ms): ARRIVAL_LOG's mid / high quantiles and the max; undefined with no gap measured. */
 	readonly gapMidMs: number | undefined;
+	/** The gaps' high quantile (`ARRIVAL_LOG.highPercentile`), ms; undefined with no gap measured. */
 	readonly gapHighMs: number | undefined;
+	/** The longest gap, ms; undefined with no gap measured. */
 	readonly gapMaxMs: number | undefined;
 	/** Batch-size histogram: sizes[i] batches of i + 1 ticks; the last bucket counts sizeBuckets or more. */
 	readonly sizes: ReadonlyArray<number>;
 	/** Rendered frames, their rate over the window (undefined for an empty window) and the longest one (ms). */
 	readonly frames: number;
+	/** Rendered frames per second over the window; undefined for a window of no length. */
 	readonly fps: number | undefined;
+	/** The longest rendered frame of the window, ms; undefined when no frame was counted. */
 	readonly worstFrameMs: number | undefined;
 }
 
@@ -49,6 +57,10 @@ export function nearestRank(sorted: ReadonlyArray<number>, p: number): number | 
 	return sorted[rank - 1];
 }
 
+/**
+ * Collects merged-batch arrivals and rendered frames into fixed windows for the KV_Debug co-op line. Bookkeeping only:
+ * it never changes what is sent, stepped, hashed or recorded.
+ */
 export class ArrivalLog {
 	private readonly tunables: ArrivalLogTunables;
 	private start: number | undefined;
@@ -142,6 +154,7 @@ export interface ArrivalLineInfo {
 	readonly pacingOff: boolean;
 	/** LockstepClient.inputLead() (effective) and netLead(), ticks. */
 	readonly lead: number;
+	/** LockstepClient.netLead(): the lead before the pacing buffer's depth is added, ticks. */
 	readonly netLead: number;
 	/** LockstepClient.mismatches so far (the `miss` of the debug line). */
 	readonly misses: number;

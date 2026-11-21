@@ -2,6 +2,8 @@
  * Barrel for the Task 1 go/no-go spikes, the preload spike P0, the invites spike I0, the touch spike MB0, the UI art
  * spike UA1, the localization spike L0 and the gamepad spike GM0 (docs/SPIKES.md). All are off by default; see
  * shared/config spikes.ts for the flags.
+ *
+ * @module
  */
 export * from "./BulletSpikeController";
 export * from "./CameraSpikeController";

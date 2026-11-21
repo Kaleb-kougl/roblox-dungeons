@@ -9,6 +9,8 @@
  * index moves. It is in no random pool (dungeon/endlessData ENDLESS_ROOM_KINDS, enemyRooms populateEnemies): only
  * an explicit `{ kind: DUMMY_KIND }` spawn places it. dungeon/encounterCost has no entry on purpose (it is not bought
  * with a budget), so room par time uses DEFAULT_ENCOUNTER_COST (1).
+ *
+ * @module
  */
 
 import { PORT_BAND_TUTORIAL, registerArchetype } from "../registry";
@@ -26,6 +28,10 @@ const DUMMY_HP = 8;
 /** Body radius, world units: a slim post (the swarmer is 0.3, the bruiser 0.5). */
 const DUMMY_RADIUS = 0.35;
 
+/**
+ * The registered 'dummy' archetype (band PORT_BAND_TUTORIAL): the tutorial's Training Dummy. Its step does nothing; it
+ * only takes damage and dies like any actor.
+ */
 export const DUMMY = registerArchetype<ArchetypeData>({
 	id: DUMMY_KIND,
 	band: PORT_BAND_TUTORIAL,

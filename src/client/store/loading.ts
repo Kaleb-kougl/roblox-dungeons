@@ -35,6 +35,10 @@ const initialState: LoadingState = {
 	skipVisible: false,
 };
 
+/**
+ * The join loading screen's slice (state: `LoadingState`). PreloadController pushes the core tier's progress (only on a
+ * change) and releases the screen once; released never goes back to false.
+ */
 export const loadingSlice = createProducer(initialState, {
 	setLoadingProgress: (state, p: LoadingProgress) =>
 		state.fraction === p.fraction &&
@@ -46,7 +50,22 @@ export const loadingSlice = createProducer(initialState, {
 	setLoadingReleased: (state) => (state.released ? state : { ...state, released: true }),
 });
 
+/**
+ * The join loading screen's whole state: released or not, the core tier's fraction and resolved / total counts, and
+ * whether Skip shows. LoadingScreen draws from it.
+ */
 export const selectLoading = (state: { loading: LoadingState }) => state.loading;
+/**
+ * The join loading screen was released (core tier done, Skip, the timeout or KV_SkipLoading): it fades out and
+ * unmounts. False from join until then, true for the rest of the session.
+ */
 export const selectLoadingReleased = (state: { loading: LoadingState }) => state.loading.released;
+/**
+ * The share of the core tier's entries resolved so far, in [0, 1] (0 before the first progress push; 1 when there is
+ * nothing to load). The loading bar's fill.
+ */
 export const selectLoadingFraction = (state: { loading: LoadingState }) => state.loading.fraction;
+/**
+ * The loading screen's Skip button shows (false at first; PreloadController turns it on by shared/view `skipVisible`).
+ */
 export const selectLoadingSkipVisible = (state: { loading: LoadingState }) => state.loading.skipVisible;

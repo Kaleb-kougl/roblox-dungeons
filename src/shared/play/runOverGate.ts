@@ -18,6 +18,8 @@
  *   - FIRE edges: a FIRE held when the panel opened (attack mashed through the death) counts only once released and
  *     pressed again (`open(fireDown)` primes it); a press that began over a GUI (a click on Main menu or Details) is no
  *     FIRE press.
+ *
+ * @module
  */
 import { Button } from "shared/sim";
 
@@ -35,6 +37,11 @@ export interface RunOverRecapTarget {
 	skip(): void;
 }
 
+/**
+ * The gate itself (see the file comment): one per client, reused across runs. The RecapController calls `open` each
+ * time the run-over panel appears, `fireEdge` on every sampled frame while it shows, and `press` for each press; only a
+ * `retry` answer restarts the run, and at most one is given per run over.
+ */
 export class RunOverRetryGate {
 	private retried = false;
 	private fireHeld = true;

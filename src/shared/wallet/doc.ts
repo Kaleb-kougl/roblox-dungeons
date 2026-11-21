@@ -21,11 +21,19 @@
  * Forward compatibility (docs/SILVER_SHOP.md SH1, SHD7): every top-level field this build does not know is kept in
  * `extra` exactly as stored and written back by encode, so an older server's transaction never erases a newer server's
  * fields. A known field with a malformed value is dropped as before (it is not "unknown").
+ *
+ * @module
  */
 import { DEFAULT_CHARACTER, type CharacterId, type UpgradeLevels } from "shared/characters";
 import { ARMORY_CATALOG, UPGRADE_ITEM, armoryItem, characterUnlock, type ArmoryItem } from "./catalog";
 import { SILVER_SHOP, WALLET, WALLET_DOC_VERSION } from "./config";
 
+/**
+ * A player's wallet in memory: the decoded form of the stored document (the file comment describes each field and the
+ * stored shape). Owned by the server: only the wallet transforms make new ones, inside a store transaction, and the
+ * client only ever sees the WalletStatus built from it. Amounts are whole Silver; the balance is not a field
+ * (`walletBalance`).
+ */
 export interface WalletDoc {
 	v: typeof WALLET_DOC_VERSION;
 	earned: number;
@@ -60,6 +68,10 @@ const KNOWN_FIELDS: ReadonlySet<string> = new Set([
 /** The levels of the upgrade tracks with a sim lever: shared/characters UpgradeLevels (the run session's input). */
 export type WalletUpgradeLevels = UpgradeLevels;
 
+/**
+ * A fresh wallet: no Silver earned or spent, nothing owned or equipped, no granted runs, no day marks. What a missing,
+ * garbage or other-version stored value decodes to, and what a new player starts from.
+ */
 export function emptyWalletDoc(): WalletDoc {
 	return { v: WALLET_DOC_VERSION, earned: 0, spent: 0, own: new Map(), runs: [] };
 }
@@ -70,6 +82,10 @@ function copyMap<V>(m: ReadonlyMap<string, V>): Map<string, V> {
 	return out;
 }
 
+/**
+ * A deep copy (the maps and lists are copied too), so a transform can change the copy and leave its input, the stored
+ * doc, untouched. Optional fields that are absent stay absent.
+ */
 export function cloneWalletDoc(d: Readonly<WalletDoc>): WalletDoc {
 	const out: WalletDoc = {
 		v: WALLET_DOC_VERSION,
@@ -202,6 +218,11 @@ function mapsEqual<V>(a: ReadonlyMap<string, V> | undefined, b: ReadonlyMap<stri
 	return true;
 }
 
+/**
+ * True when the two wallets hold the same data: every amount, day mark, owned level, equipped item, run id and receipt
+ * (in order) and unknown field. An absent map or list equals an empty one and an absent `bought` equals 0. The equip
+ * transaction uses it to skip a write that would change nothing.
+ */
 export function walletDocsEqual(a: Readonly<WalletDoc>, b: Readonly<WalletDoc>): boolean {
 	if (a.earned !== b.earned || a.spent !== b.spent || a.runDay !== b.runDay || a.dailyDay !== b.dailyDay) {
 		return false;

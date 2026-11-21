@@ -3,8 +3,11 @@
  *
  * Ported from project-kaleb-vale `src/theme/strings.ts` @ 42897e2. The RegExp
  * `/\{([a-zA-Z0-9_]+)\}/g` becomes the Lua pattern `{([%w_]+)}` (%w is ASCII letters and digits).
+ *
+ * @module
  */
 
+/** The values for a template's `{name}` placeholders, by placeholder name. */
 export type StringVars = Readonly<Record<string, string | number>>;
 
 const PLACEHOLDER_PATTERN = "{([%w_]+)}";

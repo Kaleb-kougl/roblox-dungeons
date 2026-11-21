@@ -8,6 +8,8 @@
  *
  * Gates: `quiet` (comboQuiet) puts nothing out and forgets every beam; a new run too. Records of a player outside the
  * party are ignored. No allocation in steady state. Presentation only.
+ *
+ * @module
  */
 import { partySize, type SimState } from "shared/sim";
 import type { ColorRole } from "shared/theme";

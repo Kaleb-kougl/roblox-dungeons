@@ -2,9 +2,15 @@
  * Audio settings (Options screen, task L4): master, music and sound-effect volume as whole percents. Presentation
  * only. The client's AudioController multiplies them into the SoundService SoundGroups (shared/view/audio
  * soundGroupVolume). Stored overrides-only, like the juice settings.
+ *
+ * @module
  */
 import { VOLUME_PERCENT } from "./config";
 
+/**
+ * The three volumes a client plays with, each a whole percent 0..100 (default 100, full). Resolved on the client from
+ * the stored overrides; the server only stores what differs from the default.
+ */
 export interface AudioSettings {
 	/** Everything (both SoundGroups). */
 	master: number;
@@ -17,8 +23,13 @@ export interface AudioSettings {
 /** What a player changed (absent keys follow the defaults). */
 export type AudioOverrides = Partial<AudioSettings>;
 
+/**
+ * Every audio setting key: the fixed order the sanitizer and the comparison walk, and the keys that make a stored audio
+ * group non-empty (doc.ts).
+ */
 export const AUDIO_SETTING_KEYS: ReadonlyArray<keyof AudioSettings> = ["master", "music", "sfx"];
 
+/** The volumes of a player who changed nothing: every one at VOLUME_PERCENT.default (100). A new object each call. */
 export function defaultAudioSettings(): AudioSettings {
 	return { master: VOLUME_PERCENT.default, music: VOLUME_PERCENT.default, sfx: VOLUME_PERCENT.default };
 }
@@ -46,6 +57,10 @@ export function resolveAudioSettings(overrides: unknown): AudioSettings {
 	return { ...defaultAudioSettings(), ...sanitizeAudioOverrides(overrides) };
 }
 
+/**
+ * True when two override sets hold the same volumes for the same keys (a key absent in both counts as equal). doc.ts
+ * builds the whole-document comparison (`sameSettingsOverrides`) and the group reuse on it.
+ */
 export function sameAudioOverrides(a: Readonly<AudioOverrides>, b: Readonly<AudioOverrides>): boolean {
 	for (const k of AUDIO_SETTING_KEYS) if (a[k] !== b[k]) return false;
 	return true;

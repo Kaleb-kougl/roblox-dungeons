@@ -4,6 +4,8 @@
  * `ui.character.<id>` image (theme characterIconId) when it has one, else a flat square in the character's visual's
  * colour role (`class.vanguard` / `class.ranger`). An entry without a character (an older board entry, a run built
  * without one) or with a value that is no character id shows nothing. Pure.
+ *
+ * @module
  */
 import { characterDef, isCharacterId, type CharacterId } from "shared/characters";
 import { characterIconId, type ColorRole } from "shared/theme";

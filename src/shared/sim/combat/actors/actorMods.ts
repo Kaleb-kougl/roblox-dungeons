@@ -12,6 +12,8 @@
  * modifier never changes the draw count (replays of unmodified actors stay put). Telegraph, lunge, recover and
  * strafe-flip ticks never go through here (EVD9: Swift never shortens a telegraph). Bosses, turrets and the dummy keep
  * their raw reads.
+ *
+ * @module
  */
 
 import { SIM_DT } from "../../units";

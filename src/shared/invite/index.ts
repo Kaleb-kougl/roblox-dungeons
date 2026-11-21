@@ -6,6 +6,8 @@
  * shared/lobby analytics.ts.
  *
  * Plain TypeScript, no Roblox APIs (headlessly tested); server/services/InviteService.ts wraps it.
+ *
+ * @module
  */
 export * from "./config";
 export * from "./launchData";

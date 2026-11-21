@@ -8,6 +8,8 @@
  *     apply; a `sprites` set must have ONE facing: the crack lies on a wall face and the rubble flat on two cells, both
  *     drawn as they are whatever the camera's turn (the view places them on the wall's own axes). Validate.ts refuses
  *     any other `secret.` ID.
+ *
+ * @module
  */
 
 import { SECRET_ART_IDS } from "./secrets";

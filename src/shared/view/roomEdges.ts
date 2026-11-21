@@ -6,6 +6,8 @@
  *
  * World units: cell (gx, gy) covers [gx - 0.5, gx + 0.5] x [gy - 0.5, gy + 0.5] tiles (collision.ts), x = grid x,
  * z = grid y.
+ *
+ * @module
  */
 import { TILE_SIZE, TileType, gridToWorld, type Dungeon } from "shared/dungeon";
 
@@ -24,6 +26,11 @@ export interface RoomEdgeRun {
 	readonly nz: number;
 }
 
+/**
+ * Every room edge of one floor, from `roomEdges(dungeon)`: built once per floor, in a fixed order so every client lays
+ * the same dashes. The client's RoomEdgeController draws one dashed line per run and recolours a room's runs through
+ * `byRoom`.
+ */
 export interface RoomEdges {
 	/**
 	 * Every run, in a fixed order: room id, then axis (runs along z, i.e. lines of constant x, first), then line

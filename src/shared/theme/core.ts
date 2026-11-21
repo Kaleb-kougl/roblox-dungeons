@@ -26,6 +26,8 @@
  * srcHash matches this pack's English and its placeholders and braces do too, then English. The pseudo-locale is
  * English through pseudoLocalize. Non-translatable keys (developer-only, `fx.cap`) are always English. `localeReport`
  * lists what fell back.
+ *
+ * @module
  */
 
 import { isHexColor } from "./color";
@@ -109,7 +111,15 @@ import { voidLedgeColor } from "./voidColors";
 import type { PelletKind } from "./pellets";
 import { TREASURE_CHEST_ID, TREASURE_CHEST_OPEN_ID } from "./treasure";
 
+/**
+ * The pack `loadThemePack` loads when no id is given, and falls back to when the id asked for is not bundled. It must
+ * always exist: loading throws only when this one is missing.
+ */
 export const DEFAULT_PACK_ID = "placeholder";
+/**
+ * Magenta, the colour every lookup returns for something the pack lacks or spells wrong (a colour role, a biome
+ * surface, a malformed hex), so a gap shows on screen instead of crashing.
+ */
 export const MISSING_COLOR: HexColor = "#ff00ff";
 
 /** Fallback cell for IDs outside every fixed-size slot (the source's 16 x 16 checkerboard). */
@@ -445,6 +455,10 @@ export interface ImageRef {
  */
 export type WorldArt = WorldImageArt | WorldSpriteArt;
 
+/**
+ * World art drawn from one uploaded image, or a region of it (the `image` case of WorldArt). Billboard size in tiles is
+ * the rect's size / `pixelsPerTile`.
+ */
 export interface WorldImageArt {
 	readonly kind: "image";
 	readonly assetId: string;
@@ -459,6 +473,7 @@ export interface WorldImageArt {
 	readonly pixelsPerTile: number;
 }
 
+/** World art drawn from a sprite set (the `sprites` case of WorldArt): the set's layout, with `idle` at least. */
 export interface WorldSpriteArt {
 	readonly kind: "sprites";
 	/** The set (its own cell, pivot, pixelsPerTile, facings and animations: `idle`, plus e.g. `lit`, `shatter`). */
@@ -568,6 +583,11 @@ export interface PactAltarTheme {
 	readonly placeholder: PlaceholderVisual;
 }
 
+/**
+ * A biome as ThemeCore.biome resolves it: the manifest's BiomeDef with every gap filled. A missing biome warns once and
+ * comes back with MISSING_COLOR surfaces and the default tile IDs (`tile.<id>.floor` / `.wall`); `forgeTheme` is
+ * undefined for an ID outside BIOMES.
+ */
 export interface BiomeTheme {
 	readonly id: string;
 	readonly forgeTheme: ForgeTheme | undefined;
@@ -595,6 +615,10 @@ const DEFAULT_MATERIALS: Readonly<Record<BiomeMaterialSurface, BiomeMaterial>> =
 	cliff: DEFAULT_BIOME_MATERIAL,
 };
 
+/**
+ * A sound as ThemeCore.sound resolves it for the audio layer: the clips to pick from, the level, the SoundGroup and the
+ * per-start options. A silent or missing event has `assetId` undefined and volume 0.
+ */
 export interface SoundRef {
 	/** undefined: silent or missing. */
 	readonly assetId: string | undefined;
@@ -732,6 +756,10 @@ function collectContentIds(v: unknown, media: PreloadMedia, seen: Set<string>, o
 }
 const COLOR_ROLE_SET: ReadonlySet<string> = new Set<string>(COLOR_ROLES);
 
+/**
+ * Options of the ThemeCore constructor. `loadThemePack` fills them (through ThemePackOptions, the same fields); specs
+ * pass a `warn` sink to collect warnings.
+ */
 export interface ThemeCoreOptions {
 	/** Active locale (setLocale); strings fall back to the default table. */
 	locale?: string;
@@ -757,6 +785,12 @@ export interface LocaleReport {
 
 const EMPTY_REPORT: LocaleReport = { stale: [], mismatched: [], unknown: [] };
 
+/**
+ * A loaded pack without Roblox types: every lookup from a logical ID (asset, colour role, biome, sound, string key) to
+ * what the pack holds for it, as plain data, with the fallbacks described in the module comment. Built from a manifest
+ * that may have failed validation. Lookups are cached and each distinct problem warns once. Renderers use ThemePack,
+ * which wraps this; headless specs use it directly.
+ */
 export class ThemeCore {
 	readonly id: string;
 	readonly name: string;

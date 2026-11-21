@@ -67,6 +67,8 @@
  * Hitstop is never applied here: a co-op sim is paced by the server's frames alone (shared/view/fx freezeRules
  * `simPacerFor`); presentation may freeze sprites or the camera instead. The local player's character may be drawn
  * predicted (presentation only); nothing predicted ever reaches the sim.
+ *
+ * @module
  */
 import {
 	SIM_DT,
@@ -128,24 +130,37 @@ const NO_CLOCK = 0 / 0;
  */
 export type InputSampler = (sending: boolean) => Readonly<InputFrame>;
 
+/**
+ * What a LockstepClient is built from: the party run's identity and setup, the same for every member but `localIndex`.
+ */
 export interface LockstepClientParams {
+	/** The party run's id. */
 	readonly runId: string;
+	/** The run seed the sim state is created from. */
 	readonly seed: number;
+	/** Where the party spawns, world units (1 per tile). */
 	readonly spawn: { readonly x: number; readonly z: number };
 	/** The party run's SimConfig (config.party.size = players). */
 	readonly config: Readonly<SimConfig>;
+	/** Party size: the number of input frames in every merged frame. */
 	readonly players: number;
 	/** This client's player index. */
 	readonly localIndex: number;
+	/** Absent: DEFAULT_LOCKSTEP. */
 	readonly tunables?: LockstepTunables;
 }
 
+/** One input batch to send: this client's frames for consecutive ticks. */
 export interface OutgoingInputs {
+	/** The tick the first frame in `data` is for. */
 	readonly firstTick: number;
+	/** The frames, encoded by wire.ts `encodeInputBatch`. */
 	readonly data: buffer;
 }
 
+/** What one `pump` did, and what the caller must send because of it. */
 export interface PumpResult {
+	/** Merged ticks the sim stepped in this pump. */
 	readonly stepped: number;
 	/** Input batches to send (consecutive ticks each). */
 	readonly inputs: ReadonlyArray<OutgoingInputs>;
@@ -158,6 +173,10 @@ export interface PumpResult {
 	readonly final?: RunFinal;
 }
 
+/**
+ * The client side of one co-op run: queues the server's merged frames, steps the sim on those alone, and produces the
+ * inputs, hash reports and final claim to send. Pure; the SimController owns one per party run.
+ */
 export class LockstepClient implements RunView, PredictionSource {
 	readonly state: SimState;
 	readonly runId: string;

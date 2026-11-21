@@ -20,6 +20,8 @@
  *
  * Port changes: typed arrays -> plain arrays (Float32 storage rounding is gone, irrelevant for presentation); the
  * QuadBatch writer became ParticleWriter (anchor, hop px, size px, palette index, alpha); trig tables via math.cos/sin.
+ *
+ * @module
  */
 import type { JuiceSettings, ParticlesLevel } from "shared/settings";
 import { PIXELS_PER_TILE } from "shared/config";
@@ -37,6 +39,11 @@ export const PARTICLE_POOL_CAPACITY = 512;
 export const RING_CAPACITY = 16;
 /** Dots per ring; big (boss) rings use BIG_RING_SEGMENTS so they stay a ring. */
 export const RING_SEGMENTS = 16;
+/**
+ * Dots of a big ring (the boss death waves and the phase roar), twice RING_SEGMENTS so a ring 1.6 to 2.8 world units
+ * wide keeps reading as a ring. Also the size of the ring trig tables: a ring draws every table entry or every second
+ * one, so the only segment counts are this and RING_SEGMENTS.
+ */
 export const BIG_RING_SEGMENTS = 32;
 /** Most drawn quads: every particle + every ring dot. */
 export const PARTICLE_QUAD_CAPACITY = PARTICLE_POOL_CAPACITY + RING_CAPACITY * BIG_RING_SEGMENTS;
@@ -46,22 +53,53 @@ export const LEVEL_SCALE: Readonly<Record<ParticlesLevel, number>> = { off: 0, l
 
 /** Regular kill at 'normal': this many particles (before the elite / level multipliers). */
 export const BURST_MIN = 12;
+/**
+ * Most particles of one regular kill at 'normal' (baseBurstCount clamps to BURST_MIN..BURST_MAX), before the elite and
+ * level multipliers. Raising it lets high-hp or large enemies burst bigger.
+ */
 export const BURST_MAX = 20;
 /** Elite kills: count multiplier and spark share. */
 export const ELITE_MULT = 1.5;
+/**
+ * Share (0..1) of a regular kill's particles that are sparks (white / particleSpark, faster and shorter lived than the
+ * body bits in the enemy's colour).
+ */
 export const SPARK_FRACTION = 0.25;
+/**
+ * Share (0..1) of an elite kill's particles that are sparks: more than SPARK_FRACTION, and drawn in the elite colour.
+ */
 export const ELITE_SPARK_FRACTION = 0.35;
 /** "Big" enemies (hpMax >= BIG_HP or spriteScale >= BIG_SCALE) add CHUNKS 3x3 chunks (part of the count). */
 export const BIG_HP = 8;
+/**
+ * An enemy drawn at this sprite scale or larger counts as big whatever its hp (isBigEnemy): its kill adds chunks and
+ * more of its body bits are 2 px.
+ */
 export const BIG_SCALE = 1.2;
+/**
+ * 3x3 px chunks in a big enemy's kill at 'normal' (one more for an elite; scaled by the particle level, taken out of
+ * the burst's total, not added to it).
+ */
 export const CHUNKS = 3;
 
 /** Particle kinds. */
 export const KIND_BODY = 0;
+/**
+ * Particle kind of the bright sparks of kills, hits and the boss roar: the fastest and shortest lived
+ * (TUNING[KIND_SPARK]), 1 or 2 px.
+ */
 export const KIND_SPARK = 1;
+/**
+ * Particle kind of the 3x3 px chunks of big enemies and boss waves: slow, low hops, the longest lived
+ * (TUNING[KIND_CHUNK]).
+ */
 export const KIND_CHUNK = 2;
 /** Grazes and parries (docs/GRAZE_PARRY.md GP5): a graze's sparks and streak dots; a parry burst's sparks. */
 export const KIND_GRAZE = 3;
+/**
+ * Particle kind of a parry burst's sparks (the fan away from the guard); its motion is NEAR_MISS_VIEW.parry's, read
+ * through TUNING[KIND_PARRY].
+ */
 export const KIND_PARRY = 4;
 
 /** Per-kind motion: speed range (world units/s), drag (1/s, exponential), life (s), hop launch range (px/s). */
@@ -76,6 +114,12 @@ export interface KindTuning {
 	readonly hold: number;
 }
 
+/**
+ * The motion of each particle kind, indexed by the KIND_* constants (body, spark, chunk, graze, parry; keep the order).
+ * Speeds are world units per second on the floor plane, hop launch speeds render px per second, life seconds. The graze
+ * and parry rows copy NEAR_MISS_VIEW so those effects are tuned in nearMissConfig.ts. Read by the burst spawners here
+ * and by particleAlpha (the `hold` share).
+ */
 export const TUNING: ReadonlyArray<KindTuning> = [
 	/* body  */ { speedMin: 4, speedMax: 11, drag: 9, life: 0.4, hopMin: 30, hopMax: 70, hold: 0.45 },
 	/* spark */ { speedMin: 7, speedMax: 15, drag: 11, life: 0.24, hopMin: 40, hopMax: 90, hold: 0.3 },
@@ -103,6 +147,10 @@ export const TUNING: ReadonlyArray<KindTuning> = [
 export const LIFE_JITTER = 0.2;
 /** Hop gravity, render px/s^2, and the bounce (a landing particle keeps this share of its fall speed, once). */
 export const HOP_GRAVITY = 420;
+/**
+ * Share (0..1) of its fall speed a particle keeps when it lands, on its one bounce. 0 would make particles stick where
+ * they land; higher gives a livelier second hop.
+ */
 export const HOP_BOUNCE = 0.3;
 /** Bounces slower than this stop (px/s). */
 export const HOP_MIN_BOUNCE = 12;
@@ -110,8 +158,12 @@ export const HOP_MIN_BOUNCE = 12;
 export const SPAWN_RADIUS = 0.2;
 /** Particles start at the sprite's body (px above the feet): [START_H_MIN, START_H_MAX * spriteScale]. */
 export const START_H_MIN = 3;
+/**
+ * Top of a particle's start height, render px above the feet, for a sprite at scale 1 (a kill multiplies it by the
+ * sprite scale when that is above 1; hit sparks use it as is). Bosses use BOSS_START_H_MAX instead.
+ */
 export const START_H_MAX = 10;
-/** In the last SHRINK_AT share of its life a particle drops one pixel size (2x2 -> 1x1, 3x3 -> 2x2). */
+/** Past this share of its life (the last 35 %) a particle drops one pixel size (2x2 -> 1x1, 3x3 -> 2x2). */
 export const SHRINK_AT = 0.65;
 /** Particle pixel sizes: chunks, big bits / sparks, small bits. */
 const CHUNK_PX = 3;
@@ -136,12 +188,19 @@ const MIN_DIR = 1e-9;
 
 /** reducedMotion: slower, shorter, no hop, rings flash in place (counts drop one level via effectiveParticles). */
 export const REDUCED_SPEED = 0.5;
+/**
+ * Under reduced motion every particle and ring lives this share of its normal life (hit, graze and parry sparks
+ * included).
+ */
 export const REDUCED_LIFE = 0.7;
 
 /** Kill-spot ring flash: radius r0 -> r1 (world units, ease-out) over life seconds; 1 px dots. */
 export const RING_LIFE = 0.15;
+/** Radius every kill-spot ring starts from, world units (boss and roar rings too; only the end radius differs). */
 export const RING_R0 = 0.15;
+/** Radius a regular kill's ring grows to, world units, over RING_LIFE. */
 export const RING_R1 = 0.75;
+/** Radius an elite kill's ring grows to, world units: wider than RING_R1, and drawn in the elite colour. */
 export const ELITE_RING_R1 = 1.05;
 /** reducedMotion: the ring shows at this share of r1 without expanding. */
 export const REDUCED_RING_AT = 0.7;
@@ -154,6 +213,12 @@ export interface BossWave {
 	readonly speedMult: number;
 	readonly ringR1: number;
 }
+/**
+ * The boss death's three waves in firing order. `delay` is seconds after 'bossDefeated'; `count` and `chunks` are
+ * particles at 'normal' (scaled by the particle level, the chunks part of the count); `speedMult` multiplies every
+ * kind's speed; `ringR1` is the wave's ring end radius in world units. The middle wave is the smallest and its ring is
+ * drawn in the spark colour, the others in the boss colour.
+ */
 export const BOSS_WAVES: ReadonlyArray<BossWave> = [
 	{ delay: 0, count: 36, chunks: 4, speedMult: 1.5, ringR1: 2.2 },
 	{ delay: 0.2, count: 28, chunks: 2, speedMult: 1.2, ringR1: 1.6 },
@@ -161,21 +226,33 @@ export const BOSS_WAVES: ReadonlyArray<BossWave> = [
 ];
 /** Boss bursts start higher (the sprite is ~60 px tall) and wider (its body radius is 1.2): px / world units. */
 export const BOSS_START_H_MAX = 40;
+/**
+ * Boss wave and roar particles spawn within this many world units of the boss's position (regular kills: SPAWN_RADIUS).
+ */
 export const BOSS_SPAWN_RADIUS = 0.9;
+/** Life of a boss wave's or roar's ring, seconds: twice RING_LIFE, as those rings travel much further. */
 export const BOSS_RING_LIFE = 0.3;
+/** Share (0..1) of a boss wave's particles that are sparks (capped by what the wave's chunks leave). */
 export const BOSS_SPARK_FRACTION = 0.35;
 
 /** Boss phase change (roar): sparks only + a ring. Phases <= 1 (fight start) are skipped. */
 export const ROAR_SPARKS = 16;
+/** Speed multiplier of the roar's sparks (1 = a regular kill's spark speeds). */
 export const ROAR_SPEED_MULT = 1.4;
+/** End radius of the roar's ring, world units (a big ring in the boss colour, BOSS_RING_LIFE long). */
 export const ROAR_RING_R1 = 2.4;
 
 /** Hit sparks: a couple of tiny sparks on every 'hit' (set false to disable). */
 export const HIT_SPARKS_ENABLED = true;
+/** Sparks spawned by a regular hit. */
 export const HIT_SPARKS = 2;
+/** Sparks spawned by a heavy hit (the tracker's `heavy`: sword finisher, heavy arrow). */
 export const HIT_SPARKS_HEAVY = 3;
+/** Life of a hit spark, seconds (shorter than a kill's sparks; times REDUCED_LIFE under reduced motion). */
 export const HIT_SPARK_LIFE = 0.14;
+/** Slowest launch speed of a hit spark, world units per second (halved under reduced motion by REDUCED_SPEED). */
 export const HIT_SPARK_SPEED_MIN = 4;
+/** Fastest launch speed of a hit spark, world units per second: slower than a kill's sparks, so a hit reads smaller. */
 export const HIT_SPARK_SPEED_MAX = 9;
 /** Hit sparks never recycle: they spawn only while the pool is below this share of the live limit (deaths first). */
 export const HIT_SPARK_MAX_FILL = 0.5;
@@ -191,9 +268,20 @@ const UINT32 = 4294967296;
 
 /** Palette indices every palette starts with; archetype colours follow at PALETTE_KIND_BASE + kind. */
 export const PAL_WHITE = 0;
+/**
+ * Palette index of the particleSpark colour: the second spark colour of kills and hits and a regular kill's ring. The
+ * client also falls back to it for any index its palette lacks.
+ */
 export const PAL_SPARK = 1;
+/** Palette index of the elite colour: an elite kill's sparks and ring. */
 export const PAL_ELITE = 2;
+/** Palette index of the boss colour: the boss waves' body bits and rings and the roar's sparks. */
 export const PAL_BOSS = 3;
+/**
+ * First archetype entry of the palette: an enemy of archetype index `kind` draws its body bits in entry
+ * PALETTE_KIND_BASE + kind (its particleColorRole). The client's ParticleController builds the palette in this order
+ * and appends its other effects' colours after the archetypes.
+ */
 export const PALETTE_KIND_BASE = 4;
 
 /**
@@ -399,7 +487,7 @@ export function particleAlpha(age: number, life: number, kind: number): number {
 	return (1 - t) / (1 - hold);
 }
 
-/** Drawn size (px): one pixel smaller in the last SHRINK_AT share of life (never below 1). */
+/** Drawn size (px): one pixel smaller once age passes SHRINK_AT of the life (never below 1). */
 export function particleSize(size: number, age: number, life: number): number {
 	return size > 1 && age > life * SHRINK_AT ? size - 1 : size;
 }
@@ -526,6 +614,11 @@ export class RingPool {
 export const PENDING_BOSS_WAVE = 0;
 const BURST_QUEUE_CAPACITY = 16;
 
+/**
+ * The callback BurstQueue.advance hands each due burst to: the queued type (PENDING_BOSS_WAVE), its type-specific
+ * argument (the boss wave index), where it fires (sim units) and the seed for its render rng. It may spawn particles
+ * and rings but must not schedule into the queue.
+ */
 export type BurstFire = (burstType: number, arg: number, x: number, z: number, seed: number) => void;
 
 /** Fixed queue of delayed bursts; due ones are handed to `fire` (oldest first) by advance(). */
@@ -606,6 +699,10 @@ export function baseBurstCount(hpMax: number, spriteScale: number): number {
 	return n < BURST_MIN ? BURST_MIN : n > BURST_MAX ? BURST_MAX : n;
 }
 
+/**
+ * Is this a big enemy: hpMax at least BIG_HP, or drawn at BIG_SCALE or larger? Big enemies' kills add 3x3 chunks and
+ * make more of the body bits 2 px.
+ */
 export function isBigEnemy(hpMax: number, spriteScale: number): boolean {
 	return hpMax >= BIG_HP || spriteScale >= BIG_SCALE;
 }
@@ -618,6 +715,10 @@ export interface BurstCounts {
 	body: number;
 }
 
+/**
+ * A zeroed BurstCounts to preallocate and pass as burstCounts' `out` (the particle system keeps one; specs make their
+ * own).
+ */
 export function emptyCounts(): BurstCounts {
 	return { total: 0, sparks: 0, chunks: 0, body: 0 };
 }

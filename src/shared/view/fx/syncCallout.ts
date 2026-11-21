@@ -3,6 +3,8 @@
  * new or grown sync restarts it; the text pops in (not under reduced motion) and fades out; the tether (tethered syncs
  * only) snaps from wide to thin (reduced motion: no snap, the thin bar) and fades. The client's SyncCalloutController
  * draws it on the combo shout's construction (shared/view/hud syncCallout.ts: label, size). Presentation only.
+ *
+ * @module
  */
 import { MAX_PARTY_SIZE } from "shared/sim";
 import type { SyncParryMoment } from "./teamMoments";

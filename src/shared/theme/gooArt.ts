@@ -15,6 +15,8 @@
  *     MAX_ENEMY_BULLET_ART_DIFFERENCE (CIE76) from `enemyGoo`, and like `enemyGoo` itself (GOO_COLOR_RULES) >=
  *     MIN_ENEMY_BULLET_CONTRAST (WCAG) on every biome floor and >= MIN_DECOR_FX_BULLET_DIFFERENCE (CIE76) from every
  *     decor fx and boost colour: a puddle reads as danger, never as decor or a pickup (GOO_ART_RULES).
+ *
+ * @module
  */
 
 import { colorDifference, contrastRatio, isHexColor } from "./color";

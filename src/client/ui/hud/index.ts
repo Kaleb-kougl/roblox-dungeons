@@ -16,6 +16,8 @@
  * the item tooltips' target registry (tooltipTargets) for TooltipController
  * (docs/ITEM_TOOLTIPS.md IT4); the character icon (CharacterIcon, docs/ARCHER.md AR9) for the lobby room's member rows
  * (AR8).
+ *
+ * @module
  */
 export * from "./actions";
 export * from "./braceUi";

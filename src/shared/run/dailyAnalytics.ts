@@ -10,6 +10,8 @@
  *
  * Every field value comes from a small fixed set (the tables below), so the three events add at most
  * dailyAnalyticsCombinations() field combinations (Roblox: 8,000 per experience, 100 custom event names; no funnel).
+ *
+ * @module
  */
 import type { AnalyticsEventSpec } from "./analytics";
 import { ANALYTICS_EVENT } from "./analytics";
@@ -90,18 +92,34 @@ export function analyticsBucket(buckets: ReadonlyArray<AnalyticsBucket>, value: 
 	return label;
 }
 
+/**
+ * The field label of a player's attempt number on today's Daily (1 = their first start of the day), from
+ * `DAILY_ANALYTICS.attemptBuckets`. A value that is not a number, NaN included, reads as the first bucket.
+ */
 export function dailyAttemptBucket(attempt: number): string {
 	return analyticsBucket(DAILY_ANALYTICS.attemptBuckets, attempt);
 }
 
+/**
+ * The field label of a daily run's score (the server's replayed score), from `DAILY_ANALYTICS.scoreBuckets`. A value
+ * that is not a number reads as the first bucket.
+ */
 export function dailyScoreBucket(score: number): string {
 	return analyticsBucket(DAILY_ANALYTICS.scoreBuckets, score);
 }
 
+/**
+ * The field label of the deepest floor a daily run reached (1 = the first floor), from `DAILY_ANALYTICS.floorBuckets`.
+ * A value that is not a number reads as the first bucket.
+ */
 export function dailyFloorBucket(floor: number): string {
 	return analyticsBucket(DAILY_ANALYTICS.floorBuckets, floor);
 }
 
+/**
+ * The field value of the returning flag (the player finished yesterday's Daily): `returning`, `notReturning`, or
+ * `unknown` when the records doc could not say (undefined).
+ */
 export function dailyReturningValue(returning: boolean | undefined): string {
 	const r = DAILY_ANALYTICS.returning;
 	return returning === undefined ? r.unknown : returning ? r.yes : r.no;

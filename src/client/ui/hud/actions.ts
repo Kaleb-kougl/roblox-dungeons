@@ -117,8 +117,16 @@ const NOOP: HudActions = {
 	toggleMap: () => undefined,
 };
 
+/**
+ * The React context that carries `HudActions` to the HUD tree. HudController provides the real actions around GameHud;
+ * without a provider every action is a no-op, so a component mounted alone does nothing.
+ */
 export const HudActionsContext = React.createContext<HudActions>(NOOP);
 
+/**
+ * The HUD's actions from `HudActionsContext`: how a HUD component restarts, pauses, changes a setting and so on without
+ * importing a controller.
+ */
 export function useHudActions(): HudActions {
 	return useContext(HudActionsContext);
 }

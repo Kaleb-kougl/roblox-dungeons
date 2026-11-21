@@ -3,8 +3,11 @@
  * podium, the leaderboard panel's daily tabs, the lobby world toggle and the run-over daily block read. All REQUIRED
  * (shared/theme DAILY_STRING_KEYS, the same keys in dailyStringKeys() order; daily.spec.ts checks it), so no slot ever
  * shows a raw key. The in-run rank layer's strings (DS10) are not here.
+ *
+ * @module
  */
 
+/** The theme string key behind each Daily slot, by the slot's name in code. */
 export const DAILY_STRINGS = {
 	cardTitle: "daily.card.title",
 	cardRoster: "daily.card.roster",

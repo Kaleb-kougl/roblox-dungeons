@@ -11,6 +11,8 @@
  *   audio/   theme sounds for sim events, music (task 8 part B)
  *   ui/      the HUD mount, the Options screen (settings, rebinding) and leaderboards (React HUD in client/ui/hud)
  *   spikes/  task 1 go/no-go spikes (off by default)
+ *
+ * @module
  */
 export * from "./game";
 export * from "./render";

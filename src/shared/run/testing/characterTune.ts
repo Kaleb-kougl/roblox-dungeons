@@ -37,6 +37,8 @@
  * and the Demon Lord (TUNE_DEMONLORD). The target is the nearest living actor.
  *
  * The roll (rollReach): Blazing Trail's embers and Wrecker's smash along one roll on open ground, per character.
+ *
+ * @module
  */
 import { AffixKind, TileType, gridToWorld, tileAt, type BreakablePlacement } from "shared/dungeon";
 import type { CharacterId } from "shared/characters";
@@ -102,6 +104,10 @@ import { DEFENSE_GUARD_TRIGGER, DEFENSE_ROLL_BULLETS, DEFENSE_ROLL_RADIUS } from
 /** A character of the AR13 tables: the Knight, the Archer, or the old two-weapon player ("both"). */
 export type TuneCharacter = CharacterId | "both";
 
+/**
+ * Spec support. The characters of the AR13 tables, in column order: the Knight, the Archer, then the old two-weapon
+ * player.
+ */
 export const TUNE_CHARACTERS: ReadonlyArray<TuneCharacter> = ["knight", "archer", "both"];
 
 /** `config` as `who` plays it (file comment): withCharacters for a character, DEFAULT_LOADOUT and no traits for "both". */
@@ -112,6 +118,10 @@ export function characterConfig(config: SimConfig, who: TuneCharacter): SimConfi
 /** The fighter mode of a character (file comment). */
 export type FighterMode = "knight" | "archer" | "archer-stream" | "both";
 
+/**
+ * Spec support. The fighter mode a character plays by default: the one of the same name (the Archer charges heavy
+ * shots). `archer-stream` is never returned; a spec asks for it by name.
+ */
 export function fighterModeOf(who: TuneCharacter): FighterMode {
 	return who;
 }
@@ -121,11 +131,19 @@ export function fighterModeOf(who: TuneCharacter): FighterMode {
 
 /** The volley roll: this many enemy bullets within FIGHT_ROLL_RADIUS (LG7's roll bot's numbers). */
 export const FIGHT_ROLL_BULLETS = DEFENSE_ROLL_BULLETS;
+/**
+ * Spec support. The volley roll's radius in world units: enemy bullets within it count toward `FIGHT_ROLL_BULLETS`
+ * (LG7's roll bot's number).
+ */
 export const FIGHT_ROLL_RADIUS = DEFENSE_ROLL_RADIUS;
 /** The archer streams at a target with at most this much hp (2 stream arrows), else charges. */
 export const ARCHER_STREAM_HP = 2;
 /** The archer starts a charge only with no enemy within this distance, and drops it inside ARCHER_CHARGE_ABORT. */
 export const ARCHER_CHARGE_SAFE = 3;
+/**
+ * Spec support. The archer drops a charge it has started when an enemy comes within this distance (world units), and
+ * streams instead.
+ */
 export const ARCHER_CHARGE_ABORT = 2;
 /** ... and with no enemy bullet within this distance (under fire the archer streams). */
 export const ARCHER_CHARGE_BULLET_RADIUS = 2.5;
@@ -133,6 +151,10 @@ export const ARCHER_CHARGE_BULLET_RADIUS = 2.5;
 export const ARCHER_PANIC_RADIUS = 1;
 /** The swap player takes the bow beyond SWAP_TO_BOW and the sword inside SWAP_TO_SWORD (centre distance). */
 export const SWAP_TO_BOW = 4.5;
+/**
+ * Spec support. The swap player takes the sword when its target is within this centre distance (world units). Between
+ * this and `SWAP_TO_BOW` it keeps the weapon in hand.
+ */
 export const SWAP_TO_SWORD = 3;
 
 /** What the fighter needs from its surroundings: sight and a path (an arena: always in sight, a straight line). */
@@ -144,6 +166,10 @@ export interface FightEnv {
 	readonly pathDir: (x: number, z: number, tx: number, tz: number) => readonly [number, number];
 }
 
+/**
+ * Spec support. The fighter's surroundings in an open arena of half size `half`: everything is in sight and the path to
+ * a point is the straight line to it (a zero direction when already there).
+ */
 export function arenaEnv(half: number): FightEnv {
 	return {
 		half,
@@ -172,6 +198,10 @@ export interface FighterMemory {
 	swaps: number;
 }
 
+/**
+ * Spec support. A fresh fighter memory for one fight or run: no button held last tick, no charge under way, every tally
+ * at 0.
+ */
 export function newFighterMemory(): FighterMemory {
 	return {
 		rollPressed: false,
@@ -420,6 +450,10 @@ export const CHARACTER_BOSS_FLOORS: ReadonlyArray<TuneFloor> = [
 
 /** A kind room's cap (s); the turret pairs' TURRET_ROOM_SECONDS (they revive, so a slow fight may never end). */
 export const KIND_ROOM_SECONDS = 180;
+/**
+ * Spec support. The cap in seconds of a turret pair's kind room, shorter than `KIND_ROOM_SECONDS` because turrets
+ * revive and a slow fight may never end.
+ */
 export const TURRET_ROOM_SECONDS = 90;
 
 function kindRoom(
@@ -705,6 +739,11 @@ export function characterTtkHeader(
 	return `| room | build | ${cols} | ${ratios} | hits / min ${names.join(" / ")} (last floor) |`;
 }
 
+/**
+ * Spec support. One Markdown row of the character TTK table (`characterTtkHeader`): each character's seconds per floor,
+ * each other character's time as a ratio of column `base`'s (`-` where either fight was not cleared), and hits per
+ * minute on the last floor. `withBuild` false prints `-` in the build column.
+ */
 export function formatCharacterTtkRow(row: CharacterTtkRow, base: number, withBuild = true): string {
 	const cols = row.seconds.map((xs) => xs.map(s1).join(" / ")).join(" | ");
 	const ratios: string[] = [];

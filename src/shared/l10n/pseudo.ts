@@ -3,6 +3,8 @@
  * 40 % longer and wrapped in ⟦ ⟧, so text that bypassed `str` (plain English on screen) and slots too tight for a
  * longer translation stand out. `{placeholder}` tokens stay byte for byte, so interpolation still works. UTF-8 safe:
  * bytes that are not ASCII letters (multi-byte characters included) are copied as they are.
+ *
+ * @module
  */
 
 /** Each ASCII letter's accented stand-in (case kept, so an all-caps string stays all caps). */

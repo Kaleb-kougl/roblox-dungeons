@@ -15,15 +15,28 @@
  * `returned` (a boolean). Each is read on its own: missing or malformed decodes as absent and never touches any other
  * field; each is written only when present, so a doc without them keeps the old stored shape. Every copy this module
  * makes (finishing, a sighting) keeps them.
+ *
+ * @module
  */
 import type { DocCodec } from "shared/settings";
 import { NEW_PLAYER, ONBOARDING_DOC_VERSION, ONBOARDING_TUTORIAL_VERSION } from "./config";
 import { normalizeSeen, sameSeen, withSighting } from "./sightings";
 
+/**
+ * How a tutorial attempt was finished: played to the end, or skipped. Stored in the onboarding document, sent by the
+ * client in `tutorialFinished`, and a field value of the tutorial analytics events. Either one counts as done
+ * (`isTutorialDone`).
+ */
 export type TutorialOutcome = "completed" | "skipped";
 
+/** Every tutorial outcome: the set a stored or remote value is checked against (`isTutorialOutcome`). */
 export const TUTORIAL_OUTCOMES: ReadonlyArray<TutorialOutcome> = ["completed", "skipped"];
 
+/**
+ * A player's onboarding state as the server holds it in memory for the session (decoded from the stored value by
+ * `ONBOARDING_CODEC`): whether and how they finished the tutorial, the first sightings they have seen, and the
+ * new-player window's counters. Server-owned; the client only ever gets the `OnboardingStatus` derived from it.
+ */
 export interface OnboardingDoc {
 	/** The ONBOARDING_TUTORIAL_VERSION the player last finished; 0 = never finished one. */
 	tutorialVersion: number;
@@ -74,6 +87,10 @@ export interface StoredOnboardingDoc {
 	returned?: boolean;
 }
 
+/**
+ * The document of a player who never finished a tutorial: version 0, nothing seen, no new-player fields. Also what a
+ * missing or unreadable stored value decodes to, so such a player is offered the tutorial. A fresh object each call.
+ */
 export function emptyOnboardingDoc(): OnboardingDoc {
 	return { tutorialVersion: 0, outcome: "skipped", at: 0 };
 }
@@ -165,6 +182,10 @@ export function isTutorialDone(doc: Readonly<OnboardingDoc>): boolean {
 	return doc.tutorialVersion >= ONBOARDING_TUTORIAL_VERSION;
 }
 
+/**
+ * True when `v` is one of the `TUTORIAL_OUTCOMES` strings. Guards the stored document's `outcome` and the
+ * `tutorialFinished` payload.
+ */
 export function isTutorialOutcome(v: unknown): v is TutorialOutcome {
 	return typeIs(v, "string") && TUTORIAL_OUTCOMES.includes(v as TutorialOutcome);
 }
@@ -177,6 +198,11 @@ function isNonNegativeInteger(v: unknown): v is number {
 	return isFiniteNumber(v) && v >= 0 && v % 1 === 0;
 }
 
+/**
+ * A document as the value written to the DataStore: stamped with `ONBOARDING_DOC_VERSION`, `seen` normalized and
+ * written only when it lists something, each new-player field written only when present and valid. A document with none
+ * of the optional parts therefore keeps the shape stored before those fields existed.
+ */
 export function encodeOnboardingDoc(doc: Readonly<OnboardingDoc>): StoredOnboardingDoc {
 	const out: StoredOnboardingDoc = {
 		v: ONBOARDING_DOC_VERSION,
@@ -219,6 +245,11 @@ export function decodeOnboardingDoc(raw: unknown): OnboardingDoc {
 	return out;
 }
 
+/**
+ * True when two documents hold the same state, field by field (the `seen` lists compared id by id in their stored
+ * order, an absent optional field equal only to an absent one). The codec's `equals`: the doc cache uses it to tell
+ * whether a set changed anything and needs a write.
+ */
 export function sameOnboardingDoc(a: Readonly<OnboardingDoc>, b: Readonly<OnboardingDoc>): boolean {
 	return (
 		a.tutorialVersion === b.tutorialVersion &&

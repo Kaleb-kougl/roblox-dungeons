@@ -54,6 +54,8 @@
  * list's tick-start positions: the enemy moved), a walk with it off (SPD1: no FIRE and no combo, or the guard alone;
  * guard ticks counted apart), the lunge, a roll. Every fight frame notes the hook (weaponSpacingActive for the frame's
  * buttons on the state the step starts from, what stepPlayer reads; travel frames: off), every snapshot the guard.
+ *
+ * @module
  */
 import { screenToWorld } from "shared/play";
 import {
@@ -194,6 +196,10 @@ export function greedyKnightFrame(
 /** What landed a hit (file comment). */
 export type HitCause = "contact" | "bullet" | "other";
 
+/**
+ * Spec support. One hit that landed on a player while a `ContactProbe` was installed: its cause, the name of the sim
+ * function that called the hurt method (what the cause was decided from), and the player index.
+ */
 export interface LandedHit {
 	readonly cause: HitCause;
 	readonly caller: string;
@@ -543,6 +549,10 @@ export interface SpacingTotals {
 	readonly ticks: number[];
 }
 
+/**
+ * Spec support. Empty spacing totals (every count 0, no kinds, no callers) for `spacingRun` to fill or
+ * `mergeSpacingTotals` to sum into.
+ */
 export function newSpacingTotals(): SpacingTotals {
 	return {
 		runs: 0,

@@ -20,6 +20,12 @@ export interface BoostBurstView {
 	readonly speed: number;
 }
 
+/**
+ * How boost drops, their pickup and fade bursts and the HUD's boost row look and move: heights in tiles or studs, times
+ * in seconds, colours as theme roles (each field says which). Read by boosts.ts and, through it, the client's
+ * BoostDropRenderController, BoostAuraController and the HUD's BoostRow. Changing a number changes only what is drawn:
+ * chances, durations and the pickup radius are the sim's (dropsData.ts).
+ */
 export const BOOST_VIEW = {
 	// --- the drop on the floor -----------------------------------------------------------------------------------
 	/**

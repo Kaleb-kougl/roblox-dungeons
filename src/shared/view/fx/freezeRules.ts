@@ -13,6 +13,8 @@
  * heavy nudge's strength and length), ranked above heavy / stamp and below phase / hurt / death; the client's
  * ComboController requests it on the ComboDisplay's `kick` edge (already off under reduced motion or without Screen
  * shake).
+ *
+ * @module
  */
 import type { JuiceSettings } from "shared/settings";
 import type { HurtKind } from "../watch";
@@ -25,12 +27,25 @@ import { screenShakeOn } from "./juiceRules";
 export const KILL_FREEZE_MS = 50;
 /** An elite (spawned in an elite room) or a heavy enemy (hpMax >= HEAVY_KILL_HP: bruiser 10, turrets 12). */
 export const HEAVY_KILL_FREEZE_MS = 80;
+/**
+ * An enemy with at least this much max hp is a heavy kill: its death freezes HEAVY_KILL_FREEZE_MS instead of
+ * KILL_FREEZE_MS (hitReact.ts holds the dying sprite as long). Lowering it makes more kills land with the longer
+ * freeze.
+ */
 export const HEAVY_KILL_HP = 8;
 /** A boss phase change (phase 2, 3; not the fight start 0 -> 1, which already has the intro roar). */
 export const BOSS_PHASE_FREEZE_MS = 120;
 /** The boss death: the one freeze allowed past MAX_HITSTOP_MS and the rate cap, then slow motion. */
 export const BOSS_DEATH_FREEZE_MS = BOSS_DEATH_HITSTOP_MS;
+/**
+ * Length of the slow-motion ramp that follows the boss death freeze, ms of real time: the time scale eases from
+ * BOSS_DEATH_SLOWMO_SCALE back to 1 over it.
+ */
 export const BOSS_DEATH_SLOWMO_MS = 500;
+/**
+ * Time scale the boss death's slow motion starts at (0.3 = the sim runs at 30 % speed), easing back to 1 over
+ * BOSS_DEATH_SLOWMO_MS.
+ */
 export const BOSS_DEATH_SLOWMO_SCALE = 0.3;
 /** Port: a heavy landed hit (sword finisher, heavy arrow: FxEvent.heavy) that the damage cap did not absorb. */
 export const HEAVY_HIT_FREEZE_MS = 40;
@@ -100,6 +115,12 @@ export function applyHurtFreeze(kind: HurtKind, clock: HitstopClock, settings: R
 // ---------------------------------------------------------------------------------------------
 // Camera nudge (render-only, whole render pixels; off under reducedMotion or the screenShake setting: screenShakeOn)
 
+/**
+ * Which camera nudge is running, or 'none'. heavy: a heavy landed hit; stamp: the room clear stamp landing; comboBreak:
+ * a combo broken during a fight; phase: a boss phase change; hurt: the view player was hit; death: the boss died. Each
+ * has its length (NUDGE_MS), its offset pattern (nudgeOffset) and a rank (nudgeReplaces). The client's
+ * FreezeFrameController keeps the running one.
+ */
 export type NudgeKind = "none" | "heavy" | "stamp" | "comboBreak" | "phase" | "hurt" | "death";
 
 /** The heavy-hit kick's length, ms (the combo break's kick reuses it). */
@@ -157,6 +178,10 @@ export function nudgeReplaces(current: NudgeKind, incoming: NudgeKind): boolean 
 	return incoming !== "none" && NUDGE_RANK[incoming] >= NUDGE_RANK[current];
 }
 
+/**
+ * Out-parameter of nudgeOffset: the camera's offset in whole render pixels along its right (`x`) and up (`y`) axes.
+ * Preallocate one and reuse it every frame.
+ */
 export interface NudgeOffset {
 	x: number;
 	y: number;

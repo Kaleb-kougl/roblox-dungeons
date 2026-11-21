@@ -4,11 +4,17 @@
  * sequence at a time (a new one releases the old one's bonus at once and replaces it) and up to ROOM_CLEAR.chip.max
  * corner chips (a new chip past the cap merges the oldest at once). Every bonus is released exactly once:
  * `look.bonusLanded` is the points released this frame, `look.held` the points not yet released.
+ *
+ * @module
  */
 import { TILE_SIZE } from "shared/sim";
 import { ROOM_CLEAR } from "./roomClearConfig";
 import type { RoomClear } from "./roomClears";
 
+/**
+ * How a room clear is celebrated on this client: "full" is the stamp, tally and flying bonus in the middle of the
+ * screen; "chip" is the small corner chip for a clear far from the view position in co-op (roomClearStyle decides).
+ */
 export type RoomClearStyle = "full" | "chip";
 
 /**
@@ -82,6 +88,11 @@ export function roomClearStyle(c: RoomClear, viewX: number, viewZ: number, solo:
 	return near ? "full" : "chip";
 }
 
+/**
+ * One row of the full sequence's tally: its kind, its final points (`value`), the points counted up so far (`shown`)
+ * and whether it has started counting. Reused objects in RoomClearLook.segments; only the first `segmentCount` are in
+ * use.
+ */
 export interface TallySegment {
 	kind: TallyKind;
 	value: number;
@@ -90,6 +101,10 @@ export interface TallySegment {
 	started: boolean;
 }
 
+/**
+ * What one corner chip draws this frame: whether it shows, PERFECT or not, how many rooms and bonus points it stands
+ * for, its slide offset and its transparency (0 opaque .. 1 clear). Reused objects in RoomClearLook.chips.
+ */
 export interface RoomClearChipLook {
 	shown: boolean;
 	perfect: boolean;
@@ -102,6 +117,12 @@ export interface RoomClearChipLook {
 	transparency: number;
 }
 
+/**
+ * Everything the room clear celebration draws this frame, written by RoomClearSequence and read by the client's
+ * RoomClearController: the stamp's scale and transparency, the tally's segments, the flying bonus chip, the corner
+ * chips, the bonus points still held back from the score panel, and this frame's one-shot cues (sounds, the camera
+ * kick, points released). One reused object: read it, do not keep it.
+ */
 export interface RoomClearLook {
 	/** A full sequence is running (the stamp / tally are drawn). */
 	active: boolean;
@@ -157,6 +178,13 @@ class Chip {
 	motion = 1;
 }
 
+/**
+ * The room clear celebration's state machine. It runs one full sequence (stamp, tally, flying bonus) and up to
+ * ROOM_CLEAR.chip.max corner chips, and writes what to draw into `look`. The client's RoomClearController drives it
+ * once per frame in the order the file header gives (beginFrame, collapse on danger, start per new clear, frame) and
+ * guarantees through `look.bonusLanded` that every bonus is released to the score panel exactly once, even when a
+ * sequence is replaced or collapsed. Times are real seconds.
+ */
 export class RoomClearSequence {
 	readonly look: RoomClearLook;
 	private active = false;

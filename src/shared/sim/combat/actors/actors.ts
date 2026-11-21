@@ -7,6 +7,8 @@
  * the LOWEST-index free slot (kind === NO_KIND), else appends a new slot, else (pool full) returns undefined and
  * counts CombatState.actorsDropped. Slots are freed when a corpse times out (ArchetypeData.corpseTicks, default
  * CORPSE_TICKS) or on ctx.freeActor. Everything is in slot order, so the reuse order is deterministic.
+ *
+ * @module
  */
 
 import {
@@ -70,6 +72,10 @@ export function createFreeActor(): ActorState {
 	};
 }
 
+/**
+ * A copy of `a` that shares nothing with it: the `capWindow` and `v` arrays are copied too (the combat state clone maps
+ * it over every slot).
+ */
 export function cloneActor(a: Readonly<ActorState>): ActorState {
 	return { ...a, capWindow: [...a.capWindow], v: [...a.v] };
 }

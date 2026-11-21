@@ -33,6 +33,8 @@
  *
  * A new run (another SimState object) or reset() takes a fresh baseline: no edges on that frame. Presentation only:
  * reads the state, never writes it; no allocation per frame once the arrays have grown to the party size.
+ *
+ * @module
  */
 import {
 	BOW,
@@ -121,6 +123,13 @@ function guardUp(state: Readonly<SimState>, i: number, w: Readonly<WeaponsState>
 	return swordGuard(active, swordGuardTicks(state, i)) > 0;
 }
 
+/**
+ * The per-frame edge detector over a run's state (see the file comment for each edge). `update(state, localIndex)` once
+ * per rendered frame compares the state with last frame's and fills the public fields: the per-player arrays (indexed
+ * by player index) and the party and floor flags. Read them before the next update. The first update of a run, or the
+ * one after `reset()`, only takes a baseline. Each reader owns its own instance: the audio cue mapper and the feel
+ * controllers (hurt flash, freeze frame, haptics, room clear).
+ */
 export class StateWatch {
 	private seen: Readonly<SimState> | undefined;
 	private fresh = true;

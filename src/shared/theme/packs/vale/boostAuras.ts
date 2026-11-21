@@ -9,6 +9,8 @@
  * `play` is rank 0's loop, `rank.<r>` rank r's (cells start + r * frames), `ringPx` each rank's ring radius in art px
  * from the pivot, tinted by the kind's own role `boost.<kind>` (the greyscale art's white = the role), additive (a
  * self-lit glow like the disc), at the art's own pixelsPerTile (the renderer sizes each rank from its ring instead).
+ *
+ * @module
  */
 import { boostAuraKindOf, boostAuraRankAnimation } from "../../boostAuraArt";
 import { BOOST_KINDS, boostAuraFxId, boostId, type BoostFxId } from "../../contract";

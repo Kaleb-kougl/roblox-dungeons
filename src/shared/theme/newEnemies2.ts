@@ -8,6 +8,11 @@
  * The four first-sighting lines (`bestiary.<id>`) are in variants.ts BESTIARY_ARCHETYPES / BESTIARY_STRING_KEYS (the
  * archetypes' block, before the affixes: NE1's rule) with their shared/onboarding sighting ids; the brazier (`pyre`)
  * has none (NXD15).
+ *
+ * The contract lists named above:
+ * {@link shared/theme/contract/ids!PORT_AUDIO_EVENTS | PORT_AUDIO_EVENTS}.
+ *
+ * @module
  */
 
 import type { ColorRole } from "./types";

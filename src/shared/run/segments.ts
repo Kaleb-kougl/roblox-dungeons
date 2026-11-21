@@ -25,6 +25,8 @@
  *
  * Pure and Roblox-API-free: time is passed in (`now`, seconds, any monotonic clock), the budget arrives through
  * ReplayHooks (the server's ReplayBudget yields there), the score through an injectable reader (score.ts).
+ *
+ * @module
  */
 import {
 	SIM_HZ,
@@ -146,6 +148,11 @@ export interface SegmentVerdict {
 	mismatchAtTick?: number;
 }
 
+/**
+ * Where a segmented run stands on the server: `open` (taking segments), `finishing` (the final submit arrived, queued
+ * segments are still being replayed), then `accepted` or `rejected` for good. A run that is not `open` refuses further
+ * segments.
+ */
 export type SegmentedRunStatus = "open" | "finishing" | "accepted" | "rejected";
 
 /** The verdict on a whole segmented run. Every number is the server's replay; the claim was only compared. */
@@ -179,10 +186,18 @@ export interface SegmentedRunResult {
 	silver?: RunSilver;
 }
 
+/**
+ * What `SegmentedValidator.offer` returns: the queued segment's index and tick range `[startTick, endTick)`, or the
+ * verdict that rejected it (and with it the whole run).
+ */
 export type SegmentOffer =
 	| { readonly ok: true; readonly index: number; readonly startTick: number; readonly endTick: number }
 	| { readonly ok: false; readonly verdict: SegmentVerdict };
 
+/**
+ * What one `SegmentedValidator.advance` call did. `stepped` is 0 when nothing was queued, the run was already decided,
+ * or the replay raised an error (which rejects the run and comes back as `result`).
+ */
 export interface AdvanceResult {
 	/** Ticks stepped by this call. */
 	readonly stepped: number;
@@ -192,6 +207,10 @@ export interface AdvanceResult {
 	readonly result?: SegmentedRunResult;
 }
 
+/**
+ * What a `SegmentedValidator` is created with: the run's identity and the world the server built for it. Run sessions
+ * (runSessions.ts) fill it in at `startRun`; nothing here comes from the client.
+ */
 export interface SegmentedRunParams {
 	readonly runId: string;
 	readonly seed: number;

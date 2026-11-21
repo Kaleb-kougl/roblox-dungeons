@@ -12,6 +12,8 @@
  * along the facing (half-angle fanRad, speeds sparkSpeedMin..Max with exponential drag) and a ring grows ringR0 ->
  * ringR1 tiles, all fading after `hold` of lifeSec; the preview stages it bigger and slower (spreadScale, burstSlowdown,
  * the client's sparkPx). Reduced motion: no action (the caller keeps the still idle).
+ *
+ * @module
  */
 import { cosmeticItem, LOOK_SLOTS } from "shared/cosmetics";
 import { COSMETIC_VIEW } from "../cosmetics/config";
@@ -28,6 +30,10 @@ const HALF_TURN_DEG = 180;
 /** A spark's speed between sparkSpeedMin and Max: the fractional golden-ratio sequence (spread, no rng). */
 const SPREAD_STEP = 0.618034;
 
+/**
+ * What the Armory preview's character does for the focused cosmetic: the turning `idle`, a `roll` (a trail item, with
+ * its afterimages) or an `attack` (a spark item, with its parry burst).
+ */
 export type PreviewAction = "idle" | "roll" | "attack";
 
 /** The action the preview plays for item `itemId`: a trail rolls, a spark attacks, anything else idles. */
@@ -160,6 +166,11 @@ export interface PreviewRing {
 	readonly transparency: number;
 }
 
+/**
+ * The staged parry burst at one moment of the preview's attack: every spark and the growing ring, positions and radius
+ * in tiles from the burst's origin. `previewBurst` and `previewBurstAt` return it; the client's CharacterPreview draws
+ * it.
+ */
 export interface PreviewBurst {
 	readonly sparks: ReadonlyArray<PreviewSpark>;
 	readonly ring: PreviewRing;

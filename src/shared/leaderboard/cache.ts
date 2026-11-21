@@ -5,8 +5,14 @@
  *
  * Pure: time is passed in, waiting uses coroutine.running / coroutine.yield and resuming is injected (task.spawn on
  * the server, coroutine.resume in the specs), like shared/settings PlayerDocCache.
+ *
+ * @module
  */
 
+/**
+ * One read of the cache: the value, `stale` when it is the last good one after a failed load; or the error when no
+ * value was ever loaded.
+ */
 export type CacheLoad<V> =
 	| { readonly ok: true; readonly value: V; readonly stale: boolean }
 	| { readonly ok: false; readonly error: string };
@@ -22,6 +28,12 @@ interface Slot<V> {
 	generation: number;
 }
 
+/**
+ * The time-to-live cache with shared loads described in the file comment, one slot per key. The server's
+ * LeaderboardService holds one per kind of read (a board's top rows, a player's own entry). `ttlSeconds` is how long a
+ * loaded value counts as fresh; `resume` wakes a caller that waited on another caller's load (`task.spawn` on the
+ * server, `coroutine.resume` in the specs). Slots are never dropped by age, only by `invalidate`.
+ */
 export class SharedTtlCache<K, V> {
 	private readonly slots = new Map<K, Slot<V>>();
 

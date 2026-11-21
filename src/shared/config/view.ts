@@ -5,6 +5,8 @@
  * PIXELS_PER_TILE) @ 42897e2. The web camera is a true orthographic camera; Roblox has no
  * orthographic projection, so the port fakes it with a very narrow perspective camera placed
  * far away (PLAN.md "Accepted losses"). See `shared/view` for the math.
+ *
+ * @module
  */
 
 /** Camera yaw around +Y, degrees. 45: the camera sits at +X+Z looking toward -X-Z. */
@@ -15,6 +17,10 @@ export const CAMERA_PITCH_DEG = 55;
 
 /** The web build's internal render resolution, in pixels. */
 export const RENDER_W = 480;
+/**
+ * Height of the web build's internal render resolution, in pixels (`RENDER_W` is its width). Divided by
+ * `PIXELS_PER_TILE` it gives the tiles visible top to bottom, `VIEW_TILES_HIGH`.
+ */
 export const RENDER_H = 270;
 
 /** Render pixels per tile at that resolution (the web build's texel grid). */

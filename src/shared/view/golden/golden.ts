@@ -18,6 +18,8 @@
  *   minimap       goldenBlipSlot: the running Goldling's actor slot, or -1.
  *
  * Time: `simSec` is sim time ((tick + alpha) / SIM_HZ), so the pulse and the flicker hold still in a pause or a freeze.
+ *
+ * @module
  */
 import { CAMERA_YAW_DEG } from "shared/config";
 import {
@@ -147,6 +149,10 @@ export interface GoldenRingLook {
 	colourStep: number;
 }
 
+/**
+ * A fresh GoldenRingLook for a renderer to keep and hand to `goldenRingLook` every frame (no ring, calm radius, the
+ * plain coin colour). GoldenRenderController owns one.
+ */
 export function newGoldenRingLook(): GoldenRingLook {
 	return { pieces: 0, radiusScale: 1, colourStep: 0 };
 }

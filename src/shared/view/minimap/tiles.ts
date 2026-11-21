@@ -6,16 +6,24 @@
  *
  * Grid cell (gx, gy) is index gy * W + gx and covers world [gx - 0.5, gx + 0.5] x [gy - 0.5, gy + 0.5] tiles
  * (shared/dungeon collision.ts: x = grid x, z = grid y).
+ *
+ * @module
  */
 import { TileType, worldToGrid, type Dungeon, type RoomType, type WorldXZ } from "shared/dungeon";
 
 /** One map cell's kind. NONE: void, or a wall that touches no FLOOR / POOL (never drawn, blocks sight). */
 export const MapTile = { NONE: 0, FLOOR: 1, WALL: 2, POOL: 3 } as const;
+/** One `MapTile` value (0 none, 1 floor, 2 wall, 3 pool): an entry of `MinimapTiles.tile`. */
 export type MapTile = (typeof MapTile)[keyof typeof MapTile];
 
 /** No room / no cell. */
 export const MAP_NO_CELL = -1;
 
+/**
+ * A floor as the minimap draws it, built once per floor by `minimapTiles` from the dungeon (and the endless layout's
+ * stairwell). Every per-cell array is indexed y x W + x. Read by FogOfWar (sight and room reveal) and the client's
+ * MinimapController (paint and marks).
+ */
 export interface MinimapTiles {
 	readonly W: number;
 	readonly H: number;

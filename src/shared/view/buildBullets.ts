@@ -3,6 +3,8 @@
  * (the sim's BulletKind BURST / SHARD / SPARK_BOLT; every other kind is the weapon's bolt, heavy by draw scale as
  * before), whether its look has a trail, which pool draws it (embers go to the floor decal pool while
  * BUILD_BULLET_VIEW.ember.decal is on) and an ember decal's pop-in / fade-out. Pure; BulletRenderController applies it.
+ *
+ * @module
  */
 import { BulletKind, BulletPayload } from "shared/sim";
 import { BUILD_BULLET_IDS } from "shared/theme";
@@ -19,6 +21,10 @@ export const PlayerBulletLook = {
 	BOLT: 4,
 	EMBER: 5,
 } as const;
+/**
+ * One `PlayerBulletLook` value (0..5): what `playerBulletLookOf` returns and the index BulletRenderController uses into
+ * `PLAYER_BULLET_LOOK_IDS` to pick a player bullet's theme visual.
+ */
 export type PlayerBulletLookId = (typeof PlayerBulletLook)[keyof typeof PlayerBulletLook];
 
 /** The theme visual of each look (PlayerBulletLook order). */

@@ -6,6 +6,8 @@
  * whose event was not seen: everything settled). Reduced motion (`reduced`) keeps colours, text and fades and drops
  * the movement; Particles off (`particles` false) drops the column and the burst and stills the sparkle. Tunables:
  * TREASURE_VIEW (config.ts). Tested headlessly (timeline.spec.ts).
+ *
+ * @module
  */
 import { TREASURE_VIEW } from "./config";
 

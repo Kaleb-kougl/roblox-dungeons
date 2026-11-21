@@ -15,6 +15,8 @@
  *   5. trigger ('hold': FIRE held / 'press': FIRE edge / 'custom': never), not rolling, cooldown 0
  *        -> def.fire(ctx, slot); true -> slot.cooldown = data.cooldownTicks (M2 Swift Strikes: x 80 %, rounded)
  *   6. prevButtons = input.buttons
+ *
+ * @module
  */
 
 import { Button } from "../../input";
@@ -72,6 +74,10 @@ export function createWeaponsState(loadout: ReadonlyArray<string | undefined>, e
 	};
 }
 
+/**
+ * A deep copy of the weapon state: new slot objects and new `v` arrays, so stepping the copy never touches the
+ * original.
+ */
 export function cloneWeaponsState(w: Readonly<WeaponsState>): WeaponsState {
 	return { ...w, sets: w.sets.map((s) => ({ ...s, v: [...s.v] })) };
 }

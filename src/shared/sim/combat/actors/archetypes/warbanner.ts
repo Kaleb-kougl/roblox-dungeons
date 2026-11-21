@@ -26,6 +26,8 @@
  * View contract: states WARBANNER_KEEP (= STATE_ENGAGED) / AiState.TELEGRAPH (the panic) / WARBANNER_BACKOFF; attack id
  * WARBANNER_ATTACK_PANIC; v slots WARBANNER_STRAFE (+1 / -1), WARBANNER_PANIC (1 from the panic telegraph to the end of
  * the back-off). Buffed actors: `warbannerAuraMask` on the state (or SimCtx.inAura inside the tick).
+ *
+ * @module
  */
 
 import { secondsToTicks } from "../../../playerData";
@@ -50,24 +52,40 @@ import {
 	type RoomEnemyData,
 } from "./enemyShared";
 
+/**
+ * Tuning of the Warbanner: its keep-away and strafe, the aura it gives nearby room enemies, the panic ring and the pull
+ * toward its allies. Distances in world units, times in ticks.
+ */
 export interface WarbannerData extends RoomEnemyData {
 	/** Preferred distance band to every living player (world units). */
 	readonly keepMin: number;
+	/**
+	 * Far edge of the keep band (world units): it closes in on its target past this, only with line of sight and when
+	 * no player is inside keepMin.
+	 */
 	readonly keepMax: number;
 	/** Strafe direction flips after a random [min, max] ticks (or when a wall stops it). */
 	readonly strafeFlipMin: number;
+	/**
+	 * Longest time before the strafe side flips (ticks, inclusive; one `ctx.randomInt` draw from the sim rng); the
+	 * shortest is `strafeFlipMin`.
+	 */
 	readonly strafeFlipMax: number;
 	/** Weight of the sideways component of the move (radial is 1). */
 	readonly strafeWeight: number;
 	/** The aura (NED8): its radius (world units, centre to centre) and the integer percents it applies. */
 	readonly auraRadius: number;
+	/** Walk speed percent of every aura target inside auraRadius (100 = unchanged). */
 	readonly auraWalkPercent: number;
+	/** Attack cooldown percent of every aura target inside auraRadius (100 = unchanged; lower attacks sooner). */
 	readonly auraCooldownPercent: number;
 	/** Panics when a living player is this close (and in sight). */
 	readonly panicRange: number;
+	/** The panic's telegraph (ticks): it stands still this long before the panic ring fires. */
 	readonly panicTelegraphTicks: number;
 	/** Ticks until it may panic again (random in [min, max], `enemyCooldown`). */
 	readonly panicCooldownMin: number;
+	/** Longest cooldown drawn when it panics (ticks, inclusive); the shortest is `panicCooldownMin`. */
 	readonly panicCooldownMax: number;
 	/** The panic ring: the bruiser's (same spec object, same arc-table row). */
 	readonly panicRing: BurstSpec;
@@ -97,11 +115,21 @@ export const WARBANNER_PANIC = 4;
 
 /** NED8 aura numbers. */
 export const WARBANNER_AURA_RADIUS = 4.5;
+/**
+ * Walk speed of an actor inside the aura, in percent (125: a quarter faster). Combined with an affix's percent in
+ * actorMods.ts.
+ */
 export const WARBANNER_AURA_WALK_PERCENT = 125;
+/**
+ * Attack cooldown of an actor inside the aura, in percent (80: a fifth shorter). Combined with an affix's percent in
+ * actorMods.ts.
+ */
 export const WARBANNER_AURA_COOLDOWN_PERCENT = 80;
 /** NE6 keep-away tunables (allyRange, centroidSlack, centroidWeight). */
 export const WARBANNER_ALLY_RANGE = 10;
+/** Within this distance of its allies' centroid there is no pull toward it (world units). */
 export const WARBANNER_CENTROID_SLACK = 2;
+/** Weight of the pull toward its allies' centroid in the keep-away move (the radial part is 1). */
 export const WARBANNER_CENTROID_WEIGHT = 0.6;
 
 /** A move shorter than this fraction of the step means a wall: flip the strafe side (the sniper's rule). */
@@ -114,6 +142,10 @@ const dirScratch: Dir = { x: 0, z: 1 };
 /** Scratch: the away / centroid vectors (module scratch, overwritten every call; never state). */
 const vecScratch: Dir = { x: 0, z: 0 };
 
+/**
+ * The registered `warbanner` archetype (band PORT_BAND_ENEMIES_2): its data and hooks. `ctx` reads its aura percents
+ * from this def's data.
+ */
 export const WARBANNER = registerArchetype<WarbannerData>({
 	id: "warbanner",
 	band: PORT_BAND_ENEMIES_2,

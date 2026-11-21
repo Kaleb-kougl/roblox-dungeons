@@ -7,6 +7,8 @@
  *
  * Port notes: the Recorder's `length` / `recording` getters are `size()` / `getRecording()`; recordings are parsed
  * with ./json.ts (no HttpService in the sim) and printed with JS number formatting (./jsnum.ts).
+ *
+ * @module
  */
 
 import { copyInput, isValidInput, type InputFrame } from "./input";
@@ -34,8 +36,14 @@ import { isFiniteNumber, isIntegerNumber, numberToJsString } from "./jsnum";
 import { isJsonArray, isJsonObject, jsonToJsString, parseJson, type JsonValue } from "./json";
 import { jsMin } from "shared/jsmath";
 
+/**
+ * Everything needed to reproduce a run: the seed, the spawn point and one quantized input frame per tick (per player in
+ * co-op).
+ */
 export interface Recording {
+	/** The seed `createSimState` was given; replay restores the rng from it. */
 	seed: number;
+	/** Where the player starts, world units (the spawn `createSimState` was given). */
 	spawn: { x: number; z: number };
 	/** One frame per tick, index = tick number. Co-op: player 0's. */
 	frames: InputFrame[];
@@ -91,6 +99,10 @@ export function stepRecorded(
 
 const mergedScratch: Array<Readonly<InputFrame>> = [];
 
+/**
+ * Collects a live run's input frames, one `record` (or `recordParty`) call per tick, and hands out the Recording so
+ * far. Lives outside step(): nothing in it is hashed.
+ */
 export class Recorder {
 	seed: number;
 	spawn: { x: number; z: number };
@@ -276,6 +288,10 @@ function jsonNumber(v: number): string {
 	return isFiniteNumber(v) ? numberToJsString(v) : "null";
 }
 
+/**
+ * The recording as the web build's compact JSON string: frames run-length encoded into one flat integer array, numbers
+ * printed exactly as `JSON.stringify` would. Solo only: throws for a party recording (those use the binary codec).
+ */
 export function serializeRecording(recording: Readonly<Recording>): string {
 	if (recording.others !== undefined) error("serializeRecording: party recordings use the binary codec only", 0);
 	const f: string[] = [];

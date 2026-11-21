@@ -14,6 +14,8 @@
  * Port change: the web build sized sprites from their sheet frames (16x16 enemies). The Roblox placeholders are 3D
  * primitives seen from the iso camera, so a kind's drawn size is its placeholder's SCREEN extent (placeholderScreenSize):
  * the width across the view and the height of its top edge above the feet, in render px.
+ *
+ * @module
  */
 
 /** Bar inner width as a fraction of the drawn sprite width (16 px sprite -> 12 px bar). */
@@ -36,6 +38,10 @@ const WIDE_PIP_MAX = 3;
 const WIDE_PIP = 3;
 const NARROW_PIP = 2;
 
+/**
+ * Width of one pip in render px for a row of `pips` pips: 3 px up to 3 pips, 2 px for 4, so the widest pip row stays
+ * narrower than a bar.
+ */
 export function pipWidth(pips: number): number {
 	return pips <= WIDE_PIP_MAX ? WIDE_PIP : NARROW_PIP;
 }
@@ -115,6 +121,10 @@ export interface BarGeometry {
 	top: number;
 }
 
+/**
+ * A zeroed BarGeometry to preallocate and hand to barGeometry() as its out-parameter (the health bar renderer keeps one
+ * and reuses it for every actor).
+ */
 export function createBarGeometry(): BarGeometry {
 	return {
 		pips: 0,

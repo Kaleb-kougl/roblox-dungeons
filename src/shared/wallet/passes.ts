@@ -12,6 +12,8 @@
  *   parseFakePasses           the Studio fake KV_FakePasses (`off`, or one price for every Robux-only item)
  *   cosmeticPassStatusFields  what the `wallet` push says (WalletStatus.robuxItems): each Robux-only item on sale here,
  *                             with its pass id, or Studio's fake price
+ *
+ * @module
  */
 import { ARMORY_CATALOG, isRobuxItem, type ArmoryItem } from "./catalog";
 import { COSMETIC_PASS_FAKE_KEYWORDS } from "./config";

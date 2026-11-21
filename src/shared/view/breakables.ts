@@ -21,6 +21,8 @@
  *                      lists one as hit / broken / restored (a crack's open sets its brokenTick: no barrel shatter).
  *   aim clip           clipToSolidCells: where a ray first enters an intact piece's cell (the sniper's aim line stops
  *                      where its bullet will).
+ *
+ * @module
  */
 import { STUDS_PER_TILE } from "shared/config";
 import {

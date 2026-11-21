@@ -1,6 +1,8 @@
 /**
  * What the menu shows of the Codex (claude/codex-plan.md "Main menu and the Codex screen", CX6 / CX7): the NEW-dot count
  * for the Codex button's badge, and found / total per tab and overall. Pure; the client's store selectors wrap them.
+ *
+ * @module
  */
 import { CODEX_TABS, catalogTotal, type CodexTab } from "./catalog";
 import { codexFoundCount, type CodexDoc } from "./doc";
@@ -11,6 +13,10 @@ export interface CodexCount {
 	readonly total: number;
 }
 
+/**
+ * A player's Codex completion as the menu shows it: found and total over the whole catalog, and the same per tab.
+ * Entries only seen do not count as found; character-gated entries count toward the totals.
+ */
 export interface CodexProgress {
 	/** The whole catalog (the completion %). */
 	readonly all: CodexCount;

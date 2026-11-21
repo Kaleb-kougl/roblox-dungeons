@@ -3,6 +3,8 @@
  * and hash (pacts.ts), the room hooks endless.ts and score.ts call (pactRooms.ts), the tick's altars, second wave and
  * the view's queries (stepPacts.ts) and the frozen tick's timer hold (holdTimers.ts). Inside the sim, import the files
  * directly (a barrel import from inside would create require cycles).
+ *
+ * @module
  */
 export * from "./pactsData";
 export * from "./pacts";

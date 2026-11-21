@@ -4,6 +4,8 @@
  * `SwordSpacing.WEB`, which the parity specs set next to `setPlayerMover(PlayerMover.WEB)` /
  * `setSwordTimings(WEB_SWORD_TIMINGS)` so the golden fixtures still replay bit for bit. Read when a config is built
  * (buildRunConfig, buildEndlessRunConfig, the tutorial), like ./playerMover.ts. Pure and Roblox-API-free.
+ *
+ * @module
  */
 import { SWORD_SPACING, type SpacingConfig } from "shared/sim";
 
@@ -14,6 +16,10 @@ export const SwordSpacing = {
 	/** The web build's sword: no brake (SimConfig.spacing absent). What every golden fixture was recorded with. */
 	WEB: 1,
 } as const;
+/**
+ * A value of `SwordSpacing`: which brake `swordSpacing` gives. Specs pass it to `setSwordSpacing`; live code never sets
+ * it.
+ */
 export type SwordSpacingKind = (typeof SwordSpacing)[keyof typeof SwordSpacing];
 
 let currentKind: SwordSpacingKind = SwordSpacing.ON;

@@ -8,6 +8,8 @@
  *   - else the tile kind's colour (palette floor / wall / pool), then on room floor (MinimapTiles.room >= 0) the
  *     room's look mixed in by MINIMAP_VIEW.roomTintMix, then on a frontier cell the palette's frontier colour mixed in
  *     by MINIMAP_VIEW.frontierMix, then REMEMBERED cells scaled by MINIMAP_VIEW.rememberedDim; alpha 255.
+ *
+ * @module
  */
 import { channelToByte, mixChannel } from "shared/theme";
 import { MINIMAP_VIEW } from "./config";

@@ -46,6 +46,8 @@
  *                    stillTick STILL_NONE -1: nothing recorded)
  *
  * Events (BuildEvents) are presentation only: cleared every tick, NOT hashed.
+ *
+ * @module
  */
 import type { SimState } from "../state";
 import { BOON_COUNT } from "../progression/progressionData";
@@ -80,8 +82,20 @@ export interface BuildPlayerState {
 	duos: number[];
 	/** Counters (BU5 / BU6). */
 	grazes: number;
+	/**
+	 * Jackpot (Bounty III): kills by this player toward the next pay, 0 .. JACKPOT_KILLS - 1 between kills. Counts only
+	 * while the boon is evolved.
+	 */
 	kills: number;
+	/**
+	 * Flurry (Swift Strikes III): bow stream arrows fired toward the next triple, 0 .. FLURRY_ARROW_EVERY - 1 between
+	 * shots. Counts only while the boon is evolved.
+	 */
 	arrows: number;
+	/**
+	 * Storm Blade (BU6): bow arrow hits toward the next spark, 0 .. STORM_BLADE_ARROW_HITS - 1 between hits. Counts
+	 * only while the duo is owned.
+	 */
 	bigHits: number;
 	/** Deals left in the open draft (the one on screen included); 0 while no draft is open. */
 	draftsLeft: number;
@@ -114,6 +128,7 @@ export interface BuildPlayerState {
 export interface BuildProc {
 	/** The corpse's position. */
 	x: number;
+	/** The corpse's Z (world units); a SMASH proc's is its piece's cell centre. */
 	z: number;
 	/** The credited player (party index). */
 	owner: number;
@@ -121,6 +136,7 @@ export interface BuildProc {
 	gen: number;
 	/** The victim's actor slot and id (skipped as a target). */
 	slot: number;
+	/** The victim's actor id, which tells a freed and reused slot apart (-1 for a SMASH proc). */
 	id: number;
 	/** Overkill's carry (docs/LEGENDARIES.md LG1, appended; LG2: 0 for a proc that carries nothing or no Overkill). */
 	excess: number;
@@ -139,9 +155,11 @@ export interface BuildPin {
 	owner: number;
 	/** The pinned actor's slot and id (the id tells a freed and reused slot apart). */
 	slot: number;
+	/** The pinned actor's id: a slot whose actor has another id was freed and reused. */
 	id: number;
 	/** Where the pin started (the actor's position when pinned): the distance carried is measured from here. */
 	x0: number;
+	/** The Z where the pin started (world units). */
 	z0: number;
 	/** 1 once a drag left the body more than SIEGE_SLAM_SHORT short of the arrow (the next walk visit slams), else 0. */
 	slam: number;
@@ -157,14 +175,22 @@ export interface BuildWave {
 	owner: number;
 	/** The origin (the guarding player's position when the wave went out). */
 	x: number;
+	/** The origin's Z (world units). */
 	z: number;
 	/** The unit direction (the facing) and the cone's half-angle cosine (a full ring: below -1). */
 	dirX: number;
+	/** The unit direction's Z component. */
 	dirZ: number;
+	/**
+	 * The cone's half-angle cosine for the cone test (dot >= halfCos x distance); below -1 for a full ring, which every
+	 * enemy passes.
+	 */
 	halfCos: number;
 	/** The current radius, where it ends, and its growth per second (world units). */
 	radius: number;
+	/** The radius at which the wave ends (world units). */
 	range: number;
+	/** The radius' growth in world units per second (x SIM_DT per tick). */
 	speed: number;
 	/** Damage per enemy struck (before playerHitDamage). */
 	damage: number;
@@ -181,9 +207,11 @@ export interface BuildWave {
 export interface BuildEvents {
 	/** Players (party index) whose pick this tick was an evolution (level III), and the boon. */
 	evolvedPlayer: number[];
+	/** Parallel to `evolvedPlayer`: the Boon index that reached level III. */
 	evolvedBoon: number[];
 	/** Players whose pick this tick was a duo, and the duo. */
 	duoPlayer: number[];
+	/** Parallel to `duoPlayer`: the Duo index taken. */
 	duoTaken: number[];
 	/**
 	 * Chain Spark, one entry per hop that hit: from (sparkX1, sparkZ1) (the corpse for the first hop, else the previous
@@ -191,22 +219,38 @@ export interface BuildEvents {
 	 * generation (0: the player's own kill; climbs along a cascade).
 	 */
 	sparkX1: number[];
+	/** Per spark segment: the Z it starts from (world units). */
 	sparkZ1: number[];
+	/** Per spark segment: the target's X when hit (world units). */
 	sparkX2: number[];
+	/** Per spark segment: the target's Z when hit (world units). */
 	sparkZ2: number[];
+	/** Per spark segment: the credited player (party index). */
 	sparkOwner: number[];
+	/** Per spark segment: the proc's generation (0: the player's own kill; climbs along a cascade). */
 	sparkGen: number[];
 	/** Volatile rings that spawned at least one bolt: the corpse, owner, the proc's generation, bolts spawned. */
 	burstX: number[];
+	/** Per Volatile ring: the corpse's Z (world units). */
 	burstZ: number[];
+	/** Per Volatile ring: the credited player (party index). */
 	burstOwner: number[];
+	/** Per Volatile ring: the proc's generation (0: the player's own kill). */
 	burstGen: number[];
+	/**
+	 * Per Volatile ring: bolts actually spawned (at least 1; fewer than the ring's count when the effect budget cut
+	 * it).
+	 */
 	burstFired: number[];
 	/** Soul Shards volleys that spawned at least one shard: the corpse, owner, the proc's generation, shards spawned. */
 	shardX: number[];
+	/** Per Soul Shards volley: the corpse's Z (world units). */
 	shardZ: number[];
+	/** Per Soul Shards volley: the credited player (party index). */
 	shardOwner: number[];
+	/** Per Soul Shards volley: the proc's generation (0: the player's own kill). */
 	shardGen: number[];
+	/** Per Soul Shards volley: shards actually spawned (at least 1). */
 	shardFired: number[];
 	/** Effect bullets the effect budget (or a full pool) refused this tick; combat.dropped counts them too. */
 	effectDropped: number;
@@ -218,54 +262,84 @@ export interface BuildEvents {
 	 * radius (world units), the owner, NovaKind, and the enemy bullets erased (goo included).
 	 */
 	novaX: number[];
+	/** Per nova: the centre's Z (world units). */
 	novaZ: number[];
+	/** Per nova: its radius in world units (OVERFLOWING_NOVA_RADIUS or BULWARK_NOVA_RADIUS). */
 	novaRadius: number[];
+	/** Per nova: the player it was released around (party index). */
 	novaOwner: number[];
+	/** Per nova: NovaKind (OVERFLOWING / BULWARK). */
 	novaKind: number[];
+	/** Per nova: enemy bullets it erased, goo included (0 is possible). */
 	novaErased: number[];
 	/** Executioner kills: the enemy's position, the credited player. */
 	execX: number[];
+	/** Per Executioner kill: the enemy's Z (world units). */
 	execZ: number[];
+	/** Per Executioner kill: the credited player (party index). */
 	execOwner: number[];
 	/** Phantom Step: per enemy bullet erased by a rolling player (goo erased quietly, not listed), where, and who. */
 	phantomX: number[];
+	/** Per bullet Phantom Step erased: its Z (world units). */
 	phantomZ: number[];
+	/** Per bullet Phantom Step erased: the rolling player (party index). */
 	phantomOwner: number[];
 	/** Jackpot pops: the corpse, the owner, the points paid (ScoreSource.JACKPOT). */
 	jackpotX: number[];
+	/** Per Jackpot pop: the corpse's Z (world units). */
 	jackpotZ: number[];
+	/** Per Jackpot pop: the player paid (party index). */
 	jackpotOwner: number[];
+	/** Per Jackpot pop: the points paid (ScoreSource.JACKPOT). */
 	jackpotPoints: number[];
 	/** Lionheart heals: the player and the half hearts restored (only heals that restored anything). */
 	lionPlayer: number[];
+	/** Parallel to `lionPlayer`: half hearts restored (at least 1). */
 	lionHealed: number[];
 	/** Momentum volleys (>= 1 shard spawned): the player's position, the owner, the tier crossed (2..5), shards spawned. */
 	momentumX: number[];
+	/** Per Momentum volley: the player's Z when it fired (world units). */
 	momentumZ: number[];
+	/** Per Momentum volley: the player (party index). */
 	momentumOwner: number[];
+	/** Per Momentum volley: the combo tier crossed, MOMENTUM_TIER_FIRST .. MOMENTUM_TIER_LAST (2..5). */
 	momentumTier: number[];
+	/** Per Momentum volley: shards actually spawned (at least 1, at most the tier). */
 	momentumFired: number[];
 	/** Thrill Seeker rings (>= 1 bolt spawned): the player's position, the owner, bolts spawned. */
 	thrillX: number[];
+	/** Per Thrill Seeker ring: the player's Z when it fired (world units). */
 	thrillZ: number[];
+	/** Per Thrill Seeker ring: the player (party index). */
 	thrillOwner: number[];
+	/** Per Thrill Seeker ring: bolts actually spawned (at least 1). */
 	thrillFired: number[];
 	/** Flurry: the origin, the owner, FlurryKind (crescent / arrows), bullets spawned (crescent: bolts; arrows: 3). */
 	flurryX: number[];
+	/** Per Flurry: the origin's Z (world units). */
 	flurryZ: number[];
+	/** Per Flurry: the player (party index). */
 	flurryOwner: number[];
+	/** Per Flurry: FlurryKind (CRESCENT: a finisher's bolts; ARROWS: a stream arrow fired as a triple). */
 	flurryKind: number[];
+	/** Per Flurry: bullets spawned (a crescent's bolts; an arrow triple's arrows). */
 	flurryFired: number[];
 	/** Ricochet splits (>= 1 arrow spawned): where the arrow ended, the owner, arrows spawned. */
 	ricochetX: number[];
+	/** Per Ricochet split: the Z where the arrow ended (world units). */
 	ricochetZ: number[];
+	/** Per Ricochet split: the archer (party index). */
 	ricochetOwner: number[];
+	/** Per Ricochet split: arrows actually spawned (at least 1, at most RICOCHET_ARROWS). */
 	ricochetFired: number[];
 	// --- BU6 (duos). Parallel lists per group, one entry per event, pushed in resolution order. ---
 	/** Embers spawned (Fire Arrows, Blazing Trail): where, the owner, the Duo that dropped it. */
 	emberX: number[];
+	/** Per ember spawned: its Z (world units). */
 	emberZ: number[];
+	/** Per ember spawned: the player whose arrow or roll dropped it (party index). */
 	emberOwner: number[];
+	/** Per ember spawned: the Duo index that dropped it. */
 	emberDuo: number[];
 	/**
 	 * Duo rules that fired (one entry each; embers and Shrapnel's bolts have none): the Duo, the owner, where (Storm
@@ -276,9 +350,16 @@ export interface BuildEvents {
 	 * enemies its streak struck (the target included; only when the line struck anyone besides it).
 	 */
 	duoProcDuo: number[];
+	/** Per duo rule that fired: the credited player (party index). */
 	duoProcOwner: number[];
+	/** Per duo rule that fired: where, X (world units; which point is per duo, see `duoProcDuo`). */
 	duoProcX: number[];
+	/** Per duo rule that fired: where, Z (world units). */
 	duoProcZ: number[];
+	/**
+	 * Per duo rule that fired: its count or amount (enemies struck, bullets spawned or points; which is per duo, see
+	 * `duoProcDuo`).
+	 */
 	duoProcValue: number[];
 	// --- docs/LEGENDARIES.md LG2 (Overkill). Parallel lists, one entry per streak, pushed in resolution order. ---
 	/**
@@ -287,11 +368,17 @@ export interface BuildEvents {
 	 * chain) and the carry dealt (world damage, the kill's excess).
 	 */
 	overkillX1: number[];
+	/** Per Overkill streak: the corpse's Z (world units). */
 	overkillZ1: number[];
+	/** Per Overkill streak: the target's X when struck (world units). */
 	overkillX2: number[];
+	/** Per Overkill streak: the target's Z when struck (world units). */
 	overkillZ2: number[];
+	/** Per Overkill streak: the credited player (party index). */
 	overkillOwner: number[];
+	/** Per Overkill streak: the proc's generation (0: the player's own kill; climbs along a chain). */
 	overkillGen: number[];
+	/** Per Overkill streak: the carry dealt, in enemy hit points (the kill's excess damage). */
 	overkillCarry: number[];
 	// --- LG3 (Bastion). Parallel lists, one entry per brace, in the order they happened. ---
 	/**
@@ -299,6 +386,7 @@ export interface BuildEvents {
 	 * never pushed since the owner's tuning: a brace with nothing to restore is not spent).
 	 */
 	bracePlayer: number[];
+	/** Parallel to `bracePlayer`: BraceKind (PIP or HEAL; SPENT is never pushed). */
 	braceKind: number[];
 	// --- docs/BUILDS_V2.md (builds v2, wave 1; BV1 declares the lists, BV2-BV9 push them). Parallel lists per group,
 	// one entry per event, pushed in resolution order. Thunder Guard's sparks go through the spark lists (sparkFork
@@ -309,14 +397,23 @@ export interface BuildEvents {
 	 * WaveKind; the view grows its crescent / ring from these numbers.
 	 */
 	waveX: number[];
+	/** Per wave spawned: the origin's Z (world units). */
 	waveZ: number[];
+	/** Per wave spawned: the unit direction's X component (the guarding player's facing). */
 	waveDirX: number[];
+	/** Per wave spawned: the unit direction's Z component. */
 	waveDirZ: number[];
+	/** Per wave spawned: the cone's half-angle cosine (below -1: a full ring). */
 	waveHalfCos: number[];
+	/** Per wave spawned: the radius at which it ends (world units). */
 	waveRange: number[];
+	/** Per wave spawned: the radius' growth in world units per second. */
 	waveSpeed: number[];
+	/** Per wave spawned: the credited player (party index). */
 	waveOwner: number[];
+	/** Per wave spawned: damage per enemy struck (before playerHitDamage). */
 	waveDamage: number[];
+	/** Per wave spawned: WaveKind (FORWARD / RING / REBUKE). */
 	waveKind: number[];
 	/** Per spawned wave, parallel to the wave lists: the guard's (or roll's) erased count it answers (COUNTER xN). */
 	counterCount: number[];
@@ -325,57 +422,84 @@ export interface BuildEvents {
 	 * unbroken piece's) back fan, 0 for the last pierce's ring.
 	 */
 	ballistaX: number[];
+	/** Per Ballista burst: its Z (world units). */
 	ballistaZ: number[];
+	/** Per Ballista burst: the archer (party index). */
 	ballistaOwner: number[];
+	/** Per Ballista burst: bolts actually spawned (at least 1). */
 	ballistaFired: number[];
+	/** Per Ballista burst: 1 for the back fan at a wall or an unbroken piece, 0 for the last pierce's ring. */
 	ballistaWall: number[];
 	/** Siege Bolt pins that started (BV4): the actor's slot, the archer, and where (the actor's position). */
 	pinStartSlot: number[];
+	/** Per pin started: the archer (party index). */
 	pinStartOwner: number[];
+	/** Per pin started: the actor's X when pinned (world units). */
 	pinStartX: number[];
+	/** Per pin started: the actor's Z when pinned (world units). */
 	pinStartZ: number[];
 	/**
 	 * Pins that ended (BV4): the actor's slot, the archer, the distance carried (world units, from the pin's start) and
 	 * 1 when it ended in a slam (0: dropped: the arrow expired, or the actor died).
 	 */
 	pinEndSlot: number[];
+	/** Per pin ended: the archer (party index). */
 	pinEndOwner: number[];
+	/** Per pin ended: the straight-line distance from the pin's start to where the actor ended (world units). */
 	pinEndCarried: number[];
+	/** Per pin ended: 1 when it ended in a slam, 0 when it was dropped (the arrow expired or the actor died). */
 	pinEndSlam: number[];
 	/** Slams (BV4): the pinned actor's position, the archer, enemies the slam and its shockwave struck (it included). */
 	slamX: number[];
+	/** Per slam: the pinned actor's Z (world units). */
 	slamZ: number[];
+	/** Per slam: the archer (party index). */
 	slamOwner: number[];
+	/** Per slam: enemies the slam and its shockwave struck, the pinned actor included. */
 	slamStruck: number[];
 	/**
 	 * Smashes resolved (BV5, Wrecker / Powder Keg): the piece's cell centre, the owner, the smash's generation and the
 	 * splinters spawned.
 	 */
 	smashX: number[];
+	/** Per smash resolved: the piece's cell centre, Z (world units). */
 	smashZ: number[];
+	/** Per smash resolved: the credited player (party index). */
 	smashOwner: number[];
+	/** Per smash resolved: the smash proc's generation. */
 	smashGen: number[];
+	/** Per smash resolved: splinters actually spawned. */
 	smashFired: number[];
 	/** Demolition blasts (BV5): the piece's cell centre, the owner. */
 	demolitionX: number[];
+	/** Per Demolition blast: the piece's cell centre, Z (world units). */
 	demolitionZ: number[];
+	/** Per Demolition blast: the credited player (party index). */
 	demolitionOwner: number[];
 	/**
 	 * Full Heart beams (BV7): from the player (beamX1, beamZ1) to the line's end (beamX2, beamZ2), the owner, enemies
 	 * struck.
 	 */
 	beamX1: number[];
+	/** Per Full Heart beam: the player's Z, where the line starts (world units). */
 	beamZ1: number[];
+	/** Per Full Heart beam: the line's end, X (world units). */
 	beamX2: number[];
+	/** Per Full Heart beam: the line's end, Z (world units). */
 	beamZ2: number[];
+	/** Per Full Heart beam: the player (party index). */
 	beamOwner: number[];
+	/** Per Full Heart beam: enemies it struck. */
 	beamStruck: number[];
 	/** Happy Hour (BV7): players whose drink started (or restarted) it this tick. */
 	happyPlayer: number[];
 	/** Overcap payouts (BV9): where (the boss), the hitter, the points paid (ScoreSource.OVERCAP). */
 	overcapX: number[];
+	/** Per Overcap payout: the boss's Z (world units). */
 	overcapZ: number[];
+	/** Per Overcap payout: the player whose hits were capped (party index). */
 	overcapOwner: number[];
+	/** Per Overcap payout: the points paid (ScoreSource.OVERCAP). */
 	overcapPoints: number[];
 	/**
 	 * Unshaken: hits taken on armor this tick by its owners, which stepScore leaves out of the combo cuts. The one
@@ -524,6 +648,11 @@ export interface BuildsState {
 	waves: BuildWave[];
 	/** Stillwater (BV1; BV6): the team combo (tenths) a hit cut, and the tick it was cut (STILL_NONE: none). */
 	stillCombo: number;
+	/**
+	 * Stillwater: the sim tick at which the combo in `stillCombo` was cut, or STILL_NONE (-1) when nothing is recorded.
+	 * Hashed (BUILD_WORLD_SCALARS). An owner's erasing guard within STILLWATER_TICKS of it gives the combo back and
+	 * clears the record.
+	 */
 	stillTick: number;
 	/** NOT hashed. */
 	events: BuildEvents;
@@ -698,6 +827,11 @@ export function createBuildsState(config: Readonly<BuildsConfig>, players = 1): 
 	};
 }
 
+/**
+ * A deep copy of `s` for cloneState (../state.ts): every list is copied (levels, duos, procs, pins, waves and their
+ * `hits`, the event lists), so stepping the copy never mutates the original. `config` is shared, it is constant for the
+ * run.
+ */
 export function cloneBuildsState(s: Readonly<BuildsState>): BuildsState {
 	const events = emptyEvents();
 	for (const f of BUILD_EVENT_LISTS) for (const v of s.events[f]) events[f].push(v);
@@ -833,6 +967,13 @@ function pushListNames(out: string[], prefix: string, list: ReadonlyArray<number
 	for (let i = 0; i < list.size(); i++) out.push(`${prefix}[${i}]`);
 }
 
+/**
+ * Appends the hash's "builds" group to `out` (the last group, written only when `SimState.builds` exists): the player
+ * count, then per player `levels` and `duos` as length then values and BUILD_PLAYER_SCALARS; the procs, pins and waves
+ * each as a count then their fields in BUILD_PROC_FIELDS / BUILD_PIN_FIELDS / BUILD_WAVE_FIELDS order (a wave's `hits`
+ * after its fields); then BUILD_WORLD_SCALARS. `config` and `events` are not hashed. The order is recorded: append
+ * only. buildsHashNames must list the same values in the same order.
+ */
 export function writeBuildsHash(s: Readonly<BuildsState>, out: number[]): void {
 	out.push(s.players.size());
 	for (const p of s.players) {

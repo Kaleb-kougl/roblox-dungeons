@@ -14,6 +14,8 @@
  *
  * Port changes: typed arrays became plain number arrays (preallocated, so no allocation per update either);
  * `null` -> `undefined`; -Infinity -> -math.huge.
+ *
+ * @module
  */
 import {
 	DAMAGE_CAP_BUCKETS,
@@ -40,6 +42,11 @@ export interface ActorInfo {
 	/** ArchetypeData.damageCapPerSecond (undefined: no cap). */
 	readonly damageCapPerSecond?: number;
 }
+/**
+ * Looks up what the tracker needs to know about an archetype index (is it a boss, its damage cap). The tracker calls it
+ * for the actors it diffs each frame; the default is describeFromRegistry, specs pass a stub so they need no registered
+ * archetypes.
+ */
 export type DescribeActor = (kind: number) => ActorInfo;
 
 const NO_INFO: ActorInfo = { boss: false };

@@ -22,6 +22,8 @@
  *
  * Played only on the client: the world is in SERVER_REFUSED_WORLDS (worlds.ts), never leaderboard-eligible, and the
  * client never submits it. Solo only: a party throws.
+ *
+ * @module
  */
 import { DEV_MODE } from "shared/config";
 import {
@@ -83,6 +85,11 @@ export interface DevRunOptions {
 
 /** The dev panel's upgrade choices, in panel order (docs/SILVER.md SV6). */
 export const DEV_UPGRADE_MODES = ["none", "mine", "max"] as const;
+/**
+ * Which Armory upgrade levels a dev run is built with: `none` (no upgrades), `mine` (the player's own levels) or `max`
+ * (every upgrade at its top level). See `devUpgradeLevels`. Developer mode only; the dev world is never run by the
+ * server.
+ */
 export type DevUpgradesMode = (typeof DEV_UPGRADE_MODES)[number];
 /** A dev run without an upgrades choice: none (the character's own traits, as before upgrades existed). */
 export const DEV_UPGRADES_DEFAULT: DevUpgradesMode = "none";

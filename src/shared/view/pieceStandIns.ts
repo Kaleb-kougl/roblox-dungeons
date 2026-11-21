@@ -15,6 +15,8 @@
  *                     entry has no piece drawn, or its piece's id is not ready: never an invisible blocker).
  *
  * No Roblox APIs (Color3 aside, none used). Tunables: SOLID_DECOR_STAND_IN in standInsConfig.ts.
+ *
+ * @module
  */
 import type { SolidDecorKind, SolidDecorPiece } from "shared/dungeon";
 import type { DecorEntry } from "./decor";

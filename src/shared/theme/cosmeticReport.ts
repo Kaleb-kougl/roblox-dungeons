@@ -19,6 +19,8 @@
  * missing input never passes silently.
  *
  * Its own module: it imports the validator (validate.ts) and cosmetics.ts, which contract.ts imports.
+ *
+ * @module
  */
 import type { CharacterId } from "shared/characters";
 import { COSMETIC_ITEMS, type CosmeticSlot } from "shared/cosmetics";

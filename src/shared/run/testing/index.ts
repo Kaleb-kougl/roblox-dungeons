@@ -12,6 +12,8 @@
  * split over its shard specs), and docs/NEW_ENEMIES_2.md NX6's room pool census (newEnemies2Census.ts), and
  * docs/NEW_ENEMIES_3.md NT6's (newEnemies3Census.ts) and NT12-lite tuning (newEnemies3Tune.ts), and
  * docs/SWORD_SPACING.md SP0's contact-hit census (spacingCensus.ts: the tidy and greedy Knight, the contact probe).
+ *
+ * @module
  */
 export * from "./endlessBot";
 export * from "./partyBot";

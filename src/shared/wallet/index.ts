@@ -6,6 +6,8 @@
  * receipts, funnel and server rules (shop.ts, shopAnalytics.ts, shopServer.ts; docs/SILVER_SHOP.md) and the Robux-only
  * cosmetics' game passes (passes.ts; docs/COSMETICS.md CSD13). Plain TypeScript,
  * headlessly tested; WalletService is a thin shell around it.
+ *
+ * @module
  */
 export * from "./config";
 export * from "./catalog";

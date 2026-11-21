@@ -2,6 +2,8 @@
  * The Goldling's floor roll and flee field tunables (docs/FORTUNE.md GE1, decisions FD10 / FD13; a Roblox-port feature,
  * no web source). Data only: ./golden.ts reads it, nothing is inline in the logic. A LEAF (no imports but types). The
  * sim-side rules (appear / escape timers, speed, jink, payouts) live in shared/sim golden/.
+ *
+ * @module
  */
 import type { EncounterRoomType } from "./encounterTypes";
 
@@ -15,10 +17,13 @@ export interface GoldenChanceBand {
 
 /** An encounter room type the Goldling can pick, and its weight in the one room draw. */
 export interface GoldenRoomWeight {
+	/** The room type. */
 	readonly type: EncounterRoomType;
+	/** Its weight in the room draw. */
 	readonly weight: number;
 }
 
+/** The Goldling roll's tunables: its rng salt, the chance per depth band and which rooms it may pick. */
 export interface GoldenPlaceTunables {
 	/**
 	 * The roll's own rng stream: new EncounterRng(floor seed ^ salt), like the boss pick (0x27d4eb2f), the breakables
@@ -41,6 +46,7 @@ export interface GoldenPlaceTunables {
 	readonly percentRange: number;
 }
 
+/** The Goldling roll's values. Changing one changes which endless floors hold a Goldling and where. */
 export const GOLDEN_PLACE: GoldenPlaceTunables = table.freeze({
 	salt: 0x3d2f8b4d,
 	fromFloor: 2,
@@ -70,4 +76,5 @@ export interface GoldenFleeTunables {
 	readonly factor: number;
 }
 
+/** The flee field's value. */
 export const GOLDEN_FLEE: GoldenFleeTunables = table.freeze({ factor: 1.2 });

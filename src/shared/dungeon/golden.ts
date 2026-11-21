@@ -46,6 +46,8 @@
  *      chased Goldling walks into it; with it, running past the player to the far side beats the corner.
  * Walking it downhill (fleeStep) moves away from the players along the room. Unreached open cells (no source in their
  * component) and closed cells are math.huge, so a Goldling with no player in its room stands still.
+ *
+ * @module
  */
 import { u32 } from "shared/jsmath";
 import type { Dungeon } from "./forge";
@@ -65,8 +67,11 @@ export interface GoldenRoomMask {
 	readonly room: number;
 	/** The room's floor rectangle (roomGridRect): grid x0 .. x0 + w - 1 by y0 .. y0 + h - 1. */
 	readonly x0: number;
+	/** The rectangle's lowest row. */
 	readonly y0: number;
+	/** Cells along x. */
 	readonly w: number;
+	/** Cells along y. */
 	readonly h: number;
 	/** Per box cell, row-major ((gy - y0) * w + (gx - x0)): 1 for a FLOOR cell of the room, else 0. */
 	readonly walk: ReadonlyArray<number>;
@@ -81,6 +86,7 @@ export interface FloorGolden extends GoldenRoomMask {
 	readonly piece: number;
 	/** The piece's cell (grid; world centre gridToWorld(pieceX), gridToWorld(pieceY)), inside the walk mask. */
 	readonly pieceX: number;
+	/** The piece's row. */
 	readonly pieceY: number;
 	/** A barrel or a crate (never a chest). */
 	readonly pieceKind: BreakableKindName;
@@ -98,7 +104,9 @@ export interface GoldenFloorInput extends BreakableFloorInput {
 
 /** An eligible Goldling room and its piece cells (goldenPieceCells order). */
 export interface GoldenRoom {
+	/** The room. */
 	readonly room: EncounterRoom;
+	/** The cells its hiding piece may stand on, world tile centers. */
 	readonly cells: ReadonlyArray<TileXZ>;
 }
 
@@ -272,6 +280,7 @@ export interface FleeScratch {
 	readonly order: number[];
 	/** The re-relax FIFO: cells and their values (at most 4 pushes per cell). */
 	readonly queue: number[];
+	/** The value pushed with each `queue` entry, same index. */
 	readonly queueValue: number[];
 	/** Per cell: 1 once its re-relaxed value is final. */
 	readonly done: number[];

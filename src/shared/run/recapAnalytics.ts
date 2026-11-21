@@ -22,6 +22,8 @@
  *                                          (0..2 x maxSeconds, 0.1 s); field02 the tab showing when the panel was left
  *                                          (`you` / `team` / `party`); party runs with the tabs (`lobby`) only
  * Pure and Roblox-API-free.
+ *
+ * @module
  */
 import { isCharacterId, type CharacterId } from "shared/characters";
 import type { RecapNearMissKind, RecapTab } from "shared/view/hud";
@@ -31,11 +33,19 @@ import { isFiniteValue } from "./validate";
 /** How the run-over panel was left: Again / Retry Daily / the restart key, Main menu, Back to lobby (party runs). */
 export type RunRecapClose = "retry" | "exit" | "lobby";
 
+/**
+ * Every `RunRecapClose`, as a list: the values a close row's field01 can take, which the analytics catalogue counts
+ * against Roblox's field combinations limit.
+ */
 export const RUN_RECAP_CLOSES: ReadonlyArray<RunRecapClose> = ["retry", "exit", "lobby"];
 
 /** No near-miss line was shown. */
 export const RUN_RECAP_NO_NEAR_MISS = "none";
 
+/**
+ * The near-miss line a recap report names: one of the recap's kinds, or `RUN_RECAP_NO_NEAR_MISS` when the panel showed
+ * none. Field02 of a close row.
+ */
 export type RunRecapNearMiss = RecapNearMissKind | typeof RUN_RECAP_NO_NEAR_MISS;
 
 /**
@@ -50,6 +60,10 @@ const NEAR_MISS_KIND_SET: { readonly [K in RecapNearMissKind]: true } = {
 	fullClear: true,
 	nextBoss: true,
 };
+/**
+ * The near-miss kinds a report may name, in the HUD's `RECAP_NEAR_MISS_ORDER` (see the comment above): the server's own
+ * copy of that list, counted by the analytics catalogue as field02 values.
+ */
 export const RUN_RECAP_NEAR_MISS_KINDS: ReadonlyArray<RecapNearMissKind> = [
 	"boss",
 	"score",
@@ -77,11 +91,20 @@ export const RUN_RECAP_TEAM_ROWS = ["teamPerfects", "bestTeamStreak", "syncParri
 export type RunRecapTab = RecapTab;
 
 const TAB_SET: { readonly [K in RecapTab]: true } = { you: true, team: true, party: true };
+/**
+ * The run-over tabs a party run's report may name as the last one viewed, in the HUD's `RECAP_TABS` order: the server's
+ * own copy (it never loads the HUD barrel), pinned by recapAnalytics.spec and counted by the analytics catalogue.
+ */
 export const RUN_RECAP_TABS: ReadonlyArray<RecapTab> = ["you", "team", "party"];
 
 /** The views row's field01 (docs/RUN_CONTRIBUTION.md CT8). */
 export const RUN_RECAP_VIEWS_ROW = "views";
 
+/**
+ * The clamps the server applies when it re-reads a client's recap report, and how many run sessions `RunRecapGate`
+ * remembers per player. A value outside a clamp is clamped or the report is refused; none of it reaches anything but
+ * analytics.
+ */
 export const RUN_RECAP_TELEMETRY = table.freeze({
 	/** Seconds on the panel are clamped to this (a panel left open is still one report). */
 	maxSeconds: 600,

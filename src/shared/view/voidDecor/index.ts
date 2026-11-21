@@ -11,6 +11,8 @@
  *   viewConfig.ts  VOID_VIEW (VD3 / VD9): the VoidController's folder, debug attributes and palette, column sink
  *   parts.ts   voidRunInput (a run floor's plan input, as DecorController's), voidColumnOf (a rect's Part in studs),
  *              voidLayerStyle (colour / material / debug tint per layer)
+ *
+ * @module
  */
 export * from "./config";
 export * from "./field";

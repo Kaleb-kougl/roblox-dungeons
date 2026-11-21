@@ -2,6 +2,8 @@
  * JavaScript `Number` helpers the sim needs beyond `shared/jsmath`: `Number.isFinite` / `Number.isInteger` (they take
  * any value and are false for non-numbers) and `Number.prototype.toString()` (shortest round-trip decimal, JS layout),
  * which `JSON.stringify` uses for recordings and template strings use in error messages.
+ *
+ * @module
  */
 
 /** `Math.SQRT1_2` (bits 3fe6a09e667f3bcd): the starting facing component (screen-down). */

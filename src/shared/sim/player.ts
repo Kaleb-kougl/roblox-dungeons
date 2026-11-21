@@ -13,6 +13,8 @@
  *   6. facing: aim, else movement (the roll direction while rolling), else unchanged
  *   7. DEBUG_HIT press edge -> damagePlayer(state, HIT_NORMAL) (last, like a hit from stepCombat)
  *   8. prevButtons = input.buttons
+ *
+ * @module
  */
 
 import { jsMax, jsMin } from "shared/jsmath";

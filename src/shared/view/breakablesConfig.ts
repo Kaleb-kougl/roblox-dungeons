@@ -15,6 +15,12 @@ export interface ChipBurstView {
 	readonly sparks: number;
 }
 
+/**
+ * How barrels and crates are drawn and react: their height cap (tiles), lift off the floor (studs), the hit blink and
+ * the chip bursts of a hit and a break. Blink times are seconds of sim time. Read by breakables.ts and the client's
+ * BreakableRenderController (the bursts by ParticleController); `BREAKABLE_LOOT_VIEW` builds on it. The gameplay
+ * numbers (hp, what blocks) are the sim's.
+ */
 export const BREAKABLE_VIEW = {
 	/**
 	 * Readability: nothing a piece draws stands taller than this above its base (its pivot), tiles (5/8, the theme

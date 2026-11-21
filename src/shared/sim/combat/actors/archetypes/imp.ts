@@ -32,6 +32,8 @@
  * where aiState === TELEGRAPH, attack === IMP_ATTACK_FAN and aiTicks === IMP_LAND_AIM_TICKS (prevX / prevZ equal x / z
  * there: snap, puff). While repositioning, aiTicks counts ticks without line of sight (leashes past lostTicks).
  * Leashes home after losing the player.
+ *
+ * @module
  */
 
 import { HIT_NORMAL, secondsToTicks } from "../../../playerData";
@@ -59,20 +61,33 @@ import {
 	type RoomEnemyData,
 } from "./enemyShared";
 
+/**
+ * The Imp's tuning on top of the room enemy rules: its keep-range band and strafe, the blink (when, where to, its
+ * wind-up) and the fan after landing.
+ */
 export interface ImpData extends RoomEnemyData {
 	/** Preferred distance band to the player (world units). */
 	readonly keepMin: number;
+	/**
+	 * The far edge of the band (world units): past it, it walks toward the player; nearer than keepMin it backs off.
+	 */
 	readonly keepMax: number;
 	/** Only decides to blink when the player is this close (and in sight). */
 	readonly blinkRange: number;
 	/** Ticks between blink decisions (random in [min, max], enemyCooldown), and before the first one after engaging. */
 	readonly blinkCooldownMin: number;
+	/** The longest wait between blink decisions, ticks (inclusive upper bound of the draw). */
 	readonly blinkCooldownMax: number;
+	/** Ticks from engaging to its first blink decision: a fixed cooldown, no draw. */
 	readonly firstBlink: number;
 	/** The blink's wind-up (the ring on the floor), ticks. */
 	readonly blinkTelegraphTicks: number;
 	/** Candidate distances of the destination from the player, tried far first (world units, >= SPAWN_SAFE_RADIUS). */
 	readonly blinkFar: number;
+	/**
+	 * The nearer candidate distance from the player, tried after blinkFar on each side (world units; kept above
+	 * SPAWN_SAFE_RADIUS or it could never be valid).
+	 */
 	readonly blinkNear: number;
 	/** The aim telegraph after landing, ticks. */
 	readonly landAimTicks: number;
@@ -93,9 +108,11 @@ export const IMP_ATTACK_FAN = 2;
 // --- v[] slots (0..2 shared)
 /** The blink destination (world), valid while attack === IMP_ATTACK_BLINK. */
 export const IMP_DEST_X = 3;
+/** v[4]: the blink destination's world z, the pair of IMP_DEST_X. */
 export const IMP_DEST_Z = 4;
 /** Aim direction (unit): toward the player during the wind-up, locked at landing for the fan. */
 export const IMP_AIM_X = 5;
+/** v[6]: the z component of the aim direction (unit), the pair of IMP_AIM_X. */
 export const IMP_AIM_Z = 6;
 /** Strafe side, +1 or -1. */
 export const IMP_STRAFE = 7;
@@ -109,6 +126,10 @@ export const IMP_BLINK_TELEGRAPH_TICKS = secondsToTicks(BLINK_TELEGRAPH_SECONDS)
 export const IMP_LAND_AIM_TICKS = secondsToTicks(LAND_AIM_SECONDS);
 /** The fan: 5 bullets over 0.7 rad (~40.1 degrees). The SAME literal is the imp row of combat/arcTablePort.ts. */
 export const IMP_FAN_COUNT = 5;
+/**
+ * The fan's width, radians edge to edge (about 40.1 degrees over IMP_FAN_COUNT bullets). The same literal keys the imp
+ * row of combat/arcTablePort.ts.
+ */
 export const IMP_FAN_SPREAD = 0.7;
 /** The fan's speed (world units / s, before the endless floor's bullet speed scale) and life (s). */
 export const IMP_FAN_SPEED = 5.5;
@@ -129,6 +150,10 @@ const STRAFE_BLOCKED = 0.3;
 /** Side pick: random() below this turns the bearing to the +1 side first. */
 const COIN = 0.5;
 
+/**
+ * The registered 'imp' archetype: keeps range like the sniper, blinks to the player's flank and fires a fan after a
+ * short aim. Each blink decision makes one draw for the side and one for the next cooldown, found spot or not.
+ */
 export const IMP = registerArchetype<ImpData>({
 	id: "imp",
 	band: PORT_BAND_ENEMIES,

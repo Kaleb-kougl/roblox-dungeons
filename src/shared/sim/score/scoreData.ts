@@ -6,6 +6,8 @@
  * Every multiplier is kept as an integer numerator over a fixed denominator so each award is integer arithmetic
  * (exact in a double, identical on every machine): combo in tenths (/COMBO_DENOMINATOR), curse in quarters
  * (/CURSE_DENOMINATOR), floor scaling in percent (/FLOOR_SCALE_DENOMINATOR).
+ *
+ * @module
  */
 
 import { secondsToTicks } from "../playerData";
@@ -61,6 +63,10 @@ export const BOSS_FINAL_PHASE: ReadonlyMap<string, number> = new Map<string, num
 
 /** Non-boss kill floor scaling: x (1 + FLOOR_SCALE_PERCENT_PER_FLOOR / 100 x (floor - 1)) = 1 + 0.08 (floor - 1). */
 export const FLOOR_SCALE_PERCENT_PER_FLOOR = 8;
+/**
+ * The floor scaling is an integer percent: 100 = x1.0 (floor 1). The scoring code also uses it as the neutral value of
+ * every other integer percent factor of an award (Bounty, affixes, Horde, Gold Rush).
+ */
 export const FLOOR_SCALE_DENOMINATOR = 100;
 
 // --- Bullets -------------------------------------------------------------------------------------------
@@ -82,8 +88,14 @@ export const ROOM_PERFECT_POINTS = 500;
 export const FAST_POINTS_PER_TICK = 1;
 /** Room par time = ROOM_PAR_BASE_TICKS + ROOM_PAR_TICKS_PER_COST x (sum of encounterCost over the room's spawns). */
 export const ROOM_PAR_BASE_SECONDS = 6;
+/** Seconds of par time each unit of encounter cost adds to a room (ROOM_PAR_TICKS_PER_COST is the same in ticks). */
 export const ROOM_PAR_SECONDS_PER_COST = 1.5;
+/** Every room's base par time in ticks (ROOM_PAR_BASE_SECONDS at 60 Hz: 360). */
 export const ROOM_PAR_BASE_TICKS = secondsToTicks(ROOM_PAR_BASE_SECONDS); // 360
+/**
+ * Par ticks each unit of encounter cost adds (ROOM_PAR_SECONDS_PER_COST at 60 Hz: 90). Each affixed planned member adds
+ * AFFIX_PAR_COST of these too.
+ */
 export const ROOM_PAR_TICKS_PER_COST = secondsToTicks(ROOM_PAR_SECONDS_PER_COST); // 90
 /** Floor clear: FLOOR_CLEAR_POINTS x floor (awardFloorClear). */
 export const FLOOR_CLEAR_POINTS = 1000;
@@ -128,14 +140,25 @@ export const COMBO_DENOMINATOR = 10;
  * after Bounty (and the affix bonus) as one more integer percent factor (awardPoints' extraPercent).
  */
 export const GOLD_RUSH_PERCENT = 125;
+/** The whole combo multiplier Gold Rush starts at (x3); GOLD_RUSH_MIN_COMBO is the same in tenths. */
 export const GOLD_RUSH_MIN_COMBO_TIER = 3;
+/** Gold Rush's threshold in combo tenths (30 = x3.0), inclusive, compared with the combo before the kill's own +0.1. */
 export const GOLD_RUSH_MIN_COMBO = GOLD_RUSH_MIN_COMBO_TIER * COMBO_DENOMINATOR;
+/**
+ * The lowest combo, in tenths (10 = x1.0): where it starts, what it resets to when the window runs out, and the floor
+ * of a hit's cut.
+ */
 export const COMBO_MIN = 10;
+/** The highest combo, in tenths (50 = x5.0), inclusive: feeding it further only refills the timer. */
 export const COMBO_MAX = 50;
 /** Every kill or graze adds this many tenths (+0.1), capped at COMBO_MAX. */
 export const COMBO_STEP = 1;
 /** With no kill or graze for this long the combo resets to COMBO_MIN (port retune: 2x the web build's 3 s). */
 export const COMBO_WINDOW_SECONDS = 6;
+/**
+ * The combo window in ticks (COMBO_WINDOW_SECONDS at 60 Hz: 360): what the combo timer is refilled to by a kill or
+ * graze, before the boons and curses that change it (comboWindowTicks).
+ */
 export const COMBO_WINDOW_TICKS = secondsToTicks(COMBO_WINDOW_SECONDS); // 360
 /**
  * A landed hit cuts the combo by 1 / max(COMBO_CUT_MIN_DIVISOR, partySize), i.e. cut = min(1/2, 1/partySize):
@@ -147,11 +170,14 @@ export const DEFAULT_PARTY_SIZE = 1;
 
 /** The curse multiplier is an integer of quarters: 4 = x1.0, +1 (+0.25) per curse. */
 export const CURSE_DENOMINATOR = 4;
+/** The curse multiplier's numerator with no curses, in quarters (4 = x1.0). */
 export const CURSE_BASE = 4;
+/** Quarters each curse taken adds to the curse multiplier's numerator (1 = +0.25). */
 export const CURSE_STEP = 1;
 
 /** Depth / floor when endless mode is absent. */
 export const DEFAULT_DEPTH = 1;
+/** The floor (1-based) the kill scaling uses outside endless mode: 1, so no scaling. */
 export const DEFAULT_FLOOR = 1;
 
 // --- Sources (the results screen's breakdown) ----------------------------------------------------------------
@@ -214,6 +240,7 @@ export const ScoreSource = {
 	 */
 	SECRET: 16,
 } as const;
+/** A score source's index: one of ScoreSource's values, the index into ScoreState.points and ScoreState.counts. */
 export type ScoreSourceId = (typeof ScoreSource)[keyof typeof ScoreSource];
 /** Source names in index order (dump names, results screen string keys `score.source.<name>`). */
 export const SCORE_SOURCE_NAMES = [

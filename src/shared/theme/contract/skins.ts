@@ -1,4 +1,8 @@
-/** The theme contract's optional UI art IDs (docs/CODEBASE_SCALE.md DX8: a pure move out of contract.ts): the draft skin, the UI skin and the icon atlas. */
+/**
+ * The theme contract's optional UI art IDs (docs/CODEBASE_SCALE.md DX8: a pure move out of contract.ts): the draft skin, the UI skin and the icon atlas.
+ *
+ * @module
+ */
 
 /**
  * Roblox port (docs/DRAFT_REVEAL.md DR3, DRD12): the boon draft's card art, optional free-form ui images (any pack may

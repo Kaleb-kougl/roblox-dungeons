@@ -25,6 +25,8 @@
  * recap's clocks per tab (recapViews.ts, CT7), and the characters on the HUD (docs/ARCHER.md AR9 / AR10): the weapon
  * sets shown and the swap target (weaponSets.ts), the per-character string overrides of the progression texts
  * (characterText.ts) and the character icons (characterIcon.ts).
+ *
+ * @module
  */
 export * from "./layout";
 export * from "./strings";

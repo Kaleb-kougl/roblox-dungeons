@@ -11,6 +11,12 @@ import { imul } from "shared/jsmath";
 const FNV_OFFSET_BASIS = 0x811c9dc5;
 const FNV_PRIME = 0x01000193;
 
+/**
+ * The FNV-1a 32-bit hash of `text`'s bytes, as an unsigned integer in 0 to 2^32 - 1 (the empty string gives the offset
+ * basis). Luau strings are byte strings, so the bytes hashed are the text's UTF-8. Compared against the hash stored in
+ * a locale entry to tell whether the English changed since it was translated; must stay equal to what the
+ * `scripts/l10n` node scripts compute.
+ */
 export function sourceHash(text: string): number {
 	let h = FNV_OFFSET_BASIS;
 	const size = text.size();

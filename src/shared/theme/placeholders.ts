@@ -19,6 +19,8 @@
  * docs/PELLETS.md PL6): a small Block cube per kind in its colour role. So does a vault's chest (`treasure.*`,
  * docs/TREASURE.md TR6): a low box, an open chest's lid wedge, and a row of thin bars for the cage. So does the pact
  * altar (`pact.altar`, docs/FORTUNE.md FO6): a stone plinth.
+ *
+ * @module
  */
 
 import { PIXELS_PER_TILE, STUDS_PER_TILE } from "shared/config";
@@ -59,10 +61,12 @@ import { PACT_ALTAR_ID } from "./fortune";
  * renderer with no Cone / Dome case draws the plain Block).
  */
 export const PLACEHOLDER_SHAPES = ["Ball", "Block", "Cylinder", "Wedge", "Capsule", "Diamond", "Cone", "Dome"] as const;
+/** A placeholder's part shape (a PLACEHOLDER_SHAPES entry); see that list for how a renderer builds each. */
 export type PlaceholderShape = (typeof PLACEHOLDER_SHAPES)[number];
 
 /** Enum.Material names: Neon for bullets (they must glow on every floor), SmoothPlastic for everything else. */
 export const PLACEHOLDER_MATERIALS = ["Neon", "SmoothPlastic"] as const;
+/** A placeholder's material (a PLACEHOLDER_MATERIALS entry): an `Enum.Material` name. */
 export type PlaceholderMaterial = (typeof PLACEHOLDER_MATERIALS)[number];
 
 /** Where a placeholder's colour comes from. Resolve with `pack.visualColor(ref)` / `pack.visualHex(ref)`. */
@@ -73,6 +77,11 @@ export type PlaceholderColor =
 	/** MISSING_COLOR (magenta): the ID is not in the pack. */
 	| { readonly kind: "missing" };
 
+/**
+ * The primitive a renderer builds for an ID with no art (an entry of PLACEHOLDER_VISUALS, or the magenta stand-in for
+ * an ID the pack lacks): its shape, size, colour source, material and how it is placed. Presentation only: actor and
+ * bullet renderers scale it to the gameplay radius.
+ */
 export interface PlaceholderVisual {
 	readonly shape: PlaceholderShape;
 	/**

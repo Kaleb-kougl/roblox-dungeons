@@ -19,6 +19,8 @@
  *               buyer is still here (SHD4); answers Roblox's decision (receiptDecision).
  *   grantPass   a Robux-only cosmetic whose game pass Roblox says the player owns (docs/COSMETICS.md CSD13), whatever
  *               the load did; owned already: no write.
+ *
+ * @module
  */
 import { withRetries, type RetryPolicy } from "shared/settings";
 import type { CharacterId } from "shared/characters";
@@ -121,6 +123,11 @@ interface Copy {
 	doc?: WalletDoc;
 }
 
+/**
+ * What WalletService hands the book besides the store: how a player's key is formed, and the timing it injects (the
+ * retry policy, the sleep, the lock's poll). Specs leave the timing out, so nothing waits: the retry policy defaults to
+ * WALLET_RETRY, the sleep to a no-op and the poll to WALLET.shutdownPollSeconds.
+ */
 export interface WalletBookOptions {
 	readonly retry?: RetryPolicy;
 	/** Sleeps (task.wait on the server; a no-op in specs). */
@@ -131,6 +138,12 @@ export interface WalletBookOptions {
 	readonly keyOf: (userId: number) => string;
 }
 
+/**
+ * The book itself (see the file comment), one per server, owned by WalletService. It holds a read copy of each loaded
+ * player's wallet (never saved, replaced by each transaction's result) and runs every change as one store transaction,
+ * one at a time per player. Client requests (buy, equip) are refused before the load and while another is in flight;
+ * grants, receipts and pass grants run whatever the load did.
+ */
 export class WalletBook {
 	private readonly copies = new Map<number, Copy>();
 	/** Players with a transaction running on this server. */

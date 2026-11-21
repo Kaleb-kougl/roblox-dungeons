@@ -61,7 +61,15 @@ export interface AcceptedRun {
 	acceptedAt: number;
 }
 
+/**
+ * A subscriber to `onRunAccepted`: called with the player and the accepted run each time a submission passes validation
+ * (the reward seam).
+ */
 export type RunAcceptedListener = (player: Player, run: Readonly<AcceptedRun>) => void;
+/**
+ * A subscriber to `onRunRejected`: called with the player, the reject code and its reason each time a submission is
+ * refused (telemetry).
+ */
 export type RunRejectedListener = (player: Player, code: RunRejectCode | SegmentRejectCode, reason: string) => void;
 
 /** Compact record kept in the optional "Runs" DataStore entry. */

@@ -83,6 +83,11 @@ const initialState: StageCoverState = {
 	modifier: undefined,
 };
 
+/**
+ * The stage cover's slice (state: `StageCoverState`). StageController shows a cover at the cut (`showStage` replaces
+ * everything and drops the asset line), updates its label, bar, second line, asset line and modifier while it is up,
+ * marks the reveal, and hides it. The updates that arrive after the cut do nothing once the cover is gone.
+ */
 export const stageSlice = createProducer(initialState, {
 	showStage: (_state, v: StageCoverView) => ({ ...v, shown: true, revealing: false, assets: undefined }),
 	/** The asset progress line changed (StageController: only on a change; undefined hides it). */
@@ -108,6 +113,11 @@ export const stageSlice = createProducer(initialState, {
 	hideStage: (state) => (state.shown ? { ...state, shown: false, revealing: false } : state),
 });
 
+/**
+ * The stage cover's whole state for StageCard's text: whether it is the floor card or the run-start label and bar, the
+ * label key and floor, the biome, boss, second and asset lines, the bar's fraction and the modifier banner. After a
+ * cover is hidden the text fields keep the last cover's values; `shown` says whether one is up.
+ */
 export const selectStageCover = (state: { stage: StageCoverState }) => state.stage;
 /** A cover is up (its fade included): it owns the input. */
 export const selectStageCovered = (state: { stage: StageCoverState }) => state.stage.shown;

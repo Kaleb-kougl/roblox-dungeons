@@ -7,6 +7,8 @@
  * Pure and Roblox-API-free (headless tests run it on the golden fixtures). Every failure, including errors thrown by
  * the sim (e.g. a path still marked `TODO(task N)`), comes back as `{ ok: false, reason }`; validateRun never throws.
  * docs/SERVER.md has the flow, the limits and what this does NOT prevent.
+ *
+ * @module
  */
 import { isCharacterId } from "shared/characters";
 import {
@@ -73,6 +75,10 @@ export type RunRejectCode =
 	| "hash_mismatch"
 	| "summary_mismatch";
 
+/**
+ * The server's verdict on a whole-run submission (`validateRun`). Every number in it is the server's own replay; the
+ * client's hash and summary were only compared. A rejection carries a code and reason and never throws.
+ */
 export interface RunValidation {
 	ok: boolean;
 	/** Human-readable reason when rejected. */
@@ -86,6 +92,10 @@ export interface RunValidation {
 	telemetry?: RunTelemetryRecord;
 }
 
+/**
+ * Optional extras of `validateRun` that do not change the verdict: the server's replay budget hook and the archetype
+ * names telemetry is labelled with.
+ */
 export interface ValidateOptions {
 	/** Checkpoint hook for long replays (the server checks its time budget there and yields). */
 	hooks?: ReplayHooks;

@@ -19,6 +19,8 @@
  *   - `contribCellText`              a You cell's value at a counted value: `{value} · {pct}%`, the pickups parts, or
  *                                    the grouped number (RichText-escaped: the cell draws RichText).
  *   - `contribPartyTexts`            one Party row's texts (name, title, damage share, kills, parries, hits).
+ *
+ * @module
  */
 import { formatThousands } from "shared/l10n";
 import { richTextEscape } from "./comboDraw";
@@ -231,6 +233,11 @@ const PHONE_PARTY: ContribPartyLayout = {
 	columnGap: 4,
 };
 
+/**
+ * The contribution's layout numbers on the run-over panel: the tab strip's buttons, the You card and the Party rows per
+ * recap layout (wide / compact / narrow), in reference px before the HUD scale; the share bar's, a leaver's row's and
+ * the title chip's transparencies (0..1, 1 = invisible); and the Team tab's first-open delay in real seconds.
+ */
 export const CONTRIB_UI = {
 	/** The tab strip: 3 x 100 + 2 gaps = 312 of the breakdown's 316; a phone's shorter buttons. */
 	tabs: {

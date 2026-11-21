@@ -9,6 +9,8 @@
  * read corrects it). The merged rows go back into the cache, so the board view agrees with the verdict.
  *
  * Pure.
+ *
+ * @module
  */
 import { LEADERBOARD_TOP_COUNT } from "./config";
 import { orderedKey, userIdFromKey } from "./posting";

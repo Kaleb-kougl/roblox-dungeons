@@ -3,6 +3,8 @@
  * (variant, facing, broken or whole, lit or out, which clutter a full room keeps) is a hash of the floor seed, the
  * cell and a per-choice salt (DECOR_SALT), never `math.random`, so every co-op client and every replay viewer draws
  * the same floor. 32-bit integer math through shared/jsmath (exact in Luau doubles).
+ *
+ * @module
  */
 import { imul, u32 } from "shared/jsmath";
 

@@ -2,6 +2,8 @@
  * Endless mode floor tunables (GDD "Endless mode" and "Dungeon generation and difficulty"): which floor gets which
  * layout, where the boss stands, and how much each room may spend on enemies. Data only; ./endless.ts reads it.
  * The sim-side numbers (enemy hp / bullet speed scaling, the stairwell radius) are in shared/sim endlessData.ts.
+ *
+ * @module
  */
 
 /** The first floor of an endless run (floors are numbered from 1). */
@@ -45,7 +47,9 @@ export const BOSS_FLOOR_EVERY = 5;
 
 /** A boss an endless boss floor may hold (archetype id) and its draw weight. */
 export interface EndlessBossKind {
+	/** The boss's archetype id. */
 	readonly kind: string;
+	/** Its draw weight against the other bosses. */
 	readonly weight: number;
 }
 
@@ -69,10 +73,12 @@ export interface BossPickTunables {
 	readonly salt: number;
 }
 
+/** The boss pick's values. */
 export const BOSS_PICK: BossPickTunables = table.freeze({ salt: 0x27d4eb2f });
 
 /** Encounter budget per combat room: ENCOUNTER_BUDGET_BASE + ENCOUNTER_BUDGET_PER_FLOOR x (floor - 1). */
 export const ENCOUNTER_BUDGET_BASE = 6;
+/** Budget added per floor below the first. */
 export const ENCOUNTER_BUDGET_PER_FLOOR = 1.2;
 /** Elite rooms get this multiple of the combat budget. */
 export const ELITE_BUDGET_MULTIPLIER = 1.5;
@@ -96,7 +102,9 @@ export const ENDLESS_PACK_SIZE = 4;
 
 /** What a room's budget buys (archetype id and draw weight). Costs come from ENCOUNTER_COST (./encounterCost.ts). */
 export interface EndlessRoomKind {
+	/** The archetype id. */
 	readonly kind: string;
+	/** Its draw weight against the other kinds a room may buy. */
 	readonly weight: number;
 	/** First floor whose rooms may buy this kind (absent: every floor). Below it the spender skips the kind entirely. */
 	readonly fromFloor?: number;
@@ -291,6 +299,7 @@ export interface RosterTunables {
 	readonly salt: number;
 }
 
+/** The seeded roster's values: swarmers always, one more kind per floor. */
 export const ROSTER: RosterTunables = table.freeze({ always: "swarmer", floorsPerKind: 1, salt: 0x165667b1 });
 
 /**

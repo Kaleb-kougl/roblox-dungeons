@@ -5,12 +5,18 @@
  * The Goldling (docs/FORTUNE.md FD16): a target like any actor, but ranked after every other living, visible actor
  * within TOUCH.autoTarget.goldenYieldTiles: while one is that close the pick is the best of the others (the Goldling's
  * hysteresis included: a threat stepping in takes the aim off it); with none that close it ranks by the usual cost.
+ *
+ * @module
  */
 import { TOUCH } from "shared/config";
 import { TILE_SIZE, lineOfSight, type BulletBlocker } from "shared/dungeon";
 import { NO_KIND, playerAt, type ActorState, type PlayerState, type SimState } from "shared/sim";
 import { isGoldenKind } from "shared/view/golden";
 
+/**
+ * What `pickAutoTarget` reads: the sim state and the player to aim from, the floor's bullet blocker for the
+ * line-of-sight test, and the previous pick so the target does not flicker between two actors.
+ */
 export interface AutoTargetQuery {
 	readonly state: Readonly<SimState>;
 	readonly playerIndex: number;
@@ -22,6 +28,10 @@ export interface AutoTargetQuery {
 	readonly player?: Readonly<PlayerState>;
 }
 
+/**
+ * The picked actor: its ActorState id (passed back as the next query's `previousId`) and its position in sim units at
+ * the time of the pick.
+ */
 export interface AutoTarget {
 	readonly id: number;
 	readonly x: number;

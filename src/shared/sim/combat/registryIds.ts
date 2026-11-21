@@ -5,6 +5,8 @@
  * The web build sorts ids with JS string `<` (UTF-16 code-unit order). Valid ids are ASCII, so comparing bytes gives
  * the same order without depending on Luau's string comparison (fixtures/README.md porting note 5); the resulting
  * index tables are checked against constants.json (`archetypes[]`, `weapons[]`).
+ *
+ * @module
  */
 
 /** True for a lowercase dot-separated id: a letter first, then segments of [a-z0-9]+ joined by single dots. */

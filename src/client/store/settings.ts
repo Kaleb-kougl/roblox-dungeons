@@ -39,6 +39,12 @@ const initialState: SettingsState = {
 	panelOpen: false,
 };
 
+/**
+ * The settings slice (state: `SettingsState`). SettingsController writes it: the server's stored overrides (or a full
+ * local reset), each local change as a patch applied before the server answers, the Roblox Reduce Motion flag, and
+ * whether the Options screen is open. Overrides are sanitized on the way in, and an unchanged group keeps its object so
+ * the memoized selectors below do not recompute.
+ */
 export const settingsSlice = createProducer(initialState, {
 	/** The server's stored overrides (settingsChanged), or a full local reset. */
 	setOverrides: (state, overrides: SettingsOverrides, synced: boolean) => ({
@@ -56,10 +62,28 @@ export const settingsSlice = createProducer(initialState, {
 	setPanelOpen: (state, panelOpen: boolean) => (state.panelOpen === panelOpen ? state : { ...state, panelOpen }),
 });
 
+/**
+ * The whole `settings` slice: the overrides, the system Reduce Motion flag, whether the server has answered, and
+ * whether the Options screen is open.
+ */
 export const selectSettings = (state: { settings: SettingsState }) => state.settings;
+/** The Options screen is open (O, the pause overlay's Options, or a menu's open-settings action). False at start. */
 export const selectPanelOpen = (state: { settings: SettingsState }) => state.settings.panelOpen;
+/**
+ * The server has answered at least once with this player's stored settings. False until then: the game is running on
+ * the defaults plus this session's changes. It never returns to false.
+ */
 export const selectSettingsSynced = (state: { settings: SettingsState }) => state.settings.synced;
+/**
+ * Roblox's own Reduce Motion setting (`GuiService.ReducedMotionEnabled`), false until read. It is the default for the
+ * game's reduced-motion setting when the player has not overridden it.
+ */
 export const selectSystemReducedMotion = (state: { settings: SettingsState }) => state.settings.systemReducedMotion;
+/**
+ * Only what the player changed from the defaults, by group (`juice`, `controls`, `audio`, `display`; an absent group or
+ * field means the default). This is what the server stores. Views want the resolved selectors below; this one is for
+ * code that edits or sends the overrides.
+ */
 export const selectOverrides = (state: { settings: SettingsState }) => state.settings.overrides;
 
 /** The effective juice settings (memoized: the same object until the overrides or the system setting change). */

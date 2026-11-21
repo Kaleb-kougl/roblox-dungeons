@@ -5,6 +5,8 @@
  * openers, the chest's grants, the points) live in shared/sim secrets/; the tier ids are the vault's (VaultTier).
  *
  * Distances are in tiles (TILE_SIZE = 1 world unit), between cell centres, Chebyshev unless a rule says otherwise.
+ *
+ * @module
  */
 import type { EncounterRoomType } from "./encounterTypes";
 import type { BreakablePieceKindName } from "./breakablesData";
@@ -12,7 +14,9 @@ import { VaultTier } from "./vaultData";
 
 /** One chamber size: cells along the wall x cells deep (behind it). */
 export interface SecretChamberSize {
+	/** Cells along the wall. */
 	readonly along: number;
+	/** Cells deep behind the wall. */
 	readonly depth: number;
 }
 
@@ -20,9 +24,14 @@ export interface SecretChamberSize {
 export interface SecretTierWeight {
 	/** VaultTier (RARE or LEGENDARY; never COMMON, SRD6). */
 	readonly tier: number;
+	/** Its weight in the tier draw. */
 	readonly weight: number;
 }
 
+/**
+ * The secret room roll's tunables: its rng salt, the chance, which rooms can hold the crack, the chamber sizes and the
+ * chest's tier weights.
+ */
 export interface SecretTunables {
 	/**
 	 * The secret's own rng stream: new EncounterRng(floor seed ^ salt) ("KVSC"), like the vault (0xb5297a4d), the
@@ -34,6 +43,7 @@ export interface SecretTunables {
 	readonly fromFloor: number;
 	/** One draw rng.int(0, percentRange - 1) < chancePercent: the floor hides a secret (SRD1: a flat 25 %, no bands). */
 	readonly chancePercent: number;
+	/** The chance draw's range: `chancePercent` out of this. */
 	readonly percentRange: number;
 	/** Rooms that can hold the crack (never the entrance, boss, shrine or treasure room). */
 	readonly roomTypes: ReadonlyArray<EncounterRoomType>;
@@ -53,6 +63,7 @@ export interface SecretTunables {
 	readonly poolClearTiles: number;
 }
 
+/** The secret room values. Changing one changes which endless floors hide a secret and where. */
 export const SECRET: SecretTunables = table.freeze({
 	salt: 0x4b565343,
 	fromFloor: 2,

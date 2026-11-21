@@ -3,6 +3,8 @@
  * hold, the status chip's pulse. Pure: plain numbers in, plain looks out, tested headlessly (modifiers.spec.ts). The
  * client's StageController / StageCard draw the banner, FloorModifierChip the chip and the pause overlay its line
  * (`hud.pause.floorMod` with the name and line strings).
+ *
+ * @module
  */
 import { floorModifierKind, isFloorModifierTwist } from "shared/dungeon";
 import {

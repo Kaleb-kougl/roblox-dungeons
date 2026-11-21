@@ -4,6 +4,8 @@
  * row: 16 @ FULL_RING and 1 @ 0 are the web build's, 8 and 12 @ FULL_RING port rows (combat/arcTablePort.ts); builds
  * v2 (docs/BUILDS_V2.md BV1) adds 6 / 10 @ FULL_RING and 6 / 10 @ BALLISTA_FAN_SPREAD (port rows too).
  * Per-level tables are indexed by level - 1 (progressionData levelValue).
+ *
+ * @module
  */
 import { TILE_SIZE } from "../units";
 import { secondsToTicks } from "../playerData";
@@ -15,9 +17,14 @@ import { BulletKind, FULL_RING, type BurstSpec } from "../combat/patterns";
 export const CHAIN_SPARK_RANGE = 4.5 * TILE_SIZE;
 /** Per level: hops (I / II / III Storm Crown) and the damage of each (before playerHitDamage). */
 export const CHAIN_SPARK_HOPS: ReadonlyArray<number> = [1, 2, 4];
+/** Per level (I / II / III Storm Crown): damage of each Chain Spark hop, in enemy hit points before playerHitDamage. */
 export const CHAIN_SPARK_DAMAGE: ReadonlyArray<number> = [2, 2, 3];
 /** Storm Crown: each hop forks to a second target for damage / this (rounded down, at least CHAIN_SPARK_FORK_MIN). */
 export const CHAIN_SPARK_FORK_DIVISOR = 2;
+/**
+ * Storm Crown: the least a fork deals before playerHitDamage, when the hop's damage / CHAIN_SPARK_FORK_DIVISOR rounds
+ * down below it.
+ */
 export const CHAIN_SPARK_FORK_MIN = 1;
 
 // --- Volatile (a ring of bolts from the corpse) -------------------------------------------------------------
@@ -27,10 +34,14 @@ export const CHAIN_SPARK_FORK_MIN = 1;
  * whose target stands exactly on the corpse: +Z, a unit vector (no trig).
  */
 export const EFFECT_DIR_X = 0;
+/** The Z component of the effect rings' heading (EFFECT_DIR_X, EFFECT_DIR_Z): the unit vector +Z. */
 export const EFFECT_DIR_Z = 1;
 
+/** A Volatile bolt's speed, world units per second (Thrill Seeker's ring and Supernova's use it too). */
 export const VOLATILE_SPEED = 10;
+/** A Volatile bolt's life in seconds (range = speed x life: 3.5 tiles). */
 export const VOLATILE_LIFE = 0.35;
+/** A Volatile bolt's damage, in enemy hit points. */
 export const VOLATILE_DAMAGE = 1;
 /** Cataclysm (III): 16 bolts that pierce this many. */
 export const CATACLYSM_PIERCE = 1;
@@ -72,6 +83,10 @@ export const SOUL_SHARDS_RANGE = 8 * TILE_SIZE;
 export const SOUL_SHARDS_COUNTS: ReadonlyArray<number> = [2, 3, 4];
 /** Soul Swarm (III): pierce, and the steering weight of the direction to the target per tick (BUD11). */
 export const SOUL_SWARM_PIERCE = 1;
+/**
+ * Soul Swarm (III): the weight of the unit direction to the target added to a shard's unit velocity each tick, then
+ * renormalized to its speed (BUD11). Turns at most atan(this) radians a tick.
+ */
 export const SOUL_SWARM_TURN = 0.25;
 
 /** One shard (1 @ 0: a single bullet down the aim). */
@@ -89,6 +104,7 @@ export const SOUL_SWARM_RANGE = SOUL_SHARDS_RANGE;
 export const EMBER_BURST: BurstSpec = { count: 1, spread: 0, speed: 0, life: 1.2, damage: 1, kind: BulletKind.EMBER };
 /** Fire Arrows: an arrow drops an ember every this many ticks, at most FIRE_ARROWS_EMBERS_MAX per arrow. */
 export const FIRE_ARROWS_EMBER_TICKS = 6;
+/** Fire Arrows: the most embers one arrow drops (its last at age FIRE_ARROWS_EMBER_TICKS x this, in ticks). */
 export const FIRE_ARROWS_EMBERS_MAX = 4;
 /** Blazing Trail: a roll drops an ember every this many ticks. */
 export const BLAZING_TRAIL_EMBER_TICKS = 3;
@@ -109,11 +125,17 @@ export const STORM_BLADE_ARROW_HITS = 5;
 
 /** Conductor (Chain Spark + Piercing Arrows): an arrow passing through an enemy sparks once (one hop) for this. */
 export const CONDUCTOR_DAMAGE = 1;
+/**
+ * Conductor: its spark strikes the nearest other living enemy within this range of the enemy the arrow passed through
+ * (world units; Chain Spark's range).
+ */
 export const CONDUCTOR_RANGE = CHAIN_SPARK_RANGE;
 
 /** Shrapnel (Volatile + Sharpened): burst bolts deal this and pierce SHRAPNEL_PIERCE (Cataclysm's pierce becomes 2). */
 export const SHRAPNEL_DAMAGE = 2;
+/** Shrapnel: enemies a burst bolt passes through at Volatile I / II before the next hit consumes it. */
 export const SHRAPNEL_PIERCE = 1;
+/** Shrapnel at Cataclysm (Volatile III): enemies a bolt passes through, replacing CATACLYSM_PIERCE. */
 export const SHRAPNEL_CATACLYSM_PIERCE = 2;
 /** Per level: Volatile's ring with Shrapnel (VOLATILE_BURSTS' counts and shapes, Shrapnel's damage and pierce). */
 export const SHRAPNEL_BURSTS: ReadonlyArray<BurstSpec> = [
@@ -124,7 +146,12 @@ export const SHRAPNEL_BURSTS: ReadonlyArray<BurstSpec> = [
 
 /** Close Call (Soul Shards + Daredevil): every this many grazes release one shard at the nearest enemy. */
 export const CLOSE_CALL_GRAZES = 3;
+/** Close Call: the shard it releases (Soul Shards' straight shard). */
 export const CLOSE_CALL_SHARD = SOUL_SHARD;
+/**
+ * Close Call: the shard aims at the nearest living enemy within this range of the player (world units; Soul Shards'
+ * range). None in range: no shard.
+ */
 export const CLOSE_CALL_RANGE = SOUL_SHARDS_RANGE;
 
 // --- Overkill (legendary, docs/LEGENDARIES.md "Overkill"; LG1 declares these, the rule is LG2) ------------------
@@ -198,6 +225,7 @@ export const SKEWER_RADIUS = 0.5 * TILE_SIZE;
  * 2026-11-06; `braceCooldown`, ticks left, counted down by stepBuilds).
  */
 export const CITADEL_BRACE_COOLDOWN_SECONDS = 5;
+/** CITADEL_BRACE_COOLDOWN_SECONDS in ticks (60 Hz): the value `braceCooldown` is set to after a Citadel brace. */
 export const CITADEL_BRACE_COOLDOWN_TICKS = secondsToTicks(CITADEL_BRACE_COOLDOWN_SECONDS);
 /** Stone Heart (Bastion + Hearty): a brace with no pip missing heals this many half hearts (up to the maximum). */
 export const STONE_HEART_HEAL_HALF_HEARTS = 1;
@@ -219,6 +247,7 @@ export const KillCause = {
 
 /** Thrill Seeker: every THRILL_SEEKER_GRAZES grazes release a ring of 8 bolts around the player. */
 export const THRILL_SEEKER_GRAZES = 8;
+/** Thrill Seeker's ring: 8 bolts @ FULL_RING at Volatile's speed, life and damage, drawn as spark bolts. */
 export const THRILL_SEEKER_RING: BurstSpec = {
 	count: 8,
 	spread: FULL_RING,
@@ -238,8 +267,11 @@ export const EXECUTIONER_HP_PERCENT = 20;
 
 /** Flurry (Swift Strikes III): every sword finisher releases this crescent along the swing (5 @ 0.5, a web shape). */
 export const FLURRY_SPEED = 12;
+/** A Flurry crescent bolt's life in seconds. */
 export const FLURRY_LIFE = 0.35;
+/** A Flurry crescent bolt's damage, in enemy hit points. */
 export const FLURRY_DAMAGE = 1;
+/** Flurry's crescent: 5 bolts across 0.5 radians (a web arc-table shape), fired along the finisher's swing. */
 export const FLURRY_CRESCENT: BurstSpec = {
 	count: 5,
 	spread: 0.5,
@@ -250,7 +282,9 @@ export const FLURRY_CRESCENT: BurstSpec = {
 };
 /** Flurry: every FLURRY_ARROW_EVERY-th stream arrow of the bow is FLURRY_ARROW_COUNT arrows @ FLURRY_ARROW_SPREAD (3 @ 0.12, a web shape). */
 export const FLURRY_ARROW_EVERY = 6;
+/** Flurry: arrows a triple stream shot fires. */
 export const FLURRY_ARROW_COUNT = 3;
+/** Flurry: the triple's cone width, radians, edge to edge. */
 export const FLURRY_ARROW_SPREAD = 0.12;
 
 /**
@@ -261,11 +295,15 @@ export const FLURRY_ARROW_SPREAD = 0.12;
 export const RICOCHET_ARROWS = 2;
 /** The weapon whose arrows ricochet (its payload source is its weapon index + 1). */
 export const RICOCHET_WEAPON_ID = "weapon.bow";
+/** Ricochet: the split arrows aim at the nearest living enemies within this range of the split (world units). */
 export const RICOCHET_RANGE = 8 * TILE_SIZE;
 /** The bow's stream arrow speed (weapons/defs/bow.ts BOW_DATA.speed) and damage (BOW_DATA.damage). */
 export const RICOCHET_SPEED = 16;
+/** A split arrow's damage, in enemy hit points: the bow's stream arrow damage (BOW_DATA.damage), restated here. */
 export const RICOCHET_DAMAGE = 1;
+/** A split arrow's life in seconds (shorter than a stream arrow's). */
 export const RICOCHET_LIFE = 0.5;
+/** One split arrow (1 @ 0: a single bullet down the aim), an effect bolt drawn as a spark bolt. */
 export const RICOCHET_ARROW: BurstSpec = {
 	count: 1,
 	spread: 0,
@@ -284,6 +322,7 @@ export const LIONHEART_HEAL_HALF_HEARTS = 1;
  * (goo erased quietly), no guard points and no parry feed.
  */
 export const OVERFLOWING_NOVA_RADIUS = 3 * TILE_SIZE;
+/** Bulwark's nova radius (world units): the sweep around the player when an armor pip breaks. */
 export const BULWARK_NOVA_RADIUS = 2.5 * TILE_SIZE;
 /** sweepArc's half-angle cosine for a full circle: below -1, so the cone test (dot >= halfCos x dist) always holds. */
 export const NOVA_HALF_ANGLE_COS = -2;
@@ -299,6 +338,7 @@ export const NovaKind = {
  * nearest living enemies within SOUL_SHARDS_RANGE (Soul Shards' aim; no Soul Shards needed).
  */
 export const MOMENTUM_TIER_FIRST = 2;
+/** The last combo tier Momentum fires on (x5), inclusive; the tier is also the shard count. */
 export const MOMENTUM_TIER_LAST = 5;
 
 /** Jackpot (Bounty III): every JACKPOT_KILLS-th kill by the player pays score/scoreData.ts JACKPOT_POINTS x the floor. */
@@ -348,6 +388,9 @@ export const COUNTERSTRIKE_RING_HALF_ANGLE_COS = NOVA_HALF_ANGLE_COS;
  * COUNTERSTRIKE_RANGE, nearest first (Soul Shards' aim and look, 1 damage; BuildEffect.RIPOSTE, gen 0).
  */
 export const COUNTERSTRIKE_RETURN: BurstSpec = { ...SOUL_SHARD, damage: 1 };
+/**
+ * Counterstrike's returns aim at the nearest enemies within this range of the player (world units; Soul Shards' range).
+ */
 export const COUNTERSTRIKE_RANGE = SOUL_SHARDS_RANGE;
 /** BuildWave.kind and BuildEvents.waveKind: what sent a wave. Append only (hashed). */
 export const WaveKind = {
@@ -376,8 +419,11 @@ export const RebukePending = {
 export const BALLISTA_BOLT_COUNTS: ReadonlyArray<number> = [6, 10, 10];
 /** The back fan's spread (radians) at a wall or a piece the arrow does not break, aimed back along its flight. */
 export const BALLISTA_FAN_SPREAD = 1.6;
+/** A Ballista bolt's speed, world units per second. */
 export const BALLISTA_BOLT_SPEED = 12;
+/** A Ballista bolt's life in seconds. */
 export const BALLISTA_BOLT_LIFE = 0.35;
+/** A Ballista bolt's damage, in enemy hit points. */
 export const BALLISTA_BOLT_DAMAGE = 1;
 /** One bolt (BulletKind.BURST, Volatile's look: BVD9); the bursts below are this at their counts and shapes. */
 export const BALLISTA_BOLT: BurstSpec = {
@@ -408,6 +454,9 @@ export const SIEGE_SLAM_SHORT = 0.25 * TILE_SIZE;
 export const SIEGE_SLAM_DAMAGE_PERCENT = 300;
 /** The slam's shockwave: every other living enemy within this of the pinned actor takes SIEGE_SHOCK_DAMAGE ... */
 export const SIEGE_SHOCK_RADIUS = 2 * TILE_SIZE;
+/**
+ * The slam shockwave's damage to each other enemy in SIEGE_SHOCK_RADIUS, in enemy hit points before playerHitDamage.
+ */
 export const SIEGE_SHOCK_DAMAGE = 3;
 /** The shockwave's generation: its kills and the pieces it breaks proc one generation on from the slam (gen 0). */
 export const SIEGE_SHOCK_GEN = 1;
@@ -436,6 +485,7 @@ export const DEMOLITION_RADIUS = 1.5 * TILE_SIZE;
 
 /** Thunder Guard (Riposte + Chain Spark): each erased bullet sparks to the nearest enemy within this, for this ... */
 export const THUNDER_GUARD_RANGE = CHAIN_SPARK_RANGE;
+/** Thunder Guard: a spark's damage, in enemy hit points before playerHitDamage. */
 export const THUNDER_GUARD_DAMAGE = 1;
 /** ... at most this many sparks per guard tick. */
 export const THUNDER_GUARD_MAX = 8;
@@ -447,6 +497,7 @@ export const SparkFork = {
 } as const;
 /** Stillwater (Composure + Riposte): a cut combo can be given back by an owner's erasing guard within this long. */
 export const STILLWATER_SECONDS = 3;
+/** STILLWATER_SECONDS in ticks (60 Hz): the window, inclusive, measured from `BuildsState.stillTick`. */
 export const STILLWATER_TICKS = secondsToTicks(STILLWATER_SECONDS); // 180
 /** BuildsState.stillTick when no cut combo is recorded. */
 export const STILL_NONE = -1;
@@ -460,6 +511,7 @@ export const FULL_HEART_RANGE = 4 * TILE_SIZE;
 export const FULL_HEART_WEAPON_ID = "weapon.sword";
 /** Happy Hour (Deep Flask + Bounty): a flask drink sets `happyHourTicks` to this ... */
 export const HAPPY_HOUR_SECONDS = 5;
+/** HAPPY_HOUR_SECONDS in ticks (60 Hz): the value a flask drink sets `happyHourTicks` to. */
 export const HAPPY_HOUR_TICKS = secondsToTicks(HAPPY_HOUR_SECONDS); // 300
 /** ... and the owner's kill points are x this percent while it runs (folded into Bounty's bonusPercent). */
 export const HAPPY_HOUR_KILL_PERCENT = 200;

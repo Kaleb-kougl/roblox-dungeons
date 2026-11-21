@@ -4,6 +4,8 @@
  *
  * Sim world: x / z on the ground plane, 1 unit = 1 dungeon tile, floor at y = 0 (shared/dungeon collision.ts). Studs:
  * the same axes scaled by STUDS_PER_TILE and offset by GAME_WORLD.originStuds.
+ *
+ * @module
  */
 import { STUDS_PER_TILE } from "shared/config";
 import { GAME_WORLD } from "./config";

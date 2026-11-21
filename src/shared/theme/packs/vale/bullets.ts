@@ -9,6 +9,8 @@
  * at the layout's own texel density, carrying the pipeline's `meanColor` for the bullet colour rules
  * (bulletArt.ts `bulletArtReport`). The floor decals (goo, strike, ember) have no layout entry and keep their
  * placeholders.
+ *
+ * @module
  */
 import { BULLET_ART } from "../../contract";
 import type { SpriteSetAsset } from "../../types";

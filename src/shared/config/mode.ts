@@ -9,4 +9,9 @@
  */
 export type PlayMode = "endless" | "m1";
 
+/**
+ * The game this build of the place plays: `endless`. A compile-time constant shared by client and server, from which
+ * shared/run derives the world a live server validates in and the client plays by default (`LIVE_RUN_WORLD`); switching
+ * to `m1` means changing it here and rebuilding.
+ */
 export const PLAY_MODE = "endless" as PlayMode;

@@ -16,6 +16,8 @@
  * within the rest, all within PORTRAIT.controlBandShare of the height from the bottom; no centre-band rule (the player
  * stands above the band, shared/view cameraFraming's lift). The move zone starts PORTRAIT.moveZoneShare of the height
  * from the bottom. Landscape keeps every rule.
+ *
+ * @module
  */
 import { TOUCH } from "shared/config";
 import { cornerRect, HUD_FOOTPRINT, TOUCH_ALWAYS_ON_PANELS } from "./footprint";
@@ -24,6 +26,10 @@ import { computeHudScale } from "./layout";
 // By file, as ../iso: the shared/view barrel is the parent of this one.
 import { PORTRAIT } from "../portrait";
 
+/**
+ * A touch button: the play cluster's seven (`attack`, `alt`, `roll`, `ember`, `flask`, `swap`, `shrine`) and
+ * spectating's two (`spectateNext`, `spectatePrev`). Its label is `touch.<id>` (touch.ts).
+ */
 export type TouchButtonId =
 	| "attack"
 	| "alt"
@@ -35,9 +41,17 @@ export type TouchButtonId =
 	| "spectateNext"
 	| "spectatePrev";
 
+/**
+ * Which controls `touchLayout` places: `play` (the action cluster, the move zone and the move stick's home) or
+ * `spectate` (Next and Prev only, no move zone).
+ */
 export type TouchLayoutMode = "play" | "spectate";
 
-interface CircleSpec {
+/**
+ * One touch button as a circle: centre `x` inward and `y` up from its side's bottom corner of the safe area, radius
+ * `r`, all in reference px (before touchLayout() scales them).
+ */
+export interface CircleSpec {
 	readonly id: TouchButtonId;
 	readonly x: number;
 	readonly y: number;
@@ -46,6 +60,12 @@ interface CircleSpec {
 	readonly side: "action" | "move";
 }
 
+/**
+ * The touch controls' layout tunables: the ScreenGui's display order, the scale's floor and the smallest tappable
+ * circle (px), the gaps and corner rules the scale fit holds, the stick's and the buttons' look (shares and alphas
+ * 0..1), and the three clusters' circles (`play`, `compact`, `spectate`) in reference px from their side's bottom
+ * corner of the safe area.
+ */
 export const TOUCH_LAYOUT = {
 	/** Between KV_GameHud (HUD_VIEW.hudDisplayOrder) and the menus (HUD_VIEW.menuDisplayOrder). */
 	displayOrder: 11,
@@ -146,6 +166,10 @@ export interface TouchCircle extends TouchPoint {
 /** Which play cluster touchLayout placed: the usual one, or the short-screen one (TOUCH_LAYOUT.compact). */
 export type TouchLayoutVariant = "play" | "compact";
 
+/**
+ * What `touchLayout` returns: the scale it settled on and every placed control, in px in the touch ScreenGui's safe
+ * area (origin top left).
+ */
 export interface TouchLayoutResult {
 	/** The controls' scale (reference px -> px). */
 	readonly scale: number;
@@ -359,6 +383,16 @@ function largestFit(
 	return a;
 }
 
+/**
+ * Places the touch controls for a screen (the file header has the rules). `viewportW` / `viewportH` are the camera's
+ * viewport and `safeW` / `safeH` the touch ScreenGui's size, in px; `hudPercent` and `sizePercent` are the HUD scale
+ * and touch size settings (100 = default); `hud` is the HUD ScreenGui's rect in the touch safe area (default: the whole
+ * safe area) and `hudBoxes` the touch strip's boxes, which replace the corner panels' as the area to keep clear. The
+ * scale is the largest one up to the setting's that keeps every control clear and in its corner, falling back to the
+ * compact cluster, then below `TOUCH_LAYOUT.minScale` down to the smallest tappable circle, then without the corner
+ * rules; when even that fails `clear` is false and the controls are placed at the smallest tappable scale. `leftHanded`
+ * mirrors the two sides.
+ */
 export function touchLayout(
 	viewportW: number,
 	viewportH: number, // camera.ViewportSize (what computeHudScale reads)

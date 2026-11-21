@@ -34,6 +34,8 @@
  *   kind     one draw per piece: crate with crateShare, else barrel.
  *
  * Output order is placement order (rooms by id). Tile coordinates (grid x, y; world x = x, z = y).
+ *
+ * @module
  */
 import { u32 } from "shared/jsmath";
 import { TileType, type Dungeon } from "./forge";
@@ -53,8 +55,11 @@ import {
  * floor's list ends with its chest (kind `chest`, ./vault.ts).
  */
 export interface BreakablePlacement {
+	/** Column, grid tiles. */
 	readonly x: number;
+	/** Row, grid tiles. */
 	readonly y: number;
+	/** Which piece stands there. */
 	readonly kind: BreakablePieceKindName;
 }
 
@@ -62,12 +67,15 @@ export interface BreakablePlacement {
 export interface BreakableFloorInput {
 	/** The floor seed (floorSeed(runSeed, floor)). */
 	readonly seed: number;
+	/** The floor's layout. */
 	readonly dungeon: Dungeon;
+	/** The floor's rooms and spawns. */
 	readonly encounter: EncounterConfig;
 	/** Deferred enemies per room id. */
 	readonly roomSpawns: ReadonlyArray<ReadonlyArray<ActorSpawn>>;
 	/** The entrance spawn and the stairwell (world). */
 	readonly spawn: WorldXZ;
+	/** The stairwell, world units. */
 	readonly stairwell: WorldXZ;
 }
 

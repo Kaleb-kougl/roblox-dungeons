@@ -2,6 +2,8 @@
  * Every theme string key the main menu, the lobby screens, the leave-run confirm and the lobby toasts read (tasks L3,
  * L5, L6). The React components (client/ui/menu) take their keys from here; hud.spec.ts checks each one exists in the
  * placeholder pack (`menuStringKeys`), so a missing key fails the build instead of showing the raw key in game.
+ *
+ * @module
  */
 import { ARRIVAL_TOAST } from "shared/invite";
 import { creditStringKeys } from "./credits";
@@ -99,6 +101,7 @@ export const LOBBY_NOTICE_KINDS = [
 	"inviteArrived",
 	"partyLobby",
 ] as const;
+/** A lobby notice kind that has its own `lobby.notice.<kind>` string: every member of `LOBBY_NOTICE_KINDS`. */
 export type LobbyNoticeToastKind = (typeof LOBBY_NOTICE_KINDS)[number];
 
 /** Every refusal code the server can send (shared/lobby LobbyRefusal); each has a `lobby.err.<code>` string. */
@@ -131,18 +134,25 @@ export const LOBBY_REFUSALS_COMPLETE: [Exclude<LobbyRefusal, (typeof LOBBY_REFUS
 /** A refusal code without its own string (or none) reads this. */
 export const LOBBY_ERR_GENERIC = "lobby.err.generic";
 
+/** The theme string key of a preset lobby name: `lobby.name.<id>`. */
 export function lobbyNameKey(nameId: LobbyNameId): string {
 	return `lobby.name.${nameId}`;
 }
 
+/** The theme string key of a lobby visibility's label: `lobby.visibility.<visibility>`. */
 export function lobbyVisibilityKey(visibility: LobbyVisibility): string {
 	return `lobby.visibility.${visibility}`;
 }
 
+/** The theme string key of a lobby notice toast: `lobby.notice.<kind>`. */
 export function lobbyNoticeKey(kind: LobbyNoticeToastKind): string {
 	return `lobby.notice.${kind}`;
 }
 
+/**
+ * The theme string key for a refusal `code` from the server: `lobby.err.<code>` when it is one of `LOBBY_REFUSALS`,
+ * else `LOBBY_ERR_GENERIC` (also for no code), so an unknown code never shows a raw key.
+ */
 export function lobbyErrorKey(code: string | undefined): string {
 	if (code === undefined) return LOBBY_ERR_GENERIC;
 	for (const c of LOBBY_REFUSALS) if (c === code) return `lobby.err.${c}`;

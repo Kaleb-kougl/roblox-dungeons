@@ -1,10 +1,16 @@
 /**
  * Lobby tunables and the preset vocabularies (visibility, phase, name ids). Data only: lobbies.ts and the server
  * service read these (CLAUDE.md "No magic numbers"). Display strings for the name ids come from shared/theme later.
+ *
+ * @module
  */
 import { DAILY_WORLD_KIND } from "shared/daily";
 import { ENDLESS_WORLD_KIND, MAX_PARTY_SIZE, isFiniteValue } from "shared/run";
 
+/**
+ * The shape of LOBBY: the limits and timings of the lobby rules (lobbies.ts). Times are in seconds. Specs pass their
+ * own to `Lobbies` to shorten the timeouts.
+ */
 export interface LobbyConfig {
 	/** Most members in one lobby: the largest party a run accepts (shared/run limits.ts, the sim's partyData.ts). */
 	readonly maxSize: number;
@@ -39,6 +45,7 @@ export interface LobbyConfig {
  *   closed   never listed; the only way in is an invite
  */
 export type LobbyVisibility = "open" | "friends" | "closed";
+/** Every lobby visibility: the list a client-supplied value is checked against (`isLobbyVisibility`). */
 export const LOBBY_VISIBILITIES: ReadonlyArray<LobbyVisibility> = ["open", "friends", "closed"];
 
 /**
@@ -48,6 +55,7 @@ export const LOBBY_VISIBILITIES: ReadonlyArray<LobbyVisibility> = ["open", "frie
  *   party     `partyInvite`: the server made it for a Roblox Party mate (shared/invite arrival.ts)
  */
 export type LobbyInviteSource = "server" | "platform" | "party";
+/** Every invite source as a list, in the order documented above, for code that checks or walks them. */
 export const LOBBY_INVITE_SOURCES: ReadonlyArray<LobbyInviteSource> = ["server", "platform", "party"];
 
 /**
@@ -56,6 +64,7 @@ export const LOBBY_INVITE_SOURCES: ReadonlyArray<LobbyInviteSource> = ["server",
  * the run starts). The host sets it while the lobby is forming (`setWorld`).
  */
 export type LobbyWorld = typeof ENDLESS_WORLD_KIND | typeof DAILY_WORLD_KIND;
+/** Every world a lobby may be set to: the list a client-supplied world kind is checked against (`isLobbyWorld`). */
 export const LOBBY_WORLDS: ReadonlyArray<LobbyWorld> = [ENDLESS_WORLD_KIND, DAILY_WORLD_KIND];
 
 /** forming: members join, ready up and leave. countdown: the host started. inRun: the members are in the run. */
@@ -72,11 +81,20 @@ export const LOBBY_NAMES = [
 	"friendsOnly",
 	"quickRun",
 ] as const;
+/**
+ * One of the preset name ids in LOBBY_NAMES: what a lobby stores and the wire carries in place of free text. The client
+ * turns it into the shown name.
+ */
 export type LobbyNameId = (typeof LOBBY_NAMES)[number];
 
 /** A new lobby's name. */
 export const DEFAULT_LOBBY_NAME: LobbyNameId = "hostDescent";
 
+/**
+ * The lobby rules' tunables (see LobbyConfig for each field): up to MAX_PARTY_SIZE members; 4 live in-server invites
+ * per sender, each lasting 60 s; 20 live platform invites per sender, each lasting 900 s (15 minutes); a 60 s kick
+ * cooldown; a 3 s start countdown; a new lobby is open and set to the endless descent.
+ */
 export const LOBBY: LobbyConfig = table.freeze({
 	maxSize: MAX_PARTY_SIZE,
 	maxInvitesPerMember: 4,
@@ -103,6 +121,10 @@ export interface LobbyServiceConfig {
 	readonly soloStartTimeoutSeconds: number;
 }
 
+/**
+ * LobbyService's pacing (see LobbyServiceConfig): the lobbies tick every 0.25 s, the browse list is pushed at most
+ * every 0.5 s, and a solo lobby run must be started by the client within 30 s.
+ */
 export const LOBBY_SERVICE: LobbyServiceConfig = table.freeze({
 	tickSeconds: 0.25,
 	listPushSeconds: 0.5,
@@ -126,6 +148,10 @@ export interface FriendCacheConfig {
 	readonly maxConcurrentFetches: number;
 }
 
+/**
+ * The friend cache's tunables (see FriendCacheConfig): a known answer is refreshed after 300 s, a failed fetch retried
+ * after 30 s, at most 4 fetches at once.
+ */
 export const FRIEND_CACHE: FriendCacheConfig = table.freeze({
 	refreshSeconds: 300,
 	retrySeconds: 30,
@@ -135,18 +161,30 @@ export const FRIEND_CACHE: FriendCacheConfig = table.freeze({
 /** The UserId wire rule lives in shared/run (run sessions check party members with it too). */
 export { MAX_USER_ID_MAGNITUDE, isWireUserId } from "shared/run";
 
+/**
+ * True when `v` is one of the preset lobby name ids (LOBBY_NAMES). Guards a client-supplied name: anything else is
+ * refused as `badName`.
+ */
 export function isLobbyNameId(v: unknown): v is LobbyNameId {
 	if (!typeIs(v, "string")) return false;
 	for (const id of LOBBY_NAMES) if (id === v) return true;
 	return false;
 }
 
+/**
+ * True when `v` is a lobby visibility (LOBBY_VISIBILITIES). Guards a client-supplied value: anything else is refused as
+ * a bad request.
+ */
 export function isLobbyVisibility(v: unknown): v is LobbyVisibility {
 	if (!typeIs(v, "string")) return false;
 	for (const vis of LOBBY_VISIBILITIES) if (vis === v) return true;
 	return false;
 }
 
+/**
+ * True when `v` is a world a lobby may run in (LOBBY_WORLDS: endless or the Daily). Guards a client-supplied world
+ * kind: anything else is refused as a bad request.
+ */
 export function isLobbyWorld(v: unknown): v is LobbyWorld {
 	if (!typeIs(v, "string")) return false;
 	for (const w of LOBBY_WORLDS) if (w === v) return true;

@@ -13,6 +13,13 @@
  * (validate.ts isStringKey), so the strings are `floormod.<key>.*` (`floormod.bloodMoon.name`); asset IDs are lowercase
  * dot-separated segments, so the sounds and icons lower-case the key too (`sfx.floor.modifier.bloodmoon`,
  * `ui.floormod.bloodmoon`).
+ *
+ * The contract lists named above:
+ * {@link shared/theme/contract/strings!REQUIRED_STRING_KEYS | REQUIRED_STRING_KEYS},
+ * {@link shared/theme/contract/ids!PORT_AUDIO_EVENTS | PORT_AUDIO_EVENTS},
+ * {@link shared/theme/types!COLOR_ROLES | COLOR_ROLES}.
+ *
+ * @module
  */
 
 import type { ColorRole } from "./types";

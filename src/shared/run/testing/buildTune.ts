@@ -35,6 +35,8 @@
  *    that never attacks (aims at the nearest enemy, strafes, rolls every TUNE_POOL_ROLL_TICKS) and one that fights
  *    (the sword bot): the enemy bullets alive per tick, their peak and mean, and combat.dropped's rise (the enemy
  *    pool full; the passive bot fires nothing). The passive bot's peak is the room's worst case: nothing dies.
+ *
+ * @module
  */
 import { AffixKind, encounterCost, isBossFloor } from "shared/dungeon";
 import {
@@ -85,6 +87,10 @@ import { buildEndlessRunConfig } from "../endless";
 import { frame } from "./endlessBot";
 import { roomLoad } from "./poolHighWater";
 
+/**
+ * Spec support. The one weapon a tuning bot holds for a fight, by weapon id: the sword (the full combo) or the bow (the
+ * stream only).
+ */
 export type TuneWeapon = "weapon.sword" | "weapon.bow";
 
 // ---------------------------------------------------------------------------------------------
@@ -161,6 +167,10 @@ export const HEAVY_ARROWS: ReadonlyArray<number> = cards(
 	[duoCard(Duo.FIRE_ARROWS)],
 );
 
+/**
+ * Spec support. The builds of the player bullet high-water table (file comment, item 3): the heaviest on-kill build
+ * with each weapon, and the heaviest arrow build with the bow.
+ */
 export const POOL_CASES: ReadonlyArray<PoolCase> = [
 	{
 		label: "Cataclysm + Storm Crown + Chain Reaction + Soul Swarm, sword",
@@ -249,7 +259,15 @@ export function withKillProbe<T>(fn: () => T): [T, KillCounts] {
 // ---------------------------------------------------------------------------------------------
 // Bots
 
+/**
+ * Spec support. The sword bot stops walking in at this centre distance from its target (world units, 1 = a tile):
+ * inside the swing's reach.
+ */
 export const TUNE_SWORD_CLOSE = 1.4;
+/**
+ * Spec support. The centre distance the bow bot keeps from its target (world units): it walks in when farther and backs
+ * off when nearer.
+ */
 export const TUNE_BOW_DISTANCE = 5;
 
 /** The nearest living actor to `p` (any kind), or undefined. */
@@ -269,6 +287,10 @@ export function nearestLiving(s: SimState, p: Readonly<PlayerState>): ActorState
 
 /** The bow bot strafes around its target, flipping direction every this many ticks. */
 export const TUNE_BOW_STRAFE_TICKS = 120;
+/**
+ * Spec support. The sideways part of the bow bot's move, as a share of a full stick: added at right angles to the line
+ * to the target, its sign flipping every `TUNE_BOW_STRAFE_TICKS`.
+ */
 export const TUNE_BOW_STRAFE = 0.6;
 /** Within this distance of an arena edge (bounds `half`) the bow bot is pulled back toward the centre. */
 export const TUNE_EDGE_MARGIN = 2.5;
@@ -343,6 +365,10 @@ export const TUNE_BOSS_FLOORS: ReadonlyArray<TuneFloor> = [
 	{ floor: 15, depth: 3 },
 ];
 
+/**
+ * Spec support. One enemy of an arena fight: its archetype id, where it spawns relative to the arena's centre (world
+ * units), and its elite affix (a dungeon `AffixKind`, 0 for none).
+ */
 export interface TuneSpawn {
 	readonly kind: string;
 	readonly x: number;
@@ -385,6 +411,10 @@ export const TUNE_PACK: TuneFight = {
 /** Mother Mayhem's arena: a square boss room this half size, the player 3 units inside its -Z edge. */
 export const TUNE_BOSS_HALF = 13;
 
+/**
+ * Spec support. The boss fight of the TTK tables: Mother Mayhem alone at the centre of her arena, over when she dies,
+ * capped at 900 s.
+ */
 export const TUNE_BOSS: TuneFight = {
 	label: "Mother Mayhem",
 	spawns: [{ kind: BOSS_ACT1_ID, x: 0, z: 0, affix: AffixKind.NONE }],
@@ -745,6 +775,10 @@ export function centredFight(label: string, spawns: ReadonlyArray<TuneSpawn>): T
 
 /** Every TUNE_POOL_ROLL_TICKS each player rolls (staggered by TUNE_POOL_ROLL_STAGGER x their index). */
 export const TUNE_POOL_ROLL_TICKS = 90;
+/**
+ * Spec support. Ticks between one player's roll and the next player's in a pool run: player `i` rolls `i` times this
+ * many ticks earlier in the `TUNE_POOL_ROLL_TICKS` cycle, so a party never rolls all at once.
+ */
 export const TUNE_POOL_ROLL_STAGGER = 17;
 
 /** Depth after every boss on the way (boss floors 5, 10, 15, ...). */
@@ -754,6 +788,10 @@ export function tuneDepthAt(floor: number): number {
 	return depth;
 }
 
+/**
+ * Spec support. What `buildPoolRun` measured in one room: the peaks of the player and enemy bullet pools, the bullets
+ * refused, and how the fight went. Counts are bullets alive on one tick unless a field says otherwise.
+ */
 export interface PoolResult {
 	readonly room: number;
 	readonly kinds: string;
@@ -895,6 +933,7 @@ export function formatPoolRow(label: string, seed: number, floor: number, party:
 	);
 }
 
+/** Spec support. Markdown header of the player bullet high-water table that `formatPoolRow` fills. */
 export function poolHeader(): string {
 	return (
 		"| build | party | room | max player bullets | max effects all / one | max weapon one | effect drops | " +
@@ -918,7 +957,12 @@ export interface DearRoom {
  * undefined when none does.
  */
 export function dearestRoom(floor: number, firstRun: number, lastRun: number): DearRoom;
+/**
+ * Spec support. `dearestRoom` restricted to the rooms holding the archetype id `withKind`: undefined when no room of
+ * the floor over those run seeds holds one.
+ */
 export function dearestRoom(floor: number, firstRun: number, lastRun: number, withKind: string): DearRoom | undefined;
+/** Spec support. The implementation behind both `dearestRoom` signatures above (see the first one's comment). */
 export function dearestRoom(floor: number, firstRun: number, lastRun: number, withKind?: string): DearRoom | undefined {
 	let best: { run: number; room: number; cost: number; distinct: number; spawns: TuneSpawn[] } | undefined;
 	for (let run = firstRun; run <= lastRun; run++) {

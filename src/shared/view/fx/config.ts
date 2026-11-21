@@ -3,10 +3,18 @@
  * gameplay-shaped rules (sizes in render px, timings) are the web build's and live next to their logic (bars.ts,
  * numbers.ts, particles.ts, hitstop.ts); this file holds the Roblox-side choices only. Presentation only: nothing here
  * reaches the sim.
+ *
+ * @module
  */
 import { PIXELS_PER_TILE, STUDS_PER_TILE } from "shared/config";
 import type { ParticlesLevel } from "shared/settings";
 
+/**
+ * The Roblox-side choices of the health bars, damage numbers and particles: studs per render pixel, draw order, the
+ * Workspace folder names, where unused particle parts are parked, the damage-number glyph box and the write quanta that
+ * save property writes. Read by the client's fx controllers (health bars, damage numbers, particles and others that
+ * need `pxStuds`).
+ */
 export const FX_VIEW = {
 	/** Studs per render pixel: the web build's 16 px per tile at STUDS_PER_TILE studs per tile (0.25). */
 	pxStuds: STUDS_PER_TILE / PIXELS_PER_TILE,

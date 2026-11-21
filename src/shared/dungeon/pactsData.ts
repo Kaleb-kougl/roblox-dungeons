@@ -3,6 +3,8 @@
  * endless floor's two pact altars stand in its shrine room, and the stream of the curse Greed shows. Data only:
  * ./pacts.ts reads it, nothing is inline in the logic. A LEAF (no imports). The sim-side rules (Greed's deal, Horde's
  * wave, the x2) live in shared/sim pacts/.
+ *
+ * @module
  */
 
 /** The pacts, by index (state, hash, the altars' order in FloorPacts.altars). APPEND ONLY. */
@@ -12,12 +14,14 @@ export const PactKind = {
 	/** Pact of the Horde: the next enemy room fights a second wave and pays x2. */
 	HORDE: 1,
 } as const;
+/** A pact id: GREED or HORDE. */
 export type PactKindId = (typeof PactKind)[keyof typeof PactKind];
 /** Pact names in index order (theme string keys `pact.<name>.*`, dump names). */
 export const PACT_KIND_NAMES = ["greed", "horde"] as const;
 /** How many pacts (altars per shrine room). */
 export const PACT_KIND_COUNT = PACT_KIND_NAMES.size();
 
+/** The pact altars' tunables: the rng salt of Greed's shown curse, and where the two altars stand in a shrine room. */
 export interface PactAltarTunables {
 	/**
 	 * The pacts' own stream: floor seed ^ salt (the curse Greed shows, pactCurseIndex). Like the breakables (0x5bd1e995),
@@ -54,6 +58,7 @@ export interface PactAltarTunables {
 	readonly clearCells: number;
 }
 
+/** The pact altar values. */
 export const PACTS: PactAltarTunables = table.freeze({
 	salt: 0x5c3a91e7,
 	playerMul: 0x9e3779b1,

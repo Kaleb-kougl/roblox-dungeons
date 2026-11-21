@@ -1,2 +1,6 @@
-/** Barrel for the placeholder pack. */
+/**
+ * Barrel for the placeholder pack.
+ *
+ * @module
+ */
 export * from "./manifest";

@@ -7,11 +7,19 @@
  *
  * Units: scores are points, floors endless floor numbers; times are real (unpaused) seconds; sizes on the HUD are
  * reference px (HUD_VIEW), confetti sizes screen px.
+ *
+ * @module
  */
 
 /** The theme colour role of everything gold (the passed row, the gold number, the shout, the confetti; NB4). */
 export const NEW_BEST_ROLE = "newBest";
 
+/**
+ * The new-best celebration's tunables, read by the NewBest state machine (newBest.ts) and the client's score panel,
+ * confetti and run-over rows: when a best counts as a target and when it is within reach, the reach pulse, the slam,
+ * the flash and shine, the floor shout, the confetti, the run-over record rows, the row's layout and the Studio debug
+ * attribute's name. Units are the file header's: points, real seconds, reference px, screen px for the confetti.
+ */
 export const NEW_BEST = {
 	/** A stored best under this many points counts as no best (NBD5: the first record waits for the run-over). */
 	minScore: 1000,

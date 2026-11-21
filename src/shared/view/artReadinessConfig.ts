@@ -17,6 +17,12 @@ export interface ArtReadinessConfig {
 	readonly forceListSeparator: string;
 }
 
+/**
+ * The art readiness tunables in play (artReadiness.ts reads them, fed by the client's PreloadController): a content id
+ * whose fetch failed is retried once, 10 s after the failure, and after 2 failures it is final (counted as resolved, so
+ * its set draws without it). `KV_StandInsForce` set to `all` forces every logical id to a stand-in; any other value is
+ * read as a comma-separated list of logical-id prefixes.
+ */
 export const ART_READINESS: ArtReadinessConfig = {
 	retryAfterSec: 10,
 	maxFailures: 2,

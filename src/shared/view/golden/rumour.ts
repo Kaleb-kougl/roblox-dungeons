@@ -27,6 +27,8 @@
  *
  * Co-op (RD6): every client steps the same merged state, so every client hears both cues (their own clock, their own
  * frame times). Muted: the chip and the glint say what the sounds say.
+ *
+ * @module
  */
 import { GoldenStatus, goldenInRoom, isDraftOpen, partySize, playerAt, type SimState } from "shared/sim";
 import { GOLDEN_VIEW } from "./config";
@@ -52,6 +54,10 @@ export const GoldenRumourPhase = {
 	/** It hides in a room that has engaged (someone walked in). */
 	ROOM: 2,
 } as const;
+/**
+ * One `GoldenRumourPhase` value (0 none, 1 floor, 2 room): what `goldenRumourPhase` returns and GoldenRumourClock steps
+ * on.
+ */
 export type GoldenRumourPhaseId = (typeof GoldenRumourPhase)[keyof typeof GoldenRumourPhase];
 
 /** GoldenRumourPhase names by value (KV_GoldenLabel's developer text). */

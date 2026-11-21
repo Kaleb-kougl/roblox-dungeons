@@ -18,6 +18,8 @@
  *                       counting starts on the same day both land; a delta for an older day leaves the count alone.
  *
  * Pure: decoding never throws; a malformed field reads as absent.
+ *
+ * @module
  */
 
 /** The stored `daily` field. */
@@ -95,6 +97,11 @@ export function encodeDailyActivity(a: Readonly<DailyActivity> | undefined): Dai
 	return decodeDailyActivity(a);
 }
 
+/**
+ * True when two daily activity values are equal field by field; an absent value equals only an absent one, and an
+ * absent finished day only an absent one. Used by the records doc's equality, so a change to the activity alone still
+ * counts as a change to write.
+ */
 export function sameDailyActivity(
 	a: Readonly<DailyActivity> | undefined,
 	b: Readonly<DailyActivity> | undefined,

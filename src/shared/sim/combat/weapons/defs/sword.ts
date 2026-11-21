@@ -23,6 +23,8 @@
  *   buildsOnGuardEnd (the counter-wave).
  *   Sword spacing (docs/SWORD_SPACING.md SP2 / SP3, with SimConfig.spacing): the `spacing` hook brakes the walk while
  *   attacking (stepPlayer), and the wind-up's lunge goes through the same brake (ctx.spacing).
+ *
+ * @module
  */
 
 import { Button } from "../../../input";
@@ -49,12 +51,23 @@ import { buildsOnGuardEnd, buildsOnRiposteGuard } from "../../../builds/riposte"
 import type { SimState } from "../../../state";
 import { BRAKE_RESULT, brakeStep } from "../../spacingBrake";
 
+/**
+ * The sword's gameplay data: the two combo swings, the finisher with its wind-up lunge, and the guard. Reaches are
+ * world units from the player's centre, arcs are given as the cosine of their half-angle, timers are ticks at 60 Hz.
+ */
 export interface SwordData extends WeaponData {
 	/** Swings 1 and 2: reach (world units from the player's center) and half-angle cosine (0.5 = 120-degree arc). */
 	reach: number;
+	/** Swings 1 and 2: cosine of the arc's half-angle (0.5 = 60 degrees each side of the facing). */
 	halfAngleCos: number;
+	/**
+	 * Finisher damage per actor in its arc, enemy hit points (before Sharpened's scaling). Breakables take this base
+	 * value.
+	 */
 	finisherDamage: number;
+	/** Finisher reach, world units from the player's centre. Retuned by the port (`SwordTimings.finisherReach`). */
 	finisherReach: number;
+	/** Cosine of the finisher arc's half-angle (0 = 90 degrees each side: the whole front half). */
 	finisherHalfAngleCos: number;
 	/** Ticks from one swing to the next while FIRE is held. */
 	swingRecoveryTicks: number;
@@ -68,13 +81,25 @@ export interface SwordData extends WeaponData {
 	finisherRecoveryTicks: number;
 	/** Idle ticks (after a swing's recovery) before the combo resets to swing 1. */
 	comboWindowTicks: number;
+	/** Ticks a guard lasts without Bastion (`swordGuardTicks` gives the acting player's length). */
 	guardTicks: number;
+	/** Ticks from a guard's start until ALT can start the next one (kept in `slot.cooldown`). */
 	guardCooldownTicks: number;
+	/**
+	 * Guard reach, world units from the player's centre: enemy bullets inside the guard arc within it are erased each
+	 * guard tick. Not part of the port's reach retune.
+	 */
 	guardReach: number;
+	/** Cosine of the guard arc's half-angle without Bastion (negative: wider than the front half). */
 	guardHalfAngleCos: number;
+	/** Walking speed multiplier while guarding. */
 	guardMoveMultiplier: number;
 }
 
+/**
+ * The sword's live tuning, read by the sim on every tick. Mutable only through `setSwordTimings` (specs), which swaps
+ * the three retuned timers and the two reaches; the defaults here are the port's retuned values, not the web build's.
+ */
 export const SWORD_DATA: SwordData = {
 	cooldownTicks: 0, // trigger 'custom': the sword times itself (slot.cooldown = the guard's cooldown)
 	damage: 3,
@@ -104,10 +129,15 @@ export const SWORD_DATA: SwordData = {
 
 /** The sword values the port retuned (CLAUDE.md decision log): its timers (ticks) and its swing reach (world units). */
 export interface SwordTimings {
+	/** Ticks from one combo swing to the next (web 12, port 14). */
 	readonly swingRecoveryTicks: number;
+	/** Ticks of the finisher's wind-up (web 9, port 11). */
 	readonly finisherWindupTicks: number;
+	/** Ticks after the finisher before swing 1 can start again (web 21, port 25). */
 	readonly finisherRecoveryTicks: number;
+	/** Reach of swings 1 and 2, world units (web 1.7, port 1.955). */
 	readonly reach: number;
+	/** Finisher reach, world units (web 2.2, port 2.53). */
 	readonly finisherReach: number;
 }
 
@@ -151,9 +181,21 @@ export function setSwordTimings(t: SwordTimings): SwordTimings {
 
 /** Scratch slots (slot.v). */
 export const SWORD_V_STEP = 0; // next combo swing: 0, 1 (swing 1, 2), 2 (finisher next), SWORD_STEP_WINDUP
+/**
+ * `slot.v` index of the ticks left until the next swing may start (a swing's recovery), or until the finisher lands
+ * (during the wind-up).
+ */
 export const SWORD_V_BUSY = 1; // ticks until the next swing may start (recovery), or until the finisher (wind-up)
+/**
+ * `slot.v` index of the idle ticks left before the combo resets to swing 1; counts down only once `SWORD_V_BUSY` is 0.
+ */
 export const SWORD_V_WINDOW = 2; // idle ticks left before the combo resets
+/** `slot.v` index of the guard ticks left (0 = not guarding). A roll or a swap zeroes it. */
 export const SWORD_V_GUARD = 3; // guard ticks left (0 = not guarding)
+/**
+ * `slot.v` index of the last swing made: 0 none, 1 / 2 the combo swings, `SWORD_FINISHER` the finisher. The view reads
+ * it to tell a finisher from a swing; the combo logic does not.
+ */
 export const SWORD_V_LAST = 4; // last swing: 0 none, 1 / 2 combo swings, 3 finisher
 /** SWORD_V_STEP while the finisher winds up. */
 export const SWORD_STEP_WINDUP = 3;
@@ -246,6 +288,11 @@ function swing(ctx: SimCtx, v: number[], n: number): void {
 	v[SWORD_V_LAST] = n;
 }
 
+/**
+ * The registered `weapon.sword` def. Trigger `custom`: its `step` reads FIRE and ALT itself and runs the combo, the
+ * lunge and the guard, and `fire` is never called by the generic code; `moveMultiplier` slows the walk while guarding
+ * or winding up, `spacing` says when the walk is braked.
+ */
 export const SWORD = registerWeapon<SwordData>({
 	id: "weapon.sword",
 	data: SWORD_DATA,

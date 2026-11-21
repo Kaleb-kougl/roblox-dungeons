@@ -10,6 +10,8 @@
  * crack (docs/SECRET_ROOMS.md SRD5). Its toast line is the theme string `bestiary.<sighting id>` (shared/theme
  * BESTIARY_STRING_KEYS; a spec keeps the two lists equal). Plain data, no Roblox API and no theme import, so the server's
  * OnboardingService can validate a client's report with it cheaply.
+ *
+ * @module
  */
 
 /** Every sighting id, in canonical order (the stored list keeps this order): the archetypes, then the affixes. */

@@ -34,6 +34,10 @@ export function bulletIdentity(payload: number): number {
 	return bit32.band(payload, IDENTITY_MASK);
 }
 
+/**
+ * Optional overrides of `BulletImpacts`' tunables, given once to its constructor. The game passes only `skip` (the
+ * client's FxSpriteController leaves out embers); the rest default to `BULLET_IMPACT_VIEW` and are set by specs.
+ */
 export interface BulletImpactOptions {
 	/** Bullets left out (by payload), e.g. the stationary embers. Absent: every bullet counts. */
 	readonly skip?: (payload: number) => boolean;

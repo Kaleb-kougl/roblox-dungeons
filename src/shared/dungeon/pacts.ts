@@ -22,6 +22,8 @@
  * The curse (pactCurseIndex, FD3): which of a player's unused curses Greed would give them, one draw from its own stream
  * new EncounterRng(floor seed ^ PACTS.salt ^ imul(player + 1, PACTS.playerMul)), so the view can show it before the
  * pact is taken and the sim's main rng never moves for it.
+ *
+ * @module
  */
 import { imul, u32 } from "shared/jsmath";
 import { TileType, type Dungeon } from "./forge";

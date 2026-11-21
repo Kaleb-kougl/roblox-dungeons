@@ -12,6 +12,8 @@
  * Which worlds may post to the leaderboards is separate data (shared/leaderboard LEADERBOARD_ELIGIBLE_WORLDS).
  * Which registered worlds the SERVER refuses to run (session starts, including lobby starts) is SERVER_REFUSED_WORLDS.
  * Which worlds are the endless descent (floors, scoring, death-only, the stage loader) is `isEndlessWorld`.
+ *
+ * @module
  */
 import { DAILY, DAILY_WORLD_KIND } from "shared/daily";
 import { buildRunConfig, type RunSetup } from "./config";
@@ -49,6 +51,11 @@ export function rosterUnlockFloors(kind: RunWorldKind): boolean {
 	return true;
 }
 
+/**
+ * What a world builder (`RunWorldBuilder`) is given besides the seed. The server's run sessions fill it from the
+ * validated start request and its own records (party size, characters, upgrades); the client fills the same values from
+ * the server's reply, so both build the identical world. A builder ignores the fields its world does not use.
+ */
 export interface WorldBuildOptions {
 	/** Start at the boss door (debug; only honoured where the limits allow it). */
 	readonly atBossDoor: boolean;
@@ -110,6 +117,10 @@ export function runWorldKinds(): ReadonlyArray<RunWorldKind> {
 	return [...order];
 }
 
+/**
+ * True for a registered world kind (an untrusted value: a world name off the wire). Registered is not the same as
+ * playable on the server: see `isServerRunWorld`.
+ */
 export function isRunWorldKind(kind: unknown): kind is RunWorldKind {
 	return typeIs(kind, "string") && builders.has(kind);
 }

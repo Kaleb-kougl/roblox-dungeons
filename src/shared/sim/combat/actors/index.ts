@@ -1,4 +1,8 @@
-/** Public API of the actor system (E1.8; source: `src/sim/actors/index.ts`), plus every archetype's exports. */
+/**
+ * Public API of the actor system (E1.8; source: `src/sim/actors/index.ts`), plus every archetype's exports.
+ *
+ * @module
+ */
 export { ACTOR_HASH_FIELDS, ACTOR_SCRATCH_SLOTS, AiState, NO_KIND } from "./types";
 export type { ActorScalarField, ActorState, ArchetypeData, ArchetypeDef } from "./types";
 export {

@@ -11,6 +11,8 @@
  *   priority   a cue on a pad + motor runs until its `untilSec`; a weaker cue there is refused meanwhile, a stronger or
  *              equal one takes over (its events win, the older one's later events are stale). The priority-free begin
  *              (menu cues) always takes over, as before.
+ *
+ * @module
  */
 
 /** A pad's vibration motors (Enum.VibrationMotor names). */

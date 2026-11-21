@@ -12,6 +12,8 @@
  *   - its label: `fx.parry.text`, or `fx.parry.count` ("{text} x{n}": "PARRY! x5") once the guard erased
  *     flash.countFrom or more.
  * Presentation only.
+ *
+ * @module
  */
 import { TILE_SIZE } from "shared/sim";
 import type { StringVars } from "shared/theme";

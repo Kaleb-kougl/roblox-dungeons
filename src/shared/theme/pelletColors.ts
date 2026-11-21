@@ -10,6 +10,8 @@
  * bullets, boost drops and build effects, under the player, and must read as itself. The boost bar is lower on purpose
  * (owner, 2026-11-03: Pac-Man yellow pellets): a boost is a coin or gem with a halo and a beam, a pellet a small cube, so
  * shape tells them apart, and taking one for the other costs nothing (both are walked over). Danger keeps the full 40.
+ *
+ * @module
  */
 
 import { BOOST_ROLES, ENEMY_BULLET_ROLES, MIN_DECOR_FX_BULLET_DIFFERENCE } from "./contract";

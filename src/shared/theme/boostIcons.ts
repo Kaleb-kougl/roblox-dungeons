@@ -6,6 +6,8 @@
  * pack packs them into a sheet of their own (packs/vale boostIconLayout.ts, scripts/art/gen-boost-icons.js), each an
  * `image` of the sheet with its `rect`.
  * In its own module: contract.ts sits near Luau's 200-locals-per-function limit.
+ *
+ * @module
  */
 import type { BoostKind } from "./contract";
 

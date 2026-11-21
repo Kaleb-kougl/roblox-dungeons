@@ -5,6 +5,8 @@
  * TreasureRenderController draws it; TR8's toasts (VaultToastTracker), minimap mark (vaultMarkStyle) and sound edges
  * (TreasureCueTracker, read by the shared/view/audio cue mapper) come from the same events. Presentation only;
  * tested headlessly. Never imports the shared/view/hud barrel (hud imports shared/play, which imports this barrel).
+ *
+ * @module
  */
 export * from "./config";
 export * from "./events";

@@ -3,6 +3,8 @@
  * `stress: stress > 0 ? { bullets: stress, x: spawn.x, z: spawn.z } : undefined`). The web build reads `?stress=N`
  * from the URL; the Roblox client reads a debug attribute (any number or numeric string) and passes the result into
  * SimConfig.stress, so live play and replays build the same stress emitter. Pure: no Roblox API here.
+ *
+ * @module
  */
 
 import type { StressConfig } from "../step";

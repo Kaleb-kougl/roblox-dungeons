@@ -2,6 +2,8 @@
  * The Daily's wire status (`dailyStatus`, shared/network): what the menu, the countdown and (next phase) the board and
  * rank layers need about today's Daily. The server builds it (DailyService) from its clock and its secret seed; the
  * client stores it in the Reflex `daily` slice.
+ *
+ * @module
  */
 import { DAILY, DAILY_CLIENT } from "./config";
 import { dailyLabel, dailyResetsAt } from "./day";

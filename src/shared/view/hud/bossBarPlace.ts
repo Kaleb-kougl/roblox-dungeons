@@ -7,9 +7,16 @@
  * top spot. From the bottom it goes back up once the boss has kept `exitPadPx` clear of the top spot for
  * `holdSeconds` (the wider exit pad and the hold stop a boss pacing along the screen's top edge from flipping the bar
  * back and forth), or at once when the boss reaches the bottom spot while clear of the top one. Presentation only.
+ *
+ * @module
  */
 import type { ScreenRect } from "./footprint";
 
+/**
+ * Tunables of the boss bar's placement rule (the file header): how often the client re-tests, the size of the boss's
+ * screen box in tiles, and the hysteresis between the two spots (the enter and exit pads in reference px before the HUD
+ * scale, the hold in real seconds).
+ */
 export const BOSS_BAR_PLACE = {
 	/** The client re-tests every this many frames (HUD_OCCLUSION.everyFrames' rate). */
 	everyFrames: 3,
@@ -27,6 +34,10 @@ export const BOSS_BAR_PLACE = {
 	holdSeconds: 0.75,
 } as const;
 
+/**
+ * Where the boss bar is drawn: `top` centre (the usual spot) or `bottom` centre while the boss's sprite is under the
+ * top spot.
+ */
 export type BossBarSpot = "top" | "bottom";
 
 /** A writable ScreenRect (the client reuses one per pass). */

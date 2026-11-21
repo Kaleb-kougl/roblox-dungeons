@@ -10,9 +10,15 @@
  * write found (`previous`), so a run whose better twin was written still reads as improved over the old entry.
  *
  * Pure: the service polls `done`.
+ *
+ * @module
  */
 import { isBetterValue } from "./posting";
 
+/**
+ * How a waited personal-best write ended, judged for the one run that waited (the daily verdict reads it). Ordered
+ * values, as the board stores them.
+ */
 export interface PostWaitOutcome {
 	/** The entry write completed: the board holds this run's value or a better one of the player's. */
 	readonly posted: boolean;
@@ -24,6 +30,11 @@ export interface PostWaitOutcome {
 	readonly entry?: number;
 }
 
+/**
+ * One wait on a personal-best write, returned by `PostWaiters.add` and polled by the service: `key` is the write queue
+ * slot (`postJobKey`), `value` the ordered value this run posted. `done` turns true when a write that covers the value
+ * completed or was dropped, and `outcome` is set at the same moment.
+ */
 export interface PostWait {
 	readonly key: string;
 	readonly value: number;
@@ -31,6 +42,11 @@ export interface PostWait {
 	outcome?: PostWaitOutcome;
 }
 
+/**
+ * The server's registry of waits on personal-best writes, described in the file comment. The service adds a wait per
+ * member when a daily run posts, reports each write with `written` or `dropped` from its write loop, polls the waits'
+ * `done`, and cancels the ones still open at the verdict's deadline.
+ */
 export class PostWaiters {
 	private readonly byKey = new Map<string, PostWait[]>();
 

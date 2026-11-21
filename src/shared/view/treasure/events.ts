@@ -8,6 +8,8 @@
  *
  * Every record carries the vault's identity (room, slot) and the tick, so a view can tell a vault of the floor before
  * from the current one when a frame ran a floor change. A leaf (types and constants from shared/sim only).
+ *
+ * @module
  */
 import { TREASURE_UNSET, VaultStatus, type SimState, type TreasureState } from "shared/sim";
 

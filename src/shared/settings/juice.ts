@@ -7,14 +7,30 @@
  * DataStore, and the client resolves it against its own defaults (`resolveJuiceSettings`), where reducedMotion
  * defaults to the player's Roblox "Reduce Motion" setting (GuiService.ReducedMotionEnabled, readable on the client
  * only). "Reset" clears the overrides, which again means "follow the system", exactly like the web build's reset().
+ *
+ * @module
  */
 
+/** When enemy health bars show: always, only for a while after a hit, or never. */
 export type HealthBarsMode = "always" | "onDamage" | "off";
+/**
+ * Death particle density, from none to the densest. Under reduced motion the level used is one step lower (high to
+ * normal, normal to low; low and off stay).
+ */
 export type ParticlesLevel = "off" | "low" | "normal" | "high";
 
+/** Every health bar mode, in the order the Options screen offers them; a stored value outside this list is dropped. */
 export const HEALTH_BARS_MODES: ReadonlyArray<HealthBarsMode> = ["always", "onDamage", "off"];
+/**
+ * Every particles level, lowest to highest, in the order the Options screen offers them; a stored value outside this
+ * list is dropped.
+ */
 export const PARTICLES_LEVELS: ReadonlyArray<ParticlesLevel> = ["off", "low", "normal", "high"];
 
+/**
+ * The game feel settings a client plays with: which hit and kill feedback is shown and how much motion there is.
+ * Resolved on the client from the stored overrides on top of the defaults (`resolveJuiceSettings`). Presentation only.
+ */
 export interface JuiceSettings {
 	/** Enemy health bars: always, only for a while after a hit, or never. */
 	healthBars: HealthBarsMode;
@@ -35,6 +51,10 @@ export interface JuiceSettings {
 /** What a player changed (stored per player; absent keys follow the defaults). */
 export type JuiceOverrides = Partial<JuiceSettings>;
 
+/**
+ * Every juice setting key: the keys the comparison walks, and the ones that make a stored juice group non-empty
+ * (doc.ts).
+ */
 export const JUICE_SETTING_KEYS: ReadonlyArray<keyof JuiceSettings> = [
 	"healthBars",
 	"damageNumbers",
@@ -45,6 +65,11 @@ export const JUICE_SETTING_KEYS: ReadonlyArray<keyof JuiceSettings> = [
 	"reducedMotion",
 ];
 
+/**
+ * The settings of a player who changed nothing: health bars after a hit, damage numbers, freeze frame, screen shake and
+ * the room clear celebration on, normal particles. `prefersReducedMotion` is the player's Roblox "Reduce Motion"
+ * setting, readable on the client only; the server and specs leave it false.
+ */
 export function defaultJuiceSettings(prefersReducedMotion = false): JuiceSettings {
 	return {
 		healthBars: "onDamage",

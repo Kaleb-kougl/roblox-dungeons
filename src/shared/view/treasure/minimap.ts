@@ -6,6 +6,8 @@
  * shared/theme treasureReport), hollow once the chest is opened (nothing left to come back for). The client's
  * MinimapController places and draws it (MINIMAP_VIEW.markers.vault); this decides only whether and how. Pure, tested
  * headlessly (minimap.spec.ts).
+ *
+ * @module
  */
 import { VaultStatus } from "shared/sim";
 import { treasureFloorRole, type ColorRole } from "shared/theme";

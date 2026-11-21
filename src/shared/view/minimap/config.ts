@@ -3,9 +3,17 @@
  * Presentation only: nothing here reaches the sim, the lockstep wire or a hash. Theme colour roles live in the theme
  * contract (`MINIMAP_ROLES`, task M6), not here; the marker roles below only pick among existing roles (MD8). Roblox-port
  * feature, no web source.
+ *
+ * @module
  */
 import { MINIMAP_ROOM_TINT_MIX, type ColorRole } from "shared/theme";
 
+/**
+ * The minimap's tunables: sight radius and teleport cut (tiles), the corner panel and marker sizes (reference px), the
+ * zoom (reference px per tile), the full-map overlay's shares, the dim / tint / frontier mixes (0..1), marker colour
+ * roles, and the painter's budgets. Read by fog.ts and the other minimap modules, the client's MinimapController and
+ * FullMapOverlay, and shared/view/hud for the panel's footprint.
+ */
 export const MINIMAP_VIEW = {
 	/**
 	 * Sight radius of each living player, tiles (a cell is in sight when its centre is within this distance of the

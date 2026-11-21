@@ -11,6 +11,8 @@
  *   playerRemoving  a pending or bound SOLO lobby run of the leaving player ends (a party run goes on without them).
  *
  * Pure (the clock is passed in).
+ *
+ * @module
  */
 import { LOBBY, LOBBY_SERVICE } from "./config";
 
@@ -21,6 +23,11 @@ interface PendingSolo {
 	readonly worldKind: string;
 }
 
+/**
+ * The tracker itself (see the file comment), one per server, owned by RunSessionService. `soloStartTimeoutSeconds` is
+ * how long a requested solo lobby run may stay unstarted before `sweep` ends it (default
+ * LOBBY_SERVICE.soloStartTimeoutSeconds, 30 s); times are whatever clock the caller passes as `now`.
+ */
 export class LobbyRunTracker {
 	/** runId -> lobbyId (bound party and solo runs). */
 	private readonly byRun = new Map<string, string>();

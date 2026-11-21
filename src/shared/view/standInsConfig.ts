@@ -1,10 +1,16 @@
 /**
  * Tunables of the stand-ins (docs/STAGE_ASSETS.md "Revision 2", SA18; logic in standIns.ts). Presentation only: nothing
  * here reaches the sim, the lockstep wire or a hash. Roblox-port choices, no web source.
+ *
+ * @module
  */
 import type { SolidDecorKind } from "shared/dungeon";
 import type { ColorRole } from "shared/theme";
 
+/**
+ * The shape of `SOLID_DECOR_STAND_IN`: how the plain box drawn in place of a solid decor piece whose art has not
+ * downloaded is sized and coloured.
+ */
 export interface SolidDecorStandInConfig {
 	/**
 	 * The stand-in box's height per solid decor kind, tiles (its footprint is the piece's cells, inset by insetTiles).
@@ -25,6 +31,11 @@ export interface SolidDecorStandInConfig {
 	readonly folderName: string;
 }
 
+/**
+ * The solid decor stand-in boxes in play (standIns.ts reads it): each kind's height in tiles, the 0.06 tile inset per
+ * side, and the colour (the biome's wall colour mixed 18 % toward `uiText`). A height is roughly its art's and never
+ * above a wall's, so a box hides no more than the art will.
+ */
 export const SOLID_DECOR_STAND_IN: SolidDecorStandInConfig = {
 	heightTiles: {
 		tomb: 0.55,

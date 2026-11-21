@@ -3,6 +3,8 @@
  * to swap, or refuse), which captured events count, the capture countdown, which actions are held (the input test
  * strip), and the "a key held across a bindings change reads as released" gate. Input NAMES only (Enum.KeyCode /
  * Enum.UserInputType names), so it runs headlessly; the client's RebindController / InputController wrap it.
+ *
+ * @module
  */
 import {
 	KBM_ACTIONS,
@@ -42,6 +44,11 @@ export type RebindPlan =
 	| { readonly kind: "conflict"; readonly holder: BindingRef; readonly bindings: Bindings }
 	| { readonly kind: "refused"; readonly reason: BindingRefusal };
 
+/**
+ * What capturing `input` into the `target` slot of `b` would do, without applying anything (see RebindPlan). The
+ * Options screen applies `bindings` at once on `apply`, and on `conflict` only after the player chose Swap. `b` is
+ * never changed.
+ */
 export function planRebind(b: Bindings, target: CaptureTarget, input: string): RebindPlan {
 	const { device, action, slot } = target;
 	if (slotInput(b, device, action, slot) === input) return { kind: "same" };

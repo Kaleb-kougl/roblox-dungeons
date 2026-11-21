@@ -13,6 +13,8 @@
  *                      index) with Wrecker breaks every piece its body touches along the step (breakables.ts
  *                      rollSmashBreakables, bound here at load by bindRollSmash: player.ts cannot import breakables.ts,
  *                      whose scoring imports party.ts), so the roll goes through.
+ *
+ * @module
  */
 import { gridToWorld } from "shared/dungeon";
 import type { SimState } from "../state";

@@ -5,6 +5,8 @@
  * line, the touch Swap button) shows only while there is a set to swap to. A two-weapon player (M1, dev "Both
  * weapons") sees exactly what they saw before. Pure; `weapons` is the snapshot's weapon id per set ("" for an empty
  * set, shared/play GameSnapshot.weapons).
+ *
+ * @module
  */
 
 /** True when at least two sets hold a weapon: SWAP has a set to switch to (always, for a two-weapon loadout). */

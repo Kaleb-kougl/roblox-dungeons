@@ -3,6 +3,8 @@
  * HUD_VIEW) and the pure text builders the controller uses. The stamp and its one-row tally sit in the boss bar's
  * slot at the top centre (no boss bar shows while a room record clears), above the toasts and the touch tutorial
  * prompt; the corner chips sit under the score panel (footprint.ts HUD_TRANSIENT.roomClear / roomClearChip).
+ *
+ * @module
  */
 import type { StringVars } from "shared/theme";
 import { roomClearSegments, type RoomClear, type RoomClearLook, type TallyEntry, type TallyKind } from "shared/view/fx";
@@ -29,6 +31,10 @@ export const ROOM_CLEAR_STRINGS = {
 	horde: "room.clear.line.horde",
 } as const;
 
+/**
+ * The room clear celebration's layout numbers, in reference px before the HUD scale: the stamp row and its tally under
+ * it, PERFECT's shine band, the flying bonus chip, the corner chips, and how the tally is fitted on a narrow screen.
+ */
 export const ROOM_CLEAR_VIEW = {
 	/** The stamp row's width: the touch tutorial prompt's, which is proven to fit between the top corners on touch. */
 	width: TUTORIAL_VIEW.touchPanelWidth,
@@ -59,6 +65,10 @@ export const ROOM_CLEAR_VIEW = {
 	tallyFit: { glyphAspect: 0.62, minText: 10 },
 } as const;
 
+/**
+ * A theme string lookup (the pack's `str`: key and vars to the localized text). The text builders here take one, so
+ * they stay free of the theme pack and run headlessly.
+ */
 export type RoomClearStr = (key: string, vars?: StringVars) => string;
 
 const SEGMENT_KEYS: Readonly<Record<TallyKind, string>> = {

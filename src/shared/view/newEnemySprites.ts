@@ -5,6 +5,8 @@
  * marks as named placeholders (NEW_ENEMY_ANIM_MARKS; NE9 measures them on the art). Their own module because the
  * compiled sprites.luau sits near Luau's 200 top-level locals; it imports sprites.ts for types only (no require
  * cycle). Presentation only.
+ *
+ * @module
  */
 import {
 	AiState,

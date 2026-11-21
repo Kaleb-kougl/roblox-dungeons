@@ -11,6 +11,8 @@
  *   field02  where the panel was opened from: armory / mainMenu (absent on `granted`)
  *   field03  the pack (prompted / bought / cancelled / settled / granted)
  *   value    `settled`: seconds from the prompt to the grant's push (0.1 s); `granted`: the Silver; otherwise 1
+ *
+ * @module
  */
 import type { AnalyticsEventSpec } from "shared/run";
 import { SILVER_SHOP } from "./config";
@@ -20,11 +22,19 @@ import { WALLET_ANALYTICS_EVENT } from "./analytics";
 /** Where Get Silver was opened from (docs/SILVER_SHOP.md OC3). */
 export type SilverShopFrom = "armory" | "mainMenu";
 
+/**
+ * Every `from` value a client report may carry: the list the server checks a report's source against
+ * (`readSilverShopReport`), the shop panel's entry points in the menus, and the `SilverShop` event's field02 values.
+ */
 export const SILVER_SHOP_FROMS: ReadonlyArray<SilverShopFrom> = ["armory", "mainMenu"];
 
 /** The steps the client reports. */
 export type SilverShopClientStep = "opened" | "prompted" | "bought" | "cancelled" | "settled" | "pricesFailed";
 
+/**
+ * Every step a client report may carry: the list the server checks a report's step against (`readSilverShopReport`).
+ * `granted` is not among them, since only the server logs it.
+ */
 export const SILVER_SHOP_CLIENT_STEPS: ReadonlyArray<SilverShopClientStep> = [
 	"opened",
 	"prompted",

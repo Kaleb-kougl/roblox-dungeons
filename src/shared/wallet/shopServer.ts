@@ -11,6 +11,8 @@
  *                           transform, ring included
  *   silverAuditKey / silverAuditRecord   the best-effort audit entry in SILVER_SHOP.auditStore (support only; never
  *                           decides Roblox's answer, SHD2)
+ *
+ * @module
  */
 import { SILVER_SHOP, WALLET } from "./config";
 import {
@@ -65,6 +67,11 @@ export function silverShopStatusFields(
 /** Why a receipt is answered NotProcessedYet without a transaction. */
 export type SilverReceiptDeferral = "badReceipt" | "notOurs" | "closing";
 
+/**
+ * What the receipt handler does with a receipt as it arrives: `grant` runs the wallet transaction for this receipt and
+ * pack; `defer` answers NotProcessedYet without one, for the reason given (`receipt` is set when the dictionary was
+ * readable).
+ */
 export type SilverReceiptPlan =
 	| { readonly kind: "grant"; readonly receipt: SilverReceipt; readonly pack: SilverPack }
 	| { readonly kind: "defer"; readonly reason: SilverReceiptDeferral; readonly receipt?: SilverReceipt };
@@ -145,6 +152,11 @@ export interface SilverAuditRecord {
 	at: number;
 }
 
+/**
+ * The audit entry of one granted receipt: who bought which product and pack, the Silver granted and the balance after
+ * it, and `at` (Unix seconds, the server's os.time() at the grant). The Robux spent and the place id are included only
+ * when the receipt carried them. SilverShopService writes it best effort after the grant; it is for support only.
+ */
 export function silverAuditRecord(
 	receipt: Readonly<SilverReceipt>,
 	grant: Readonly<SilverPurchaseGrant>,

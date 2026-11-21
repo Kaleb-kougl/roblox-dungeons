@@ -7,6 +7,8 @@
  * Upgrades (docs/SILVER.md SV6): each player's Armory levels (shared/characters UpgradeLevels, missing entries
  * NO_UPGRADES) fold into their character's traits (upgradeTraits) in the same step, for the worlds where they apply
  * (worlds.ts upgradesApply); NO_UPGRADES builds exactly the config built without them.
+ *
+ * @module
  */
 import {
 	DEFAULT_CHARACTER,

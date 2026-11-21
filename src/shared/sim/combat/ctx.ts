@@ -16,6 +16,8 @@
  *   player bullet hits             actingPlayer(owner): the bullet's owner (onHit / onDeath see who hit them)
  *   contact damage, enemy bullets  hurtPlayerAt(i, ...) per player in index order
  * `input` outside the weapons phase is player 0's (the boss's DEBUG_BOSS edge reads it).
+ *
+ * @module
  */
 
 import { Button, EMPTY_INPUT, type InputFrame } from "../input";
@@ -40,6 +42,12 @@ import { WARBANNER, warbannerAuraMask } from "./actors/archetypes/warbanner";
 import { chainhookHolderOf } from "./actors/archetypes/chainhook";
 import type { SpacingTick } from "./spacingBrake";
 
+/**
+ * The per-tick facade every archetype hook and weapon hook receives: plain fields refreshed by `bind()` for reading the
+ * live state, and methods for acting on it (firing, damage, spawns, movement). One instance is re-bound each tick and
+ * per phase by `stepCombat`; it holds no state of its own that is hashed, so never keep it across ticks and never call
+ * it from render code.
+ */
 export class SimCtx {
 	/** The live state (mutable). */
 	state!: SimState;

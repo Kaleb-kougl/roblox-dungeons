@@ -4,6 +4,8 @@
  * golden/goldenData.ts, so input.ts can read DEBUG_DROP_BUTTON from here without a require cycle.
  *
  * Index tables are APPEND ONLY: a Boost index is stored in DropsState (ground slots, per-player timers) and hashed.
+ *
+ * @module
  */
 import { TILE_SIZE } from "../units";
 import { secondsToTicks } from "../playerData";
@@ -11,8 +13,10 @@ import { GOLDEN_KIND } from "../golden/goldenData";
 
 /** Boost kind indices (BOOSTS order). Hashed. */
 export const Boost = { FURY: 0, QUICKSTEP: 1, FRENZY: 2, AEGIS: 3 } as const;
+/** A valid Boost index (one of the values of `Boost`). */
 export type BoostId = (typeof Boost)[keyof typeof Boost];
 
+/** One boost kind's data: its theme id, its drop weight and how long it runs. An entry of `BOOSTS`. */
 export interface BoostDef {
 	/** Logical id (the theme's `boost.<name>` slot is the part after the dot). */
 	readonly id: string;
@@ -29,6 +33,7 @@ export const BOOSTS: ReadonlyArray<BoostDef> = [
 	{ id: "boost.frenzy", weight: 3, seconds: 30 },
 	{ id: "boost.aegis", weight: 2, seconds: 45 },
 ];
+/** Number of boost kinds: the length of each player's `ticks` list and the modulus of the debug drop's kind cycle. */
 export const BOOST_COUNT = BOOSTS.size();
 
 /** A free ground slot's kind; also "no kind" in guards and events. */

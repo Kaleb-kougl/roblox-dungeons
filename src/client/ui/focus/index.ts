@@ -4,6 +4,8 @@
  * FocusScopesContext (HudController and LoadingController provide it), so components never import controllers. Its own
  * directory, below client/ui/hud and client/ui/menu (both use it), so neither imports the other through it. PAD_HOLD_UI
  * (padHold.ts) is the run-over hold-B fill FocusController writes and the Exit button draws (GM9).
+ *
+ * @module
  */
 export * from "./FocusScope";
 export * from "./padHold";

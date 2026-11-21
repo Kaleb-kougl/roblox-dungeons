@@ -14,6 +14,8 @@
  *
  * Roblox's limits: amount > 0, ending balance >= 0, 5 currency types (Silver is one), 20 transaction types, about 100
  * SKUs (ECONOMY_SKUS; analytics.spec holds them under it).
+ *
+ * @module
  */
 import type { AnalyticsEventSpec } from "shared/run";
 import { SILVER_ROWS } from "shared/silver";
@@ -58,6 +60,10 @@ export function tierLabel(tier: number): string {
 	return `tier${tier}`;
 }
 
+/**
+ * ArmoryPurchase's field03 value for the level bought (`level1`, `level2`, ...): a label rather than a number because
+ * custom fields are strings.
+ */
 export function levelLabel(level: number): string {
 	return `level${level}`;
 }

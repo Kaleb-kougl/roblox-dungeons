@@ -18,6 +18,8 @@
  *
  * Frontier: an open (FLOOR / POOL) cell that is not UNKNOWN with an UNKNOWN open 4-neighbour; recomputed only around
  * cells that left UNKNOWN. Dirty: a cell whose state or frontier flag changed since the last drainDirty.
+ *
+ * @module
  */
 import { worldToGrid, type WorldXZ } from "shared/dungeon";
 import { NO_KIND, archetypeAt, type SimState } from "shared/sim";
@@ -27,6 +29,10 @@ import { MAP_NO_CELL, MapTile, type MinimapTiles } from "./tiles";
 
 /** A map cell's fog state. */
 export const FogState = { UNKNOWN: 0, REMEMBERED: 1, IN_SIGHT: 2 } as const;
+/**
+ * One `FogState` value: 0 unknown, 1 remembered (seen, not in sight now), 2 in sight. What `FogOfWar.state(cell)`
+ * returns per map cell.
+ */
 export type FogState = (typeof FogState)[keyof typeof FogState];
 
 /** One party slot's sight source: a living player's world position, or false (dead / absent). */
@@ -57,6 +63,12 @@ function isOpenTile(t: number): boolean {
 	return t === MapTile.FLOOR || t === MapTile.POOL;
 }
 
+/**
+ * A floor's fog of war (see the file comment): `update(sources)` once per frame with the party's positions, then the
+ * painter reads `state(cell)` / `isFrontier(cell)` for the cells `drainDirty` lists. Cells are indices y x W + x into
+ * `tiles`. Options override the sight radius and teleport cut for specs. The client's MinimapController builds one per
+ * floor.
+ */
 export class FogOfWar implements MinimapFogView {
 	private readonly fog: number[] = [];
 	private readonly frontier: boolean[] = [];

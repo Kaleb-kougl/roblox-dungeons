@@ -30,6 +30,8 @@
  * steps what is due and queued, up to the cap; the arrivals pending at it, and at the frame right after it (handled
  * after the stall), are discarded: their timestamps carry the client's own stall, not the network's. Arrivals handled
  * while fast-forwarding count for base but not for the jitter (the burst behind the hold, not the network's jitter).
+ *
+ * @module
  */
 import { SIM_DT, isFiniteNumber } from "shared/sim";
 import { PACING, type PacingTunables } from "./config";
@@ -48,6 +50,7 @@ const PHASE_SPREAD_UNLOCKED = 0.5;
 const PHASE_TIE = 1e-6;
 const MS_PER_SEC = 1000;
 
+/** A snapshot of the PlayoutPacer (`stats()`), for the debug line. */
 export interface PacingStats {
 	/** The first arrival placed the playout clock. */
 	readonly started: boolean;
@@ -107,6 +110,10 @@ function wrapHalf(x: number): number {
 	return x - math.floor(x + MID_TICK);
 }
 
+/**
+ * The playout clock: says which queued merged frames are due, so the sim steps at a steady rate from a small jitter
+ * buffer instead of in the bursts frames arrive in. Pure; it changes when frames are stepped, never which.
+ */
 export class PlayoutPacer {
 	private readonly tunables: PacingTunables;
 	private readonly dt: number;

@@ -1,4 +1,8 @@
-/** The theme contract's decor grammar (docs/CODEBASE_SCALE.md DX8: a pure move out of contract.ts): layers, kinds, biome keys, decor / void / fx IDs and the particle contract. */
+/**
+ * The theme contract's decor grammar (docs/CODEBASE_SCALE.md DX8: a pure move out of contract.ts): layers, kinds, biome keys, decor / void / fx IDs and the particle contract.
+ *
+ * @module
+ */
 import type { ColorRole, ParticleFlipbookMode } from "../types";
 import { BIOMES, type BiomeId } from "./ids";
 
@@ -18,6 +22,10 @@ import { BIOMES, type BiomeId } from "./ids";
  * face.
  */
 export const DECOR_LAYERS = ["flat", "low", "tall", "wall"] as const;
+/**
+ * A decor layer's name (a DECOR_LAYERS entry): the `layer` a decor asset declares, and what the validator checks
+ * against the layers its kind allows.
+ */
 export type DecorLayer = (typeof DECOR_LAYERS)[number];
 
 const TALL_SPOT = ["tall", "low"] as const;
@@ -113,6 +121,10 @@ export const DECOR_KIND_LAYERS = {
 	stockpile: ["tall"] as const,
 	libraryCandle: ["low"] as const,
 } as const satisfies Record<string, ReadonlyArray<DecorLayer>>;
+/**
+ * A decor piece kind (a key of DECOR_KIND_LAYERS), spelled as the decor plan names it (camelCase). Its lowercase form
+ * is the kind segment of `decor.delve.b<n>.<kind>`.
+ */
 export type DecorKind = keyof typeof DECOR_KIND_LAYERS;
 
 /** DECOR_KIND_LAYERS' kinds in declaration order (Luau tables have no key order). */
@@ -196,6 +208,7 @@ export const VOID_DECOR = {
 	kinds: ReadonlyArray<string>;
 	layers: Record<string, ReadonlyArray<DecorLayer>>;
 };
+/** A void art kind (a VOID_DECOR.kinds entry): the kind segment of `decor.void.b<n>.<kind>`. */
 export type VoidDecorKind = (typeof VOID_DECOR.kinds)[number];
 
 /**
@@ -209,10 +222,20 @@ export const DECOR_MIN_OUTLINE_POINTS = 3;
 
 /** The biome segment of decor IDs: b1..b5 = biome.1..biome.5 (BIOMES order). */
 export const DECOR_BIOME_KEYS = ["b1", "b2", "b3", "b4", "b5"] as const;
+/**
+ * The biome segment of a decor or ambience ID (`b1` .. `b5`, a DECOR_BIOME_KEYS entry); `decorBiomeKey` maps a biome ID
+ * to it.
+ */
 export type DecorBiomeKey = (typeof DECOR_BIOME_KEYS)[number];
 
+/** Every decor ID starts with this (the DECOR slot's prefix). */
 export const DECOR_PREFIX = "decor.";
+/** Every decor piece ID starts with this; the biome key, the kind and an optional variant follow (`decorId`). */
 export const DECOR_DELVE_PREFIX = "decor.delve.";
+/**
+ * Every decor effect ID starts with this: the biome-independent effects (`decor.fx.<name>`) and the ambient particle
+ * textures (`decor.fx.ambient.b<n>`). The `decor.fx.*` colour roles share the spelling.
+ */
 export const DECOR_FX_PREFIX = "decor.fx.";
 const DECOR_AMBIENT_NAME = "ambient";
 
@@ -224,6 +247,10 @@ const DECOR_AMBIENT_NAME = "ambient";
  * scripts/art/gen-loot-glint.js; a pack without it shows `glint` there instead).
  */
 export const DECOR_FX_NAMES = ["torch", "flame", "glow", "glint", "zone", "loot"] as const;
+/**
+ * A biome-independent decor effect's name (a DECOR_FX_NAMES entry): the last segment of `decor.fx.<name>` and the key
+ * of DECOR_FX_TINT.
+ */
 export type DecorFxName = (typeof DECOR_FX_NAMES)[number];
 
 /** The colour role tinting each effect (and the lights / particles a renderer adds for it). */
@@ -276,6 +303,11 @@ export const DECOR_PARTICLE = {
  * Grid8x8), played in one of PARTICLE_FLIPBOOK_MODES.
  */
 export const PARTICLE_FLIPBOOK_GRIDS: ReadonlyArray<number> = [2, 4, 8];
+/**
+ * The flipbook modes an ambient particle texture may ask for (`ParticleEmitter.FlipbookMode` names). The validator
+ * rejects any other, and ThemeCore ignores a flipbook whose mode is not one of them. Nothing reads the order beyond the
+ * validator's message.
+ */
 export const PARTICLE_FLIPBOOK_MODES: ReadonlyArray<ParticleFlipbookMode> = ["Loop", "OneShot", "PingPong", "Random"];
 
 /** What a decor ID names (`parseDecorId`). */

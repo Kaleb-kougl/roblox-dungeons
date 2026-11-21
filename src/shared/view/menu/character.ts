@@ -16,6 +16,8 @@
  *   back      one screen back when the screen opened over another menu screen (the main menu, the lobby room), else
  *             the menu closes and what was under it shows again (the run-over panel, the tutorial outro, a dev run):
  *             characterBackAction. A lobby member's Back stays unready.
+ *
+ * @module
  */
 import { CHARACTER_IDS, DEFAULT_CHARACTER, characterDef, isCharacterId, type CharacterId } from "shared/characters";
 import {
@@ -123,6 +125,11 @@ export type CharacterStart =
 	/** The lobby member readies with the pick (LobbyController.setReady(true, pick)). */
 	| "ready";
 
+/**
+ * What Confirm does on the character screen for one origin, after the pick was remembered: which run or lobby action
+ * starts, whether the tutorial outro is closed first, and whether the menu closes or goes one screen back.
+ * `characterConfirmPlan` returns the plan for an origin; MenuController carries it out.
+ */
 export interface CharacterConfirmPlan {
 	readonly start: CharacterStart;
 	/** The tutorial outro reports its choice (TutorialController.closeOutro) before the run starts. */
@@ -201,6 +208,11 @@ export function characterArrangement(compact: boolean, narrow: boolean): Charact
 	return compact ? "compact" : "row";
 }
 
+/**
+ * The character screen's sizes for one arrangement (row, compact row or column), in reference px: the idle preview's
+ * side, a card's width and height, and the panel's width. Built by `characterLayout`; CharacterScreen draws with it and
+ * the fit specs measure it.
+ */
 export interface CharacterLayout {
 	readonly arrangement: CharacterArrangement;
 	readonly previewPx: number;

@@ -9,6 +9,8 @@
  * Part's rect and face, the overlay variant, the front box, the burst shards, the fallback rubble). Presentation only;
  * tested headlessly. Not in the
  * shared/view barrel (like shared/view/treasure): import "shared/view/secrets".
+ *
+ * @module
  */
 export * from "./config";
 export * from "./events";

@@ -19,6 +19,8 @@
  *   Per-slot memory ((slot, actor id) -> flight / ally) across frames; a new state or the tick going back only snapshots.
  *
  * Read-only on the sim, no allocation per tick beyond the lists' growth (plain number arrays). Presentation only.
+ *
+ * @module
  */
 import {
 	MENDER,

@@ -11,6 +11,8 @@
  *   rosterNames      kind names joined with `roster.separator` (" · "; also the Daily card's roster)
  *
  * Names are the kinds' `enemy.<id>.name` strings joined with the `roster.separator` string.
+ *
+ * @module
  */
 import { NEW_BEST_STRINGS } from "./newBestStrings";
 import type { NewBestLineText, NewBestStr } from "./newBest";

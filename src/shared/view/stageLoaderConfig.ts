@@ -3,12 +3,18 @@
  * every floor change; logic in stageLoader.ts, the driver in the client's StageController, the cover in client/ui/loading
  * StageCard). Presentation only: nothing here reaches the sim, the lockstep wire or a hash. Roblox-port choices, no web
  * source.
+ *
+ * @module
  */
 import { STAGE_ASSETS, type StageAssetWaitConfig } from "./stageAssetsConfig";
 
 /** One step of a stage load, for the run-start bar's weights (StageLoad.fraction). */
 export type StageStep = "server" | "forge" | "build" | "pregen" | "assets" | "settle";
 
+/**
+ * The shape of `STAGE_LOADER`: the cover's minimum and maximum times (seconds of real time), its frame counts (rendered
+ * frames), the asset wait and the run-start bar's weights. StageLoad takes one (specs pass their own).
+ */
 export interface StageLoaderConfig {
 	/** The floor-change card shows at least this long, seconds from the cut (SD3; solo and co-op). */
 	readonly minCardSec: number;
@@ -52,6 +58,12 @@ export interface StageLoaderConfig {
 	readonly weights: Readonly<Record<StageStep, number>>;
 }
 
+/**
+ * The stage loader in play: a floor-change card shows at least 0.6 s, a run start lifts as soon as it is ready (1 s at
+ * least when it shows the roster line), no cover outlasts 8 s plus its asset wait, the views get 2 frames under the
+ * cover and the reveal fades over 0.25 s. Raising a minimum makes every load feel slower; lowering `settleFrames` risks
+ * showing a floor before its textures have drawn.
+ */
 export const STAGE_LOADER: StageLoaderConfig = {
 	minCardSec: 0.6,
 	minStartSec: 0,

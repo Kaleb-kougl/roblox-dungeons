@@ -27,6 +27,8 @@
  *
  * Reads the merged state only through read-only helpers (runMods, swordGuardTicks, bowChargeTicks, solidCells inside
  * movePlayer) and writes only the MotionScratch. No allocation per tick.
+ *
+ * @module
  */
 import { jsMin } from "shared/jsmath";
 import {
@@ -101,7 +103,9 @@ export interface MotionScratch {
 
 /** The predictor's own spacing brake (its list and the run's config), filled by buildMotionSpacing. */
 export interface MotionSpacing {
+	/** The enemies the brake keeps a distance from, rebuilt from the merged state. */
 	readonly list: SpacingList;
+	/** The run's sword spacing config. */
 	config: Readonly<SpacingConfig>;
 }
 

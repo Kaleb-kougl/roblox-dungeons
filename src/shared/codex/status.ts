@@ -6,6 +6,8 @@
  * `codexStatus` carries `entries` as a list of `{ id, tier, day, floor }` (a Map is no remote-friendly shape for
  * Flamework's guard) sorted by id, `unread` sorted, and `seeded` (only when true: the seed from the onboarding
  * sightings ran). `loaded` false (a failed join load, or the Studio fake `unknown`) carries nothing else.
+ *
+ * @module
  */
 import { CODEX_DOC_VERSION } from "./config";
 import {

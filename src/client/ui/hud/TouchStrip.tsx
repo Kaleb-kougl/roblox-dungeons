@@ -136,6 +136,11 @@ function FootprintBox(props: { name: string; rect: ScreenRect; k: number }) {
 	);
 }
 
+/**
+ * `TouchStrip`'s props: the strip's layout for the measured top bar (shared/view/hud `touchStrip`; `TouchStripHost`
+ * supplies it) and the tutorial's marks, the same as StatusPanel's plus rings on the boosts and the score. What the
+ * strip shows comes from the store's snapshot.
+ */
 export interface TouchStripProps {
 	readonly layout: TouchStripLayout;
 	/** The tutorial rings the hearts or the flask (TutorialView.highlight). */

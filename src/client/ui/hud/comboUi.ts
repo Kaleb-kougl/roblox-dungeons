@@ -39,6 +39,7 @@ const NO_COLOR = new Color3();
 
 /** Draw order inside the score panel (ZIndexBehavior Sibling): the row's drop over the meter, the meter over row 5. */
 export const COMBO_ROW_Z = 3;
+/** The combo meter's ZIndex inside the score panel (see `COMBO_ROW_Z` above): under the row's drop, over row 5. */
 export const COMBO_METER_Z = 2;
 
 /** Every value the combo row and meter draw. */

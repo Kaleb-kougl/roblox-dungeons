@@ -9,6 +9,8 @@
  * lid pops (TREASURE_VIEW.open.popSec after the take, shared/view/treasure popCrossed: the same moment a
  * PedestalChestTracker-drawn chest pops), and the mapper plays it exactly as a vault's (sfx.treasure.open pitched by the
  * tier, a Legendary's jingle). Pure, tested headlessly.
+ *
+ * @module
  */
 import { gridToWorld, type FloorSecret } from "shared/dungeon";
 import { SIM_HZ, partySize, playerAt, type SimState } from "shared/sim";

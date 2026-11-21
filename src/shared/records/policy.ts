@@ -5,6 +5,8 @@
  * (quit) validated runs count (NBD4), private servers count, Studio counts only with `writeFromStudio`. Debug runs,
  * other worlds, bad party sizes and party runs with fewer than COOP_MIN_PARTY contributors never count, as on the
  * leaderboard. Only ACCEPTED verdicts get here: rejected and expired runs never write.
+ *
+ * @module
  */
 import { DAILY_WORLD_KIND } from "shared/daily";
 import {
@@ -14,6 +16,10 @@ import {
 	MAX_PARTY_SIZE,
 } from "shared/leaderboard";
 
+/**
+ * The rules for which accepted runs count toward something kept in the records doc, as data: `RECORDS_POLICY` for the
+ * endless records and `DAILY_ACTIVITY_POLICY` for the daily activity, both judged by `recordsEligibility`.
+ */
 export interface RecordsPolicy {
 	/** World kinds whose validated runs count (the endless descent). */
 	readonly eligibleWorlds: ReadonlyArray<string>;
@@ -29,6 +35,10 @@ export interface RecordsPolicy {
 	readonly countDebug: boolean;
 }
 
+/**
+ * The live policy of the endless personal records: validated endless runs only (the leaderboard's world list),
+ * abandoned runs and private servers count, Studio and debug runs do not.
+ */
 export const RECORDS_POLICY: RecordsPolicy = table.freeze({
 	eligibleWorlds: LEADERBOARD_ELIGIBLE_WORLDS,
 	deathOnlyWorlds: LEADERBOARD_DEATH_ONLY_WORLDS,
@@ -64,6 +74,11 @@ export type RecordsIneligibleReason =
 	/** A party run (2+ members) where fewer than COOP_MIN_PARTY members contributed (partyContributors). */
 	| "contributors";
 
+/**
+ * The facts about an accepted run that decide whether it counts (`recordsEligibility`), filled by the server from its
+ * own replay and from the server it runs on. `died` and `bossDefeated` are read only under a policy that does not count
+ * abandoned runs.
+ */
 export interface RecordsContext {
 	readonly worldKind: string;
 	readonly partySize: number;
@@ -77,6 +92,12 @@ export interface RecordsContext {
 	readonly bossDefeated: boolean;
 }
 
+/**
+ * Whether an accepted run counts under `policy` (the endless records by default): undefined when it counts, else the
+ * first reason it does not. Checked in this order: the world, debug limits, Studio, a private server, a party size
+ * outside 1 to `MAX_PARTY_SIZE`, an abandoned run (only when the policy does not count them; a death-only world takes
+ * only a death as finished), and a party run with fewer than `COOP_MIN_PARTY` contributors.
+ */
 export function recordsEligibility(
 	ctx: RecordsContext,
 	policy: RecordsPolicy = RECORDS_POLICY,

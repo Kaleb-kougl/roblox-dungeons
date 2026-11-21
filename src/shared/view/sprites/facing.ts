@@ -1,4 +1,8 @@
-/** Sprite facings and the animation clock helpers (docs/CODEBASE_SCALE.md DX8: a pure move out of view/sprites.ts). Import from "shared/view" or "./sprites", never from this file. */
+/**
+ * Sprite facings and the animation clock helpers (docs/CODEBASE_SCALE.md DX8: a pure move out of view/sprites.ts). Import from "shared/view" or "./sprites", never from this file.
+ *
+ * @module
+ */
 import type { SpriteAnimationDef, SpriteFacings } from "shared/theme";
 import { degToRad, isoBasis, type IsoBasis } from "../iso";
 import { CAMERA_PITCH_DEG } from "shared/config";
@@ -110,10 +114,18 @@ export function elapsedOf(total: number, remaining: number, alpha: number): numb
 	return total - remaining + alpha;
 }
 
+/**
+ * A one-shot stretched over a gameplay timer: animation `anim` at progress `elapsed` / `total` (both in ticks; 0 at the
+ * timer's start, 1 at its end). A `total` of 0 or less reads as finished (progress 1).
+ */
 export function stretched(anim: string, elapsed: number, total: number): SpriteAnimChoice {
 	return { anim, progress: total > 0 ? elapsed / total : 1, rate: 1 };
 }
 
+/**
+ * A clock-driven choice: animation `anim` played at its own fps times `rate` (1 = the sheet's speed). For loops, and
+ * for one-shots with no gameplay timer to stretch over.
+ */
 export function clocked(anim: string, rate: number): SpriteAnimChoice {
 	return { anim, rate };
 }
@@ -125,5 +137,10 @@ export function moveChoice(anim: string, speed: number, refSpeed: number): Sprit
 	return clocked(anim, rate);
 }
 
+/** The standing loop at the sheet's own speed: what the animation choosers fall back to when nothing else plays. */
 export const IDLE: SpriteAnimChoice = { anim: "idle", rate: 1 };
+/**
+ * The default attack animation's name: what an ActorAttack plays when it names no animation, or names one the sprite
+ * set lacks.
+ */
 export const ATTACK = "attack";

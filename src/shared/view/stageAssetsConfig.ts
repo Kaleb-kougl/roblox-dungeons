@@ -6,6 +6,8 @@
  * ("sfx." matches every sfx id), any other entry is one exact id ("pellet.power"), and `biome:<key>` names a biome's
  * own content (PreloadSource.biomeContentIds). A manifest's `dye:<set>` entry (STAGE_DYE_PREFIX, docs/COSMETICS.md CS5)
  * names a sprite set's dye sheets (PreloadSource.dyeContentIds), listed only when a player wears a dye of that set.
+ *
+ * @module
  */
 import { ACTOR_VIEW } from "./config";
 
@@ -17,6 +19,7 @@ export const STAGE_DYE_PREFIX = "dye:";
 
 /** The groups of a stage manifest, in front-lane order (docs/STAGE_ASSETS.md revision 2: what is on screen soonest). */
 export const STAGE_GROUPS = ["characters", "bullets", "actors", "biome", "features", "runKit", "audio"] as const;
+/** One group of a stage manifest: an entry of `STAGE_GROUPS`. */
 export type StageGroupName = (typeof STAGE_GROUPS)[number];
 
 /** The floor features with their own art (StageFeatures' keys), in manifest order. */
@@ -31,6 +34,7 @@ export const STAGE_FEATURES = [
 	"golden",
 	"secret",
 ] as const;
+/** One floor feature with its own art: an entry of `STAGE_FEATURES`, and a key of `StageAssetsConfig.features`. */
 export type StageFeatureName = (typeof STAGE_FEATURES)[number];
 
 /** A world's own extras (archetype ids it always shows, sounds it always plays). */
@@ -41,6 +45,11 @@ export interface StageWorldExtras {
 	readonly audio: ReadonlyArray<string>;
 }
 
+/**
+ * The shape of `STAGE_ASSETS`: which logical-id entries (prefixes or exact ids, see the file comment) each part of a
+ * floor's asset manifest lists, and the run start's wait for them. stageGroups.ts and stageAssets.ts build a manifest
+ * from it.
+ */
 export interface StageAssetsConfig {
 	/** Every bullet look (the second group: bullets fly from the first second of a floor). */
 	readonly bullets: ReadonlyArray<string>;
@@ -108,6 +117,12 @@ export interface StageAssetWaitConfig {
 /** The players' visuals when the caller has no roster (the Knight's; a run's own roster: shared/view stageCharacters). */
 export const STAGE_CHARACTERS: ReadonlyArray<string> = [ACTOR_VIEW.playerVisualId];
 
+/**
+ * The stage manifest's entries in play. To make a floor preload something new, add its logical id or prefix to the
+ * group or feature that puts it on screen; an id of the pack that is in no manifest and not in `notStaged` fails the
+ * coverage spec. The wait: a solo run start holds its cover at most 1.5 s for the manifest, then reveals with
+ * stand-ins.
+ */
 export const STAGE_ASSETS: StageAssetsConfig = {
 	bullets: ["bullet."],
 	runKit: ["ui.", "sfx.", "bullet.", "fx.", "boost.", "breakable.", "pellet."],

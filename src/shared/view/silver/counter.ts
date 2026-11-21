@@ -4,9 +4,15 @@
  * (icon, number) takes what its number needs and the floor / Depth line scales into the rest (TextScaled, capped at
  * HUD_VIEW.smallText). The counter's `+N` floats left of the panel (outside the row), so it never costs the row room.
  * Pure; fit spec in silver.spec.ts / counter.spec.ts.
+ *
+ * @module
  */
 import { SILVER_COUNTER } from "./config";
 
+/**
+ * `silverRowFit`'s answer for the score panel's floor / Depth row: how wide the Silver counter is, how much room that
+ * leaves the floor line, and the text size at which the line fits there. Widths and sizes are reference px.
+ */
 export interface SilverRowFit {
 	/** The counter's width (icon, gap, number), reference px. */
 	readonly counterW: number;

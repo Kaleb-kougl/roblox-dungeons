@@ -3,6 +3,8 @@
  * boon cell, the evolved boon's gold frame, duos as their own icon or joined chips) and its one-row cap, and the pause / run-over Build
  * list. Pure data and helpers over the snapshot's boons / levels / duos, checked headlessly (buildHud.spec.ts); the
  * client's RunItems and BuildList draw them. The draft cards are draftCards.ts (BU9).
+ *
+ * @module
  */
 import { BOONS, CURSES, DUOS, RELICS, boonMaxLevel } from "shared/sim";
 import { boonIconId, curseIconId, duoIconId, relicIconId, type ColorRole } from "shared/theme";

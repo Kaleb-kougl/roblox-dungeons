@@ -10,12 +10,19 @@
  *                has never earned (no run of this account paid yet) and personal records that predate it (the server
  *                writes records only from accepted endless runs, and every such run since the update also pays, so
  *                records with an empty wallet mean runs from before the update); a new account has no records
+ *
+ * @module
  */
 import { CHARACTER_IDS, DEFAULT_CHARACTER, type CharacterId } from "shared/characters";
 import type { RecordsStatus } from "shared/records";
 import { characterUnlock, itemPrice, type WalletStatus } from "shared/wallet";
 import { statusBalance, statusOwns, walletShown } from "shared/view/silver";
 
+/**
+ * A character card's lock on the character screen: `open` (the Knight, or an owned character), `locked` with the
+ * unlock's price and how much Silver is still missing, or `unavailable` when the wallet did not load this session and
+ * only the Knight is offered. Prices and `need` are in Silver.
+ */
 export type CharacterLockState =
 	| { readonly kind: "open" }
 	| {

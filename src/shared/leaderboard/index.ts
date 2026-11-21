@@ -9,6 +9,8 @@
  *
  * Plain TypeScript, no Roblox APIs (headlessly tested with in-memory stores); LeaderboardService wraps it.
  * docs/SERVER.md "Leaderboards".
+ *
+ * @module
  */
 export * from "./config";
 export * from "./orderedValue";

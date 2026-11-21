@@ -13,6 +13,8 @@
  *   workspace:SetAttribute("KV_PadSpike", true)       (client; docs/GAMEPAD_MENUS.md GM0)
  * An attribute, when present, overrides the default below; setting it to false stops the spike
  * and cleans up everything it made.
+ *
+ * @module
  */
 
 /** Compile-time defaults. Flip one to true to run a spike without touching attributes. */
@@ -39,6 +41,10 @@ export const SPIKE_ATTRIBUTES = {
 	pad: "KV_PadSpike",
 } as const;
 
+/**
+ * The name of a spike that has an on / off flag: a key of `SPIKE_DEFAULTS` and of `SPIKE_ATTRIBUTES`. The spike flag
+ * helpers take one to read the default and the Workspace attribute that overrides it.
+ */
 export type SpikeName = keyof typeof SPIKE_DEFAULTS;
 
 /**
@@ -248,6 +254,10 @@ export const INVITE_SPIKE_ACTIONS = [
 	"dump",
 	"hello",
 ] as const;
+/**
+ * One trigger of the invites spike (an `INVITE_SPIKE_ACTIONS` member). The spike HUD's buttons carry one, and the
+ * client forwards the server-side ones over the spike's RemoteEvent.
+ */
 export type InviteSpikeAction = (typeof INVITE_SPIKE_ACTIONS)[number];
 
 /** The actions the client forwards to the server over the spike's RemoteEvent (the server accepts only these). */

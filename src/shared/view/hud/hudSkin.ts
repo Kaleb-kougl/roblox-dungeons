@@ -4,6 +4,8 @@
  * the score coin, the minimap frames and the touch rings. Pure and headless (hudSkin.spec.ts); built on skin.ts /
  * skinConfig.ts (UA5), whose skinFor chains decide whether the pack has the art at all. Every function returns
  * undefined (or a flat value) when the art is absent, so the client draws exactly today's flat HUD. Presentation only.
+ *
+ * @module
  */
 import { HEART_ICON_IDS, PIP_ICON_IDS, type SliceInsets } from "shared/theme";
 import { HEART_FILL, HUD_VIEW, isHalfContainer } from "./layout";
@@ -17,6 +19,11 @@ export type HudPipKind = "flask" | "ember" | "armor" | "aegis";
 /** A touch control the art can draw: a button, or the move stick's base ("move"). */
 export type TouchArtControl = TouchButtonId | "move";
 
+/**
+ * The in-run HUD skin's tunables: the skin ids this file adds, the boxes the hearts, pips, coin and boss bar pill fit
+ * into (reference px before the HUD scale), the dimmed pips' transparencies (0..1), the frames' densities (reference px
+ * per art px), whether the corner minimap is framed, and the touch controls' art.
+ */
 export const HUD_SKIN = {
 	/** Skin ids this file adds to skinConfig's UI_ART.ids (contract.ts uiSkinIds / uiIconIds, all optional). */
 	ids: {
@@ -253,6 +260,10 @@ export interface FillClip {
 	readonly visible: boolean;
 }
 
+/**
+ * The clip of a pill fill at `fraction` of the bar (clamped to 0..1). Below `HUD_SKIN.minFillFraction`, or for a value
+ * that is not a positive number, nothing shows: clip 0, inner 1, not visible.
+ */
 export function fillClip(fraction: number): FillClip {
 	const f = fraction > 0 ? math.min(fraction, 1) : 0;
 	if (f < HUD_SKIN.minFillFraction) return { clip: 0, inner: 1, visible: false };

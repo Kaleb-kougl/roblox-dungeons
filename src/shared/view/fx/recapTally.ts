@@ -33,6 +33,8 @@
  *
  * Read-only on the sim. No allocation per tick: the per-player counters grow once per new player index. Presentation
  * only: nothing here is hashed or written back.
+ *
+ * @module
  */
 import { GIVEN_DROP_SLOT, hasLeft, partySize, playerAt, scoreFloor, swordGuardTicks, type SimState } from "shared/sim";
 import { parryStartsGroup } from "./nearMissRules";
@@ -74,6 +76,12 @@ export const RECAP_NO_FLOOR = 0;
 /** lastDeath before any death. */
 export const RECAP_NO_PLAYER = -1;
 
+/**
+ * The run-long per-player tally behind the run-over recap and the co-op contribution card: parries, grazes, kills,
+ * damage, boss damage, hits taken, pellets, boosts, and each player's death and leaving. Arrays are indexed by player
+ * index. The run views (LiveRun, LockstepClient) call `collect` after every sim tick and never reset it per frame;
+ * `reset()` starts it over. Read-only on the sim.
+ */
 export class RecapTally implements RecapTallySource {
 	readonly parries: number[] = [];
 	readonly grazes: number[] = [];

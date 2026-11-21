@@ -33,6 +33,8 @@
  * die until the player has blocked a bullet with the sword's guard (TutorialSimConfig.guardLock: TUTORIAL_GUARD_LOCK);
  * the pellet lesson's sniper (combat G) cannot die until every pellet of its room is taken (TutorialSimConfig.pelletLock:
  * TUTORIAL_PELLET_LOCK, docs/PELLETS.md PL12). Solo only: a party throws.
+ *
+ * @module
  */
 import { TUTORIAL } from "shared/config";
 import { stableSort } from "shared/jsmath";
@@ -268,8 +270,14 @@ function planOf(lesson: TutorialLessonId): TutorialRoomPlan {
 
 /** Floor 1's special room ids (from TUTORIAL_ROOMS). */
 export const TUTORIAL_ENTRANCE_ROOM = planOf("entrance").roomId;
+/** Room id of the tutorial floor's treasure lesson room (from `TUTORIAL_ROOMS`). */
 export const TUTORIAL_TREASURE_ROOM = planOf("treasure").roomId;
+/** Room id of the tutorial floor's shrine lesson room (from `TUTORIAL_ROOMS`). */
 export const TUTORIAL_SHRINE_ROOM = planOf("shrine").roomId;
+/**
+ * Room id of the tutorial floor's last room, the stairwell lesson (a boss-type room without enemies, from
+ * `TUTORIAL_ROOMS`).
+ */
 export const TUTORIAL_STAIRWELL_ROOM = planOf("stairwell").roomId;
 
 /**
@@ -278,7 +286,9 @@ export const TUTORIAL_STAIRWELL_ROOM = planOf("stairwell").roomId;
  * teaches it.
  */
 export const TUTORIAL_BOOST_LESSON: TutorialLessonId = "combatB";
+/** Room id of the boost lesson's room on floor 1 (combat B): where the guaranteed drop falls. */
 export const TUTORIAL_BOOST_ROOM = planOf(TUTORIAL_BOOST_LESSON).roomId;
+/** The boost the tutorial's guaranteed drop gives: Fury (a sim `Boost` value). */
 export const TUTORIAL_BOOST_KIND: number = Boost.FURY;
 
 /** SimConfig.drops of every tutorial run: only the guaranteed Fury on floor 1's combat B. */
@@ -291,7 +301,12 @@ export const TUTORIAL_DROPS_CONFIG: DropsConfig = guaranteedDropsConfig([
  * bullet with the sword's guard (the sim's TutorialSimConfig.guardLock), so the `guard` step is never waived.
  */
 export const TUTORIAL_GUARD_LESSON: TutorialLessonId = "combatD";
+/** Room id of the block lesson's room on floor 1 (combat D): the room `TUTORIAL_GUARD_LOCK` names. */
 export const TUTORIAL_GUARD_ROOM = planOf(TUTORIAL_GUARD_LESSON).roomId;
+/**
+ * The tutorial's `TutorialSimConfig.guardLock`: the floor and room whose bruiser stays at 1 hp until the player has
+ * guarded a bullet. Part of the tutorial's sim config, so it is part of what a tutorial run replays.
+ */
 export const TUTORIAL_GUARD_LOCK: TutorialGuardLock = table.freeze({
 	floor: ENDLESS_FIRST_FLOOR,
 	room: TUTORIAL_GUARD_ROOM,
@@ -303,7 +318,12 @@ export const TUTORIAL_GUARD_LOCK: TutorialGuardLock = table.freeze({
  * skill is never waived.
  */
 export const TUTORIAL_PELLET_LESSON: TutorialLessonId = "combatG";
+/** Room id of the pellet lesson's room on floor 1 (combat G): the room `TUTORIAL_PELLET_LOCK` names. */
 export const TUTORIAL_PELLET_ROOM = planOf(TUTORIAL_PELLET_LESSON).roomId;
+/**
+ * The tutorial's `TutorialSimConfig.pelletLock`: the floor and room whose sniper stays at 1 hp until every pellet in
+ * the room is taken. Part of the tutorial's sim config, so it is part of what a tutorial run replays.
+ */
 export const TUTORIAL_PELLET_LOCK: TutorialPelletLock = table.freeze({
 	floor: ENDLESS_FIRST_FLOOR,
 	room: TUTORIAL_PELLET_ROOM,

@@ -18,6 +18,8 @@
  *           when that spot is not open floor of the room: a wall, a doorway or an intact breakable), or, with every slot
  *           taken, is lost (events.caught.lost). The draw count is fixed (partySize + extraBoosts) whatever lands.
  *           events.caught.
+ *
+ * @module
  */
 import { cellKey, worldToGrid } from "shared/dungeon";
 import type { ActorState } from "../combat/actors/types";

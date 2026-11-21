@@ -10,6 +10,8 @@
  *
  * Imports only data, types, the weapon registry and runMods, so bow.ts can call it without a require cycle (the sword's
  * finisher damage is read through the registry: FULL_HEART_WEAPON_ID).
+ *
+ * @module
  */
 import type { SimCtx } from "../combat/ctx";
 import { NO_KIND } from "../combat/actors/types";

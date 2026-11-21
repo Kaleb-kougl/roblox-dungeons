@@ -7,6 +7,8 @@
  *
  * No state of its own and nothing hashed: a pure function of the hashed weapon sets. A player carrying both weapons (M1,
  * DEFAULT_LOADOUT, every spec without a loadout) gets everything: the same pools, the same rng draws.
+ *
+ * @module
  */
 import type { SimState } from "../state";
 import { weaponsAt } from "../party";

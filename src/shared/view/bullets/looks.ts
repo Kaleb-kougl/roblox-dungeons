@@ -12,6 +12,10 @@ export const EnemyBulletLook = {
 	/** The Chainhook's thrown hook (BulletKind.HOOK). */
 	HOOK: 5,
 } as const;
+/**
+ * One `EnemyBulletLook` value (0..5): what `enemyBulletLookOf` returns and the index the enemy bullet pools use into
+ * `ENEMY_BULLET_LOOK_IDS` to pick a bullet's theme visual.
+ */
 export type EnemyBulletLookId = (typeof EnemyBulletLook)[keyof typeof EnemyBulletLook];
 
 /**

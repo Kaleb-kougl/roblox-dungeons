@@ -30,6 +30,8 @@
  * least one wall tile from anywhere a bullet flies, and every top here is at most VOID.shoulderTopTiles (below the wall
  * top). The view ray from a bullet climbs about 1.4 tiles per tile it travels (the camera's 55 degree pitch), so it is
  * far above any void top before it reaches a void cell (plan.spec.ts checks it with ray casts).
+ *
+ * @module
  */
 import type { Dungeon, EndlessFloorLayout } from "shared/dungeon";
 import { TileType } from "shared/dungeon";
@@ -84,6 +86,11 @@ export interface VoidStats {
 	readonly outcropEligible: number;
 }
 
+/**
+ * One floor's void as `planVoid` decided it (see the file comment for the rules): each cell's layer and height, and the
+ * merged rectangles to build. Built once per floor, the same on every client. Read by the client's VoidController (one
+ * Part per rect) and by `planDecor` for the void set pieces.
+ */
 export interface VoidPlan {
 	readonly W: number;
 	readonly H: number;

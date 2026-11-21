@@ -9,6 +9,8 @@
  *   - its opacity: parryFlashOpacity's rule (COMBO_SHOUT.maxOpacity x fade, never above the duck ceiling);
  *   - the tether's opacity: TEAM_MOMENTS_VIEW.tether.maxOpacity x its fade.
  * Presentation only.
+ *
+ * @module
  */
 import { TEAM_MOMENTS_VIEW } from "shared/view/fx";
 import type { ParryFlashStrings } from "./parryFlash";

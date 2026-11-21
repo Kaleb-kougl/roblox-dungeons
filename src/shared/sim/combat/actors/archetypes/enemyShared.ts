@@ -7,6 +7,8 @@
  *
  * v[] slots 0..2 mean the same thing for every archetype that sets `data.roomEnemy` (pack alerts read them across
  * archetypes); slots 3..7 are each archetype's own.
+ *
+ * @module
  */
 
 import type { SimCtx } from "../../ctx";
@@ -18,6 +20,7 @@ import { AiState, NO_KIND, type ActorState, type ArchetypeData } from "../types"
 export const V_AGGRO = 0;
 /** v[1], v[2]: where it was placed (spawn position); it walks back here when it leashes. */
 export const V_HOME_X = 1;
+/** v[2]: the z of the spawn position it walks back to when it leashes, the pair of V_HOME_X. */
 export const V_HOME_Z = 2;
 
 /** Engaged (chasing / keeping range): every room enemy's first own state, so alerts can engage any of them. */
@@ -61,6 +64,10 @@ const WATCH_RANGE2_FACTOR = 2.25;
  *               its own.
  */
 export interface ActorFxHints {
+	/**
+	 * A warning line from the actor during its telegraph. `dirX` / `dirZ` (and `lenSlot`) are v[] slot indices,
+	 * `length` is world units, `boldTicks` is the aiTicks value from which the line is drawn bold.
+	 */
 	readonly aimLine?: {
 		readonly dirX: number;
 		readonly dirZ: number;
@@ -69,6 +76,11 @@ export interface ActorFxHints {
 		readonly boldTicks: number;
 		readonly attack?: number;
 	};
+	/**
+	 * A flat ring expanding from the actor while it is in `state`. `startTicks` and `showTicks` are ticks, `radius`
+	 * world units, `speed` world units per second, `gapX` / `gapZ` v[] slot indices of the gap's unit direction,
+	 * `gapHalfAngle` radians.
+	 */
 	readonly shockwave?: {
 		readonly state: number;
 		readonly startTicks: number;
@@ -79,6 +91,10 @@ export interface ActorFxHints {
 		readonly gapZ: number;
 		readonly gapHalfAngle: number;
 	};
+	/**
+	 * A flat circle of `radius` world units on the floor while the actor is in `state`, at the world point in
+	 * v[`xSlot`], v[`zSlot`] or on the actor when both are absent; `fillTicks` makes it fill as aiTicks counts down.
+	 */
 	readonly ring?: {
 		readonly state: number;
 		readonly xSlot?: number;
@@ -87,6 +103,11 @@ export interface ActorFxHints {
 		readonly fillTicks?: number;
 		readonly attack?: number;
 	};
+	/**
+	 * A row of `count` flat circles of `radius` world units while the actor is in `state`. `centreX` / `centreZ` and
+	 * `offsetX` / `offsetZ` are v[] slot indices of the row's centre point and of the spacing vector between
+	 * neighbouring circles.
+	 */
 	readonly strikeRow?: {
 		readonly state: number;
 		readonly centreX: number;

@@ -4,6 +4,8 @@
  * included; the web build's `circleMover` only as `PlayerMover.WEB`, which the parity specs set next to
  * `setSwordTimings(WEB_SWORD_TIMINGS)` so the golden fixtures still replay bit for bit. Pure and Roblox-API-free: the
  * client's live run and the server's replay build the same mover from the same config builder.
+ *
+ * @module
  */
 import { circleMover, playerSlideMover, type Dungeon } from "shared/dungeon";
 import { PLAYER_RADIUS, type MoveResolver } from "shared/sim";
@@ -15,6 +17,10 @@ export const PlayerMover = {
 	/** The web build's mover: `circleMover(d, PLAYER_RADIUS)` (moveCircle). What every golden fixture was recorded with. */
 	WEB: 1,
 } as const;
+/**
+ * A value of `PlayerMover`: which mover `playerMover` builds. Specs pass it to `setPlayerMover`; live code never sets
+ * it.
+ */
 export type PlayerMoverKind = (typeof PlayerMover)[keyof typeof PlayerMover];
 
 let currentKind: PlayerMoverKind = PlayerMover.SLIDE;

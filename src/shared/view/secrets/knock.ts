@@ -2,6 +2,8 @@
  * Knocks on a secret room's crack (docs/SECRET_ROOMS.md SR6, SR9): the throttle that keeps a stream of hits to one
  * puff / knock sound per SECRET_VIEW.knock.throttleSec, and the first-knock latch that raises the first-time card
  * (sighting id `secret.crack`, SRD5) and the Codex entry's seen claim (SRD12). Pure, tested headlessly.
+ *
+ * @module
  */
 import { SECRET_VIEW } from "./config";
 import type { SecretFrameSource } from "./events";

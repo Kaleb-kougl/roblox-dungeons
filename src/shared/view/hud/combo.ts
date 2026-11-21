@@ -28,6 +28,8 @@
  *
  * The events are read through a LOCAL structural interface (`ComboDisplayEvents`, the subset of CB1's
  * `ComboFrameSource` this reads), so this compiles on its own; a `ComboFrameSource` passes as is.
+ *
+ * @module
  */
 import { COMBO_MIN, TILE_SIZE } from "shared/sim";
 import { easeOutBack } from "shared/view/fx";

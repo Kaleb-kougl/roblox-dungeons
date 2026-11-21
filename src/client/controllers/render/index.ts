@@ -5,6 +5,8 @@
  * boosted players' auras, the pellets, a vault's chest / cage / sparkle / lock plate / reward cards, the pact altars
  * (their cards, take pulse and wave rings), the Goldling's ring and beats, a secret room's crack / chamber / chest, room decoration and its ambient life, the void's shoulder / ledge columns, the elite affix
  * floor rings), the KV_CollisionDebug overlay (docs/WALL_SLIDE.md WS6), plus their Part helpers.
+ *
+ * @module
  */
 export * from "./placeholders";
 export * from "./SpriteView";

@@ -2,6 +2,8 @@
  * Presentation tunables of the floor modifiers (docs/FLOOR_MODIFIERS.md Player experience, Design §4-§6; logic in
  * modifiers.ts / payoff.ts, drawing in the client's StageCard banner and FloorModifierChip, FM5 / FM6). Presentation
  * only: which floor gets which modifier is shared/dungeon MODIFIERS', so nothing here can change a replay.
+ *
+ * @module
  */
 import type { ColorRole } from "shared/theme";
 
@@ -39,6 +41,10 @@ export interface FloorModifierChipView {
 	readonly fillRole: ColorRole;
 }
 
+/**
+ * The shape of `FLOOR_MODIFIER_VIEW`: the floor card's banner timing (seconds of real time), the stamp, and the status
+ * chip with its payoff pulse.
+ */
 export interface FloorModifierViewTunables {
 	/** Seconds after the floor card appears before the banner stamps in (the title and biome read first). */
 	readonly bannerDelaySec: number;
@@ -49,6 +55,12 @@ export interface FloorModifierViewTunables {
 	readonly chip: FloorModifierChipView;
 }
 
+/**
+ * The floor modifier presentation in play: the banner stamps in 0.3 s after the floor card appears, scaling down from
+ * 1.6 over 0.2 s; a modifier floor's card holds at least 1.8 s (only while the world is frozen); the chip pulses once
+ * (0.6 s, 10 % larger) when the promise pays off. Read by modifiers.ts / payoff.ts and the client's StageCard banner
+ * and FloorModifierChip.
+ */
 export const FLOOR_MODIFIER_VIEW: FloorModifierViewTunables = {
 	bannerDelaySec: 0.3,
 	modifierCardSec: 1.8,

@@ -65,6 +65,11 @@ export * from "./tooltip";
 export * from "./tutorial";
 export * from "./wallet";
 
+/**
+ * The client's one Reflex store: the slices combined under the names the selectors read (`game`, `settings`, `options`,
+ * ...; the comment above lists what each holds). Controllers dispatch through it and read it with `getState` /
+ * `subscribe`; React reads it through the reflex provider. Client-local only: nothing in it replicates.
+ */
 export const clientStore = combineProducers({
 	game: gameSlice,
 	settings: settingsSlice,
@@ -88,5 +93,12 @@ export const clientStore = combineProducers({
 	cosmeticPass: cosmeticPassSlice,
 });
 
+/**
+ * The type of `clientStore`: its state plus every slice's actions as methods. For code that takes the store as a value.
+ */
 export type ClientStore = typeof clientStore;
+/**
+ * The whole store state, one field per slice (`state.game`, `state.settings`, ...). The type of a selector's argument
+ * when it reads more than one slice.
+ */
 export type ClientState = InferState<ClientStore>;

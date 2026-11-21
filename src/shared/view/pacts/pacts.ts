@@ -6,6 +6,8 @@
  * here writes the sim. Personal reads (the card, the dim line, Greed's curse, the hint) take the view player
  * (SimController.getViewPlayerIndex: the watched teammate while spectating) or the local player (the hint, like every
  * snapshot hint); the Horde is party state.
+ *
+ * @module
  */
 import {
 	CURSES,
@@ -32,6 +34,10 @@ import { DECOR_CAMERA, floorRectScreen, screenX, screenY, type FloorRect } from 
 import type { SpriteLayout } from "../sprites";
 import { HORDE_CHIP_VIEW, PACTS_VIEW } from "./config";
 
+/**
+ * The theme's string lookup as the pact texts take it: a string key and its `{name}` variables in, the final text out.
+ * The client passes `pack.str`, a spec its fake, so every text helper here runs headlessly.
+ */
 export type PactStr = (key: string, vars?: StringVars) => string;
 
 /** Every theme string the pacts' view reads (all REQUIRED: theme fortune.ts FORTUNE_STRING_KEYS). */
@@ -80,6 +86,7 @@ export const AltarFlame = {
 	/** The Horde armed: full `pact.horde`, larger (the flame turned red). */
 	ARMED: 3,
 } as const;
+/** One `AltarFlame` value (0 off, 1 lit, 2 ember, 3 armed): `AltarLook.flame`. */
 export type AltarFlameId = (typeof AltarFlame)[keyof typeof AltarFlame];
 
 /** One altar's look for the view player. Mutable, reused. */
@@ -93,6 +100,10 @@ export interface AltarLook {
 	availability: number;
 }
 
+/**
+ * A fresh AltarLook for the renderer to keep per altar and hand to the altar look function every frame. It starts as an
+ * altar that is not there: not placed, no flame, dimmed. PactRenderController owns one per altar.
+ */
 export function newAltarLook(): AltarLook {
 	return { placed: false, flame: AltarFlame.OFF, dim: true, availability: PactDim.UNABLE };
 }
@@ -170,6 +181,10 @@ export const PactLineKind = {
 	DETAIL: 2,
 	ACCEPT: 3,
 } as const;
+/**
+ * One `PactLineKind` value (0 title, 1 line, 2 detail, 3 accept): `PactCardLine.kind`, which picks the line's text
+ * size.
+ */
 export type PactLineKindId = (typeof PactLineKind)[keyof typeof PactLineKind];
 
 /** How many PactLineKind values. */

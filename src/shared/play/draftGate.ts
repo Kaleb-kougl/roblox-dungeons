@@ -9,6 +9,8 @@
  *     picks a card the player has not seen), like CoopMenuInputGate's held buttons;
  *   - every other button, the move stick and the aim pass untouched; once released, a fresh press passes on its first
  *     frame (a sim press edge).
+ *
+ * @module
  */
 import { TUTORIAL } from "shared/config";
 import { DRAFT_CONFIRM_BUTTON, type InputFrame } from "shared/sim";
@@ -59,6 +61,12 @@ export function dropDraftGuiMouse(mouse: Set<string>, guiPressed: ReadonlySet<st
 	for (const name of guiPressed) mouse.delete(name);
 }
 
+/**
+ * The gate itself (see the file comment): one per client, kept across input frames because it remembers whether the
+ * confirm was down on the previous frame and whether it is still held from a reveal. The client calls `apply` on every
+ * sampled input frame, before the frame reaches the sim, and `consumeSkip` to learn that the player pressed to skip the
+ * reveal.
+ */
 export class DraftRevealGate {
 	/** The confirm was down on the last frame (press edges are judged on the raw input). */
 	private wasDown = false;

@@ -15,6 +15,8 @@
  *             look it wears (the equipped look with the focused item TRIED ON: docs/COSMETICS.md "try-on"), the facing
  *             it turns to (every facing in turn, CHARACTER_PREVIEW_ANGLE_DEG first; reduced motion holds it)
  *   flash     the bought row's stamp (scale eased back to 1 over COSMETIC_VIEW.preview.flashSec)
+ *
+ * @module
  */
 import type { CharacterId } from "shared/characters";
 import {
@@ -84,6 +86,10 @@ export interface CosmeticItemEntry {
 	readonly action: CosmeticAction;
 }
 
+/**
+ * One line of the Cosmetics tab's list: a slot's header or one cosmetic under it. The list is the headers and items in
+ * drawing order, told apart by `kind`.
+ */
 export type CosmeticListEntry = CosmeticHeaderEntry | CosmeticItemEntry;
 
 /** The item worn in `slot` (WalletStatus.equipped), or undefined. */

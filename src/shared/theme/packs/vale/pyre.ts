@@ -7,6 +7,8 @@
  * flame's glow and light pool are the view's (NX7). No rim: decor-atlas.png has no outline sheet, so the pyre draws
  * rimless like the decor brazier. Like every vale entry it switches on only once the sheet has an ID (decor-atlas.png,
  * uploaded with the decor), else the placeholder stays.
+ *
+ * @module
  */
 import { ENEMY } from "../../contract";
 import type { SpriteAnimationDef, SpriteSetAsset, SpriteSheetImage } from "../../types";

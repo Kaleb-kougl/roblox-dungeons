@@ -33,6 +33,8 @@
  * Feed (unhashed, for the view, cleared every tick by step / stepParty): SimEvents.shieldBlocks / guardBreaks count them;
  * CombatState.guardEvents holds where each block was (the bullet's position, or the shield's front for a swing) and
  * its Bulwark's slot, and the slot of each guard break.
+ *
+ * @module
  */
 
 import type { Vec3 } from "./bullets";
@@ -49,20 +51,28 @@ import { isHeavyArrow } from "../builds/duos";
 export interface GuardEvents {
 	/** One entry per block: where it was, and the blocking Bulwark's actor slot. */
 	blockX: number[];
+	/** World z of the block, same index as `blockX` (tiles). */
 	blockZ: number[];
+	/** Actor slot of the Bulwark that blocked, same index as `blockX`. */
 	blockSlot: number[];
 	/** One entry per guard break: the Bulwark's actor slot. */
 	breakSlot: number[];
 }
 
+/** An empty feed (for a new `CombatState`). */
 export function createGuardEvents(): GuardEvents {
 	return { blockX: [], blockZ: [], blockSlot: [], breakSlot: [] };
 }
 
+/** A deep copy of the feed (new arrays), for `cloneCombatState`. */
 export function cloneGuardEvents(e: Readonly<GuardEvents>): GuardEvents {
 	return { blockX: [...e.blockX], blockZ: [...e.blockZ], blockSlot: [...e.blockSlot], breakSlot: [...e.breakSlot] };
 }
 
+/**
+ * Empties the feed in place; `step` / `stepParty` call it every tick, beside `clearEvents`. Arrays that are already
+ * empty are left untouched.
+ */
 export function clearGuardEvents(e: GuardEvents): void {
 	if (e.blockX.size() > 0) {
 		e.blockX.clear();

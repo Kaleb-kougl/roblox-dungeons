@@ -1,6 +1,10 @@
 import React, { useRef } from "@rbxts/react";
 import { useFocusScope, type FocusScopeOptions } from "./scope";
 
+/**
+ * `FocusScope`'s props: a focus scope's options (its id, layer, pad surface, default button, memory and pad handler:
+ * see `FocusScopeOptions`) plus the root frame's name and the surface to wrap.
+ */
 export interface FocusScopeProps extends FocusScopeOptions {
 	/** The root frame's Name (memory paths and LocaleRoot's selection paths run through it). */
 	readonly name: string;

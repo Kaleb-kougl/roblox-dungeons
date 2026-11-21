@@ -18,6 +18,8 @@
  *
  * Powder Keg (the duo, BV6) is ./procs.ts resolveProc's: after this, a smash of an owner with the duo fires their on-kill
  * boons from the piece as a kill there would (slot / id -1: nothing is skipped; excess 0: Overkill carries nothing).
+ *
+ * @module
  */
 import type { SimCtx } from "../combat/ctx";
 import { NO_KIND } from "../combat/actors/types";

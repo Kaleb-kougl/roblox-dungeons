@@ -2,6 +2,8 @@
  * Armory item labels (docs/SILVER.md SV8 / SV9): an item's name, at a level in Roman numerals when it has more than
  * one (`Vigor II`, `The Archer`), for the Armory, the run-over `to go` line and the character screen's upgrades line.
  * Pure; text through an injected lookup (the client's `str`, a spec's fake).
+ *
+ * @module
  */
 import { cosmeticItem } from "shared/cosmetics";
 import { ARMORY_KEYS, armoryItemNameKey, cosmeticNameKey, type StringVars } from "shared/theme";

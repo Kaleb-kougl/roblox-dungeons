@@ -90,6 +90,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/COSMETICS.md` | Cosmetics from recoloured sprites (dye sheets cut from the existing Knight / Archer body sheets and tinted at runtime: 8 dyes + Prismatic per character; outline, roll-trail and spark colours; the Armory's Cosmetics tab with try-on; looks sent to teammates; readability validator `cosmeticReport`; presentation, wallet catalogue and server fields only): plan, as built, tasks CS0-CS12, decisions CSD1-CSD12 |
 | `docs/SWORD_SPACING.md` | Sword spacing (the Knight's walk while attacking and the finisher's lunge stop at a contact enemy's keep distance, contact range + 0.15, with a stop cone for keys; every world, M1 included; the Archer untouched; gameplay): findings, plan, as built, contact-hit census, tasks SP0-SP9, decisions SPD1-SPD8 |
 | `docs/CODEBASE_SCALE.md` | Codebase scale (tooling only: a top-level locals budget `check:locals`, determinism lint on sim / dungeon, theme specs that check runs not positions (`runOf`), `contract.ts` / `validate.ts` / `view/sprites.ts` split into directories, the decision log in `docs/DECISIONS.md`, generated `docs/FACTS.md` and `docs/OPEN_TASKS.md`): findings, plan, as built, tasks DX1-DX11, decisions DXD1-DXD6 |
+| `docs/DOC_COMMENTS.md` | Doc comments and the API reference (the comment standard: a `/** */` on every export, prose first, `@module` on file headers, fields too in `shared/sim` / `dungeon` / `lockstep`; TypeDoc -> `build/api`, one page per source file; `docs:check` and the `check:docs` ratchet in verify; `out:digest` proves a commit is comment only; tooling and comments only): findings, plan, as built, tasks DC0-DC11, decisions DCD1-DCD10 |
 | `docs/DECISIONS.md` | The decision log: every deviation from `PLAN.md`, port retune and feature entry (moved out of this file) |
 | `docs/FACTS.md` | Generated numbers (`npm run facts`; `facts:check` in verify): `DAILY.ruleset`, `SIM_BUTTONS`, Codex and analytics counts, theme list sizes, the archetype index table, the fullest modules' top-level locals. Never edit by hand |
 | `docs/OPEN_TASKS.md` | Generated list of every plan's unchecked tasks and the decision log's pending notes (`npm run tasks:open`). Never edit by hand |
@@ -137,6 +138,13 @@ npm run l10n:export # (after build) English + l10n/context.json -> l10n/out/kv-s
 npm run l10n:import -- l10n/in/table.csv   # the whole downloaded cloud table -> shared/theme/locales/*.ts + l10n/report.md
 npm run l10n:check  # (after build) translation coverage / stale / context report (test:l10n, check:autolocalize: in verify)
 npm run check:locals # (after build; in verify) top-level locals of every compiled module: fails past Luau's 200, warns from 185
+npm run docs        # TypeDoc -> build/api/index.html: the API reference from the doc comments, with docs/*.md as pages
+                    # and every `docs/NAME.md` a link (about 33 s, never committed)
+npm run docs:check  # (in verify) TypeDoc without output: fails on a broken {@link}, an unknown tag, a @param naming no parameter
+npm run check:docs  # (in verify) every export has a /** */ (fields too in shared/sim, dungeon, lockstep), except the known
+                    # gaps in scripts/doc-coverage.json; after documenting some: `npm run check:docs -- --update`
+npm run out:digest -- --out build/out.before.txt   # (after build) out/ with comments stripped, one digest per module:
+                    # digest before and after a comment-only change and `cmp` the two files
 npm run facts       # (after build) regenerate docs/FACTS.md; verify runs facts:check and fails when it is stale
 npm run tasks:open  # regenerate docs/OPEN_TASKS.md from the unchecked tasks in docs/*.md and the log's pending notes
 npm run dump:lists -- --out build/lists.before.json   # (after build) every theme export as stable JSON: dump before
@@ -191,6 +199,11 @@ split-16-bit `imul`, no getters in sim state.
   module passes about 150, split it into a directory with an `index.ts` that re-exports the same names (as
   `shared/theme/contract/`, `shared/theme/validate/` and `shared/view/sprites/` were), and prove the move with
   `dump:lists`.
+- **Every exported declaration has a `/** */`** that says what the types cannot (units, ranges, what is hashed or
+  mutated), prose first: no types in comments, `@param` / `@returns` only where they add something, a file header
+  ends with `@module`, `{@link}` for symbols worth following; a plan doc is cited as plain `docs/NAME.md` (the site links it). In `shared/sim`, `shared/dungeon` and `shared/lockstep`
+  every field of an exported interface has one too. `check:docs` fails on a new gap; never add a name to
+  `scripts/doc-coverage.json` (docs/DOC_COMMENTS.md).
 - **No magic numbers.** Tunables live in `shared/config` (or the data module that owns them), never inline in logic.
 - **Roblox properties are float32; Luau arithmetic is float64.** A value written to a property and read back is not
   the value you computed. Assert with tolerance (`toBeCloseTo`) only where a value passes through a property or

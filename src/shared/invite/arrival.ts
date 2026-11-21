@@ -31,6 +31,8 @@
  * Arrival only: a `PartyId` change mid-session, and later arrivals' effect on players already placed, are not this
  * function's job (ID4: mid-session grouping is only an offer, InviteService's toast). Notices name players who may
  * have left; the service drops those. Roblox-API-free; the lobby facts come in through `ArrivalInput`.
+ *
+ * @module
  */
 import { LOBBY, type Lobby, type LobbyInvite } from "shared/lobby";
 import type { InviteLaunch } from "./launchData";
@@ -52,11 +54,20 @@ export const ARRIVAL_TOAST = {
 	/** An arrival already in a lobby (a late LaunchData) would have been moved into another. */
 	alreadyInLobby: "lobby.err.alreadyInLobby",
 } as const;
+/**
+ * One of the `ARRIVAL_TOAST` string keys (theme `lobby.err.*`): what a toast action carries so the client can look up
+ * the text that tells a player why an arrival was not placed.
+ */
 export type ArrivalToastKey = (typeof ARRIVAL_TOAST)[keyof typeof ARRIVAL_TOAST];
 
 /** The notices an arrival sends (shared/network LobbyNotice kinds). */
 export type ArrivalNotice = "inviteArrived" | "followed";
 
+/**
+ * The arriving player's Roblox Party as the server could establish it, the input of arrival rule 4. Only mates already
+ * in this server matter; the party's accept order, when Roblox returned it, decides who hosts a lobby made for the
+ * party.
+ */
 export interface ArrivalParty {
 	/** The arriving player's Roblox Party mates who are in this server (never the player), in server join order. */
 	readonly mates: ReadonlyArray<number>;
@@ -67,6 +78,11 @@ export interface ArrivalParty {
 	readonly acceptOrder?: ReadonlyArray<number>;
 }
 
+/**
+ * Every fact the arrival rules read about a player who just joined. InviteService gathers them (the decoded LaunchData,
+ * the player's live invites, the lobby lookups, the party) and the rules decide from them alone, so they run
+ * headlessly. The callbacks are queries and must not change anything.
+ */
 export interface ArrivalInput {
 	readonly userId: number;
 	/** The lobby clock (kick cooldowns). */
@@ -87,6 +103,11 @@ export interface ArrivalInput {
 	readonly party?: ArrivalParty;
 }
 
+/**
+ * One thing the server does for an arrival, decided by the arrival rules and applied by InviteService: a join, a party
+ * lobby to create, a notice or toast to send, or nothing. A decision is a list of them. Notices and toasts may name
+ * players who have left; the service drops those.
+ */
 export type ArrivalAction =
 	/** Join `lobbyId` with this live invite (`Lobbies.join`). */
 	| { readonly kind: "joinInvite"; readonly inviteId: string; readonly lobbyId: string }

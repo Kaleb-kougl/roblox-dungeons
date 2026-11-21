@@ -21,6 +21,8 @@
  * client of a run derives the same moments whatever its frame boundaries (a group that starts on a later frame inside
  * the window still syncs). A new run (another state object, or the tick going back) or reset() starts over.
  * Presentation only: nothing here is hashed or written back. Allocates a record per moment (a few per floor).
+ *
+ * @module
  */
 import { SIM_HZ, TILE_SIZE, type SimState } from "shared/sim";
 import type { ParryGroupStart } from "./nearMissRules";
@@ -79,6 +81,10 @@ export interface SyncParryMoment {
 	readonly tethered: boolean;
 }
 
+/**
+ * Any co-op shared moment record, told apart by its `kind` ("teamPerfect" or "sync"). No "revive" record exists: that
+ * kind is reserved.
+ */
 export type TeamMoment = TeamPerfectMoment | SyncParryMoment;
 
 /** A frame's moments (reused: valid until the next frame call). */

@@ -14,9 +14,16 @@
  * turned as a whole: GuiObject.Rotation (clockwise degrees on screen, about the object's centre) = the yaw.
  * `gridImageLayout` gives that image's centre, size and rotation; `gridCellToMap` places a cell through it, which equals
  * `worldToMap` of the cell's centre, so markers placed by worldToMap sit on the right pixels.
+ *
+ * @module
  */
 import { TILE_SIZE } from "shared/dungeon";
 
+/**
+ * The map's orientation for one camera yaw, from `minimapBasis`: the world (x, z) unit directions of map right and map
+ * up, and the rotation to give the grid-space map image. `worldToMap` and its inverse take it; the client's
+ * MinimapController keeps one for `CAMERA_YAW_DEG`.
+ */
 export interface MinimapBasis {
 	/** World (x, z) direction of map right (screen right on the ground). */
 	readonly rightX: number;

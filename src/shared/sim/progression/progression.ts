@@ -47,6 +47,8 @@
  * takes the card through grantCard (levels, duos), and the draft after a boss floor is dealt twice (BUD4: the first
  * deal guarantees a duo when one is available; a confirm with draftsLeft > 1 re-deals for that player instead of
  * closing, with one more drawCardOffers, the draft timer back at 0).
+ *
+ * @module
  */
 import { jsMax, jsMin } from "shared/jsmath";
 import { isBossFloor } from "shared/dungeon";
@@ -163,6 +165,10 @@ export function createRunState(encounter: EncounterConfig | undefined, players =
 	return r;
 }
 
+/**
+ * A deep copy of the run progression, every player's lists and events included. Each player's `mods` object is shared
+ * (it is replaced by `refreshRunMods`, never mutated). No rng.
+ */
 export function cloneRunState(r: Readonly<RunState>): RunState {
 	return {
 		...r,

@@ -13,6 +13,8 @@
  *     ember's `lit` ({ w, h }: its burning patch, integer art px inside the cell); neither on the other hazard;
  *   - `meanColor` (the pipeline's mean of the visible pixels) "#rrggbb" and GREY (r = g = b): the sheet is greyscale,
  *     so the tint is the colour the player sees and the family rules hold by construction.
+ *
+ * @module
  */
 
 import { isHexColor } from "./color";
@@ -21,6 +23,10 @@ import { describeValue, isObj } from "./util";
 
 /** The strike's ID (the one hazard with a hit rim); the other hazard, the ember, carries `lit`. */
 export const HAZARD_STRIKE_ID = BULLET_ART.hazardSpriteIds[0];
+/**
+ * The ember's ID (`bullet.player.ember`, the second BULLET_ART.hazardSpriteIds entry): the hazard that carries `lit`
+ * and must not carry `rimPx`.
+ */
 export const HAZARD_EMBER_ID = BULLET_ART.hazardSpriteIds[1];
 
 /**

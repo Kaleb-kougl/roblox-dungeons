@@ -6,12 +6,19 @@
  * The caller's own best comes from their details entry; their rank is known only when they are in the top rows.
  * OrderedDataStore has no "rank of key" query, so a true "around me" view would need paging through the whole
  * board; it is not offered.
+ *
+ * @module
  */
 import { ORDERED_VALUE_LAYOUT, type LeaderboardBoard } from "./config";
 import { decodeOrderedValue } from "./orderedValue";
 import { userIdFromKey, type LeaderboardEntryDetails } from "./posting";
 import type { LeaderboardScope } from "./scope";
 
+/**
+ * One ranked line of the leaderboard panel, sent to the client inside `LeaderboardView`. `rank` is 1-based within the
+ * rows sent (among friends only, in the friends view); the score in points and the floor are decoded from the ordered
+ * value, not read from a details document; `name` is the display name the server resolved for `userId`.
+ */
 export interface LeaderboardRow {
 	rank: number;
 	userId: number;
@@ -20,6 +27,11 @@ export interface LeaderboardRow {
 	floor: number;
 }
 
+/**
+ * The caller's own best on the board shown, sent to the client inside `LeaderboardView` so the panel can show it even
+ * when the player is outside the top rows. On the all-time boards it comes from the details document, on daily boards
+ * from the ordered value alone.
+ */
 export interface LeaderboardMine {
 	score: number;
 	floor: number;
@@ -33,6 +45,11 @@ export interface LeaderboardMine {
 	percentile?: number;
 }
 
+/**
+ * The server's answer to a `getLeaderboard` request and the payload of the pushed `leaderboard` updates: one board on
+ * one scope, its top rows (at most `LEADERBOARD_TOP_COUNT`) and the caller's own best. The client keeps one per board,
+ * scope and friends flag (`leaderboardRequestKey`). `reason` says why when `ok` is false.
+ */
 export interface LeaderboardView {
 	board: LeaderboardBoard;
 	/** The scope asked for ("alltime", "today", "yesterday"). */

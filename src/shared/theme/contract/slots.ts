@@ -1,15 +1,30 @@
-/** The theme contract's slots (docs/CODEBASE_SCALE.md DX8: a pure move out of contract.ts): what each ID prefix may hold and the sprite contracts. Import from "shared/theme" or "./contract", never from this file. */
+/**
+ * The theme contract's slots (docs/CODEBASE_SCALE.md DX8: a pure move out of contract.ts): what each ID prefix may hold and the sprite contracts. Import from "shared/theme" or "./contract", never from this file.
+ *
+ * @module
+ */
 import type { AssetKind, Pivot } from "../types";
 import { startsWith } from "../util";
 
 /** Directional slots draw one animation row per facing, in this order. */
 export const FACINGS = ["down", "up", "left", "right"] as const;
+/** A facing's name (a FACINGS entry). A directional slot's 16 px spritesheet names each animation `<anim>.<facing>`. */
 export type Facing = (typeof FACINGS)[number];
 
 /** Roblox SoundGroups audio routes through, one per audio slot (SoundService.<name>). */
 export const SOUND_GROUPS = ["sfx", "music"] as const;
+/**
+ * A SoundGroup's name (a SOUND_GROUPS entry): what an audio slot routes through (SlotContract.soundGroup) and what a
+ * resolved sound carries (SoundRef.group).
+ */
 export type SoundGroupName = (typeof SOUND_GROUPS)[number];
 
+/**
+ * What one asset ID prefix may hold: the asset kinds it accepts and, for sprite slots, the sprite contract (cell,
+ * pivot, animations, facings). An asset's slot is found by its ID's prefix (`slotFor`); the validator checks the entry
+ * against it, and ThemeCore and the placeholders lay out sheets from it. Presentation only: nothing here is a gameplay
+ * value.
+ */
 export interface SlotContract {
 	/** Slot name, for messages. */
 	readonly slot: string;
@@ -81,6 +96,11 @@ export const CLASS_OPTIONAL_ANIMATIONS = ["attack.1", "attack.2", "attack.3"] as
  */
 export const BOSS_OPTIONAL_ANIMATIONS = ["attack.2", "attack.3", "attack.4", "intro", "taunt"] as const;
 
+/**
+ * The player class slot (`class.*`). A 16 px spritesheet is 16 x 24 cells with the feet at (8, 23), in all four
+ * facings, with exactly the frame counts below; a `sprites` set brings its own cells and needs only the five base
+ * animations, plus the optional sword swings.
+ */
 export const CHARACTER: SlotContract = {
 	slot: "class",
 	prefix: "class.",
@@ -94,6 +114,11 @@ export const CHARACTER: SlotContract = {
 	perSheetCells: true,
 };
 
+/**
+ * The enemy slot (`enemy.*`). A 16 px spritesheet is 16 x 16 cells with the feet at (8, 15), in all four facings, with
+ * exactly the frame counts below; a `sprites` set brings its own cells and needs only the five base animations, plus
+ * the optional ones listed inline.
+ */
 export const ENEMY: SlotContract = {
 	slot: "enemy",
 	prefix: "enemy.",
@@ -116,6 +141,11 @@ export const ENEMY: SlotContract = {
 	optionalAnimations: ["attack.2", "death.2", "move.back", "block", "crouch", "hop"],
 };
 
+/**
+ * The boss slot (`boss.*`). A 16 px spritesheet is 48 x 48 cells with the feet at (24, 47), not directional (one row
+ * per animation), with exactly the frame counts below; a `sprites` set brings its own cells and facings and needs only
+ * the five base animations, plus BOSS_OPTIONAL_ANIMATIONS.
+ */
 export const BOSS: SlotContract = {
 	slot: "boss",
 	prefix: "boss.",
@@ -191,9 +221,16 @@ export const BULLET: SlotContract = {
 
 /** One tile = PIXELS_PER_TILE (16) pixels square. */
 export const TILE: SlotContract = { slot: "tile", prefix: "tile.", kinds: STILL, cell: { w: 16, h: 16 }, facings: [] };
+/** Item icons (`item.*`, ITEM_IDS): one 16 x 16 still each, an image or a placeholder. */
 export const ITEM: SlotContract = { slot: "item", prefix: "item.", kinds: STILL, cell: { w: 16, h: 16 }, facings: [] };
+/**
+ * UI art (`ui.*`): free-size stills, an image or a placeholder. The only slot whose images may be cut from an atlas
+ * (`rect`) or 9-sliced (`slice`).
+ */
 export const UI: SlotContract = { slot: "ui", prefix: "ui.", kinds: STILL, facings: [] };
+/** Sound effects (`sfx.*`): a sound or silent, played through the `sfx` SoundGroup. */
 export const SFX: SlotContract = { slot: "sfx", prefix: "sfx.", kinds: AUDIO, facings: [], soundGroup: "sfx" };
+/** Music tracks (`music.*`): a sound or silent, played through the `music` SoundGroup. */
 export const MUSIC: SlotContract = { slot: "music", prefix: "music.", kinds: AUDIO, facings: [], soundGroup: "music" };
 
 /**
@@ -297,6 +334,11 @@ export const FX: SlotContract = {
 	baseAnimations: [FX_ANIMATION],
 };
 
+/**
+ * Every slot of the contract. An asset ID belongs to the first slot whose prefix it starts with (`slotFor`); an ID
+ * matching none is an error in a manifest. The prefixes do not overlap, so the order decides nothing but the order of
+ * WORLD_ART_SLOTS. The last two slots (`pact`, `secret`) are written inline, see their comments.
+ */
 export const SLOTS: ReadonlyArray<SlotContract> = [
 	CHARACTER,
 	ENEMY,
@@ -366,6 +408,10 @@ export function slotFor(id: string): SlotContract | undefined {
 	return SLOTS.find((s) => startsWith(id, s.prefix));
 }
 
+/**
+ * One animation a 16 px spritesheet must define (an entry of `requiredAnimationList`): its full name (with the facing
+ * suffix in a directional slot) and its exact frame count.
+ */
 export interface RequiredAnimation {
 	readonly name: string;
 	readonly frames: number;

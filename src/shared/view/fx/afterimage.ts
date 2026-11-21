@@ -10,6 +10,8 @@
  * FEEL_GHOST.startTransparency -> 1; at most FEEL_GHOST.perSource are alive per source (the ring reuses the oldest).
  * Off (every trail cleared) under reduced motion or with the effective particles level `off` (ghostsOn, JD9).
  * Presentation only: nothing here reaches the sim.
+ *
+ * @module
  */
 import type { JuiceSettings } from "shared/settings";
 import { BOSS_DEMONLORD_ID, DEMONLORD_V_MARK, DemonlordAttack, DemonlordState, type ActorState } from "shared/sim";
@@ -42,6 +44,11 @@ export interface GhostSnapshot {
 	dyeB: number;
 }
 
+/**
+ * One afterimage in a GhostTrail's ring: where and when a source's sprite was recorded and the frame it showed. The
+ * trail writes it; the client's actor renderer draws each `alive` one from its ghost pool, rewriting the billboard only
+ * when `serial` changes and fading it by its age since `bornAt`.
+ */
 export interface Ghost {
 	/** Recorded and not yet faded out. */
 	alive: boolean;

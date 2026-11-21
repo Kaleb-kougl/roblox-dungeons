@@ -1,6 +1,8 @@
 /**
  * Leaderboard tunables (M5). Data only: the pure modules here and LeaderboardService read these (CLAUDE.md "No magic
  * numbers"). docs/SERVER.md "Leaderboards" has the DataStore layout.
+ *
+ * @module
  */
 import { KV_EPOCH_UNIX_SECONDS } from "shared/config";
 import { DAILY_WORLD_KIND } from "shared/daily";
@@ -10,6 +12,10 @@ const SECONDS_PER_MINUTE = 60;
 
 /** The two all-time boards: solo (party of 1) and co-op (party of COOP_MIN_PARTY..MAX_PARTY_SIZE). */
 export type LeaderboardBoard = "solo" | "coop";
+/**
+ * Every board id, solo first: the list a remote argument's `board` is checked against (`parseLeaderboardRequest`) and
+ * the order the boards are iterated in.
+ */
 export const LEADERBOARD_BOARDS: ReadonlyArray<LeaderboardBoard> = ["solo", "coop"];
 
 /** Smallest party that counts as co-op. */
@@ -111,6 +117,10 @@ export const LEADERBOARD_DAILY_WORLDS: ReadonlyArray<string> = [DAILY_WORLD_KIND
  */
 export const LEADERBOARD_ELIGIBLE_WORLDS: ReadonlyArray<string> = ["endless"];
 
+/**
+ * The live posting policy, the default of `leaderboardEligibility` and `planPosts`: only validated endless runs post to
+ * the all-time boards and Daily runs to their day's board; Studio, private (VIP) servers and abandoned runs never post.
+ */
 export const LEADERBOARD_POLICY: LeaderboardPolicy = table.freeze({
 	eligibleWorlds: LEADERBOARD_ELIGIBLE_WORLDS,
 	postFromStudio: false,
@@ -138,6 +148,11 @@ export interface OrderedValueLayout {
 const LEADERBOARD_EPOCH = KV_EPOCH_UNIX_SECONDS;
 const TWO_HOURS = 7200;
 
+/**
+ * The live bit layout of the ordered value: 27 bits of score, 10 of floor and 16 of time in 2-hour slots counted from
+ * 2026-01-01 UTC, 53 bits in all. The default of every encode and decode: entries already in the stores were written
+ * with it, so they decode correctly only under the same field widths.
+ */
 export const ORDERED_VALUE_LAYOUT: OrderedValueLayout = table.freeze({
 	scoreBits: 27,
 	floorBits: 10,

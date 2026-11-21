@@ -28,6 +28,12 @@ export interface RebindNotice {
 	readonly action: GameAction;
 }
 
+/**
+ * The `options` slice's state: the Options screen's tab and Controls sub-tab, and the rebinding flow's transient
+ * prompts (capture, swap conflict, refusal note, reset confirm, the test strip). HudController and SettingsController set
+ * the tabs, RebindController the flow; changing a tab drops the note, the confirm and the strip, and closing the screen
+ * drops every prompt while the tab is remembered for the session.
+ */
 export interface OptionsState {
 	readonly tab: OptionsTab;
 	/** The Controls sub-tab (Touch: the phone's Vibration row, docs/HAPTICS.md HP5). */
@@ -63,6 +69,11 @@ function samePressed(a: ReadonlyArray<GameAction>, b: ReadonlyArray<GameAction>)
 	return true;
 }
 
+/**
+ * The Options screen's slice (state: `OptionsState`, described in the comment on `CaptureState` above). It starts on
+ * the `juice` tab and the keyboard and mouse sub-tab with no prompt up; `clearRebindUi` is the reset when the screen
+ * closes.
+ */
 export const optionsSlice = createProducer(initialState, {
 	setOptionsTab: (state, tab: OptionsTab) =>
 		state.tab === tab ? state : { ...state, tab, notice: undefined, confirmReset: undefined, pressed: [] },
@@ -93,7 +104,15 @@ export const optionsSlice = createProducer(initialState, {
 	}),
 });
 
+/**
+ * The Options screen's whole state: the tab, the Controls sub-tab, and whichever rebinding prompts are up (each
+ * undefined when not; `pressed` empty when no bound input is held).
+ */
 export const selectOptions = (state: { options: OptionsState }) => state.options;
+/**
+ * Input belongs to a rebind capture: true from the capture's start until the frame after it ends. Gameplay input, the
+ * menu keys, menu focus and the driver keys ignore input meanwhile.
+ */
 export const selectInputCaptured = (state: { options: OptionsState }) => state.options.inputCaptured;
 /** A prompt over the Options screen is up (capture, swap prompt, reset confirmation): the rows are not selectable. */
 export const selectOptionsModal = (state: { options: OptionsState }) =>

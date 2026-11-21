@@ -12,12 +12,22 @@
  * docs/NEW_ENEMIES.md NE1 adds the second endless set the same way: `bomber` .. `reaper` in ENEMY_ARCHETYPES and
  * BESTIARY_ARCHETYPES, `bullet.enemy.strike` (STRIKE_BULLET_ID) in BULLET_IDS, the six sounds in PORT_AUDIO_EVENTS and
  * the Warbanner's aura role `enemyAura` (ENEMY_AURA_ROLE, held by variantColors.ts `auraReport`).
+ *
+ * The contract lists named above:
+ * {@link shared/theme/contract/ids!PORT_AUDIO_EVENTS | PORT_AUDIO_EVENTS},
+ * {@link shared/theme/types!COLOR_ROLES | COLOR_ROLES}.
+ *
+ * @module
  */
 
 import type { ColorRole } from "./types";
 
 /** The elite affixes (docs/ENEMY_VARIANTS.md EVD6), in unlock order. Each has a colour role and a name string. */
 export const AFFIX_IDS = ["hulking", "swift", "shielded", "vengeful"] as const;
+/**
+ * An elite affix's name (an AFFIX_IDS entry): the segment in its colour role (`affix.<id>`, affixRole) and its string
+ * keys (affixNameKey, bestiaryAffixKey).
+ */
 export type AffixId = (typeof AFFIX_IDS)[number];
 
 /**

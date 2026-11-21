@@ -6,6 +6,8 @@
  * the card's drawn text alpha (the deal, the pick's exit fade) and pops in like the NEW! chip (codexChipScale); under
  * Reduced motion it simply appears. Pure: DraftRevealController keeps one, DraftOverlay draws it (draftUi `newTagT` /
  * `newTagScale`).
+ *
+ * @module
  */
 import { DRAFT_OFFER_COUNT } from "shared/sim";
 import { codexChipScale } from "./toasts";

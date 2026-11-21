@@ -1,4 +1,8 @@
-/** The validator's per-asset checks (docs/CODEBASE_SCALE.md DX8: a pure move out of validate.ts): biome materials, images, sounds, world art, decor, particles, sprite sets and fx. */
+/**
+ * The validator's per-asset checks (docs/CODEBASE_SCALE.md DX8: a pure move out of validate.ts): biome materials, images, sounds, world art, decor, particles, sprite sets and fx.
+ *
+ * @module
+ */
 import { append, describeValue, isArrayLike, isObj, matches, quote as q, sortedEntries, type Obj } from "../util";
 import {
 	AMBIENCE,
@@ -107,6 +111,13 @@ function checkAssetIdAt(assetId: unknown, path: ReadonlyArray<string>, err: Err)
 	}
 }
 
+/**
+ * Checks one `assets` entry against its slot and reports every problem through `err`. `def` is the entry, `path` where
+ * it sits in the manifest (its last segment is the asset ID) and `slot` the contract its ID prefix selected. An entry
+ * that is not an object, or whose `kind` the slot does not accept, gets that one error and nothing else; otherwise the
+ * kind's own fields are checked (asset IDs, sizes, cells, animations, and the decor, sound, world-art, sprite-set and
+ * fx fields).
+ */
 export function validateAsset(
 	def: unknown,
 	path: Array<string>,

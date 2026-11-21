@@ -24,6 +24,11 @@ const initialState: SilverShopState = {
 	notice: false,
 };
 
+/**
+ * The Silver shop's slice (state: `SilverShopState`). SilverShopController writes it: each step of the panel's flow,
+ * Roblox's pack prices (one at a time or the whole map) and the on-its-way notice. A flow with no pending purchase
+ * clears the notice.
+ */
 export const silverShopSlice = createProducer(initialState, {
 	setSilverShopFlow: (state, flow: SilverShopFlow): SilverShopState =>
 		state.flow === flow ? state : { ...state, flow, notice: flow.pending === undefined ? false : state.notice },
@@ -41,6 +46,18 @@ export const silverShopSlice = createProducer(initialState, {
 		state.notice === notice ? state : { ...state, notice },
 });
 
+/**
+ * The Get Silver panel's whole state: its flow, the Robux price per pack (an empty map until the first open read them)
+ * and whether the `Your Silver is on its way` notice shows.
+ */
 export const selectSilverShop = (state: { silverShop: SilverShopState }) => state.silverShop;
+/**
+ * The Get Silver panel's flow: open or not, which balance opened it, the purchase pending and the grant shown on its
+ * card (each undefined when there is none). `SILVER_SHOP_IDLE` until the first open.
+ */
 export const selectSilverShopFlow = (state: { silverShop: SilverShopState }) => state.silverShop.flow;
+/**
+ * The Get Silver panel is open (false at start). The menu layer reads it to close the panel when the menu leaves the
+ * two screens it lives over (the main menu and the Armory).
+ */
 export const selectSilverShopOpen = (state: { silverShop: SilverShopState }) => state.silverShop.flow.open;

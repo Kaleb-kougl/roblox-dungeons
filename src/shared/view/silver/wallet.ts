@@ -12,6 +12,8 @@
  *   ownedCharacterOr  a pick the player owns, else the default character (the stored DisplaySettings.character);
  *                     before the first payload (pending) the pick stands (the server decides: a `locked_character`
  *                     reply falls back to the Knight), unless `strict` (a run the server never sees: the Knight)
+ *
+ * @module
  */
 import {
 	DEFAULT_CHARACTER,

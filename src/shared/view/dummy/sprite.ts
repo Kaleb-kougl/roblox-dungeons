@@ -5,6 +5,8 @@
  * plays its one idle frame, the `hit` wobble after each hit (over the view-side clip the renderer adds, DD1) and the
  * `death` break on the kill. Its own module, imported by FILE from sprites.ts (sprites.luau sits near Luau's 200
  * top-level locals). A leaf (shared/sim, types only from sprites.ts): no require cycle.
+ *
+ * @module
  */
 import { CORPSE_TICKS, DUMMY, type ActorState } from "shared/sim";
 import type { ActorSpriteInput } from "../sprites";

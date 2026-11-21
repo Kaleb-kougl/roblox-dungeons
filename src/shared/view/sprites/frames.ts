@@ -1,4 +1,8 @@
-/** Sprite frames, billboards and looks (docs/CODEBASE_SCALE.md DX8: a pure move out of view/sprites.ts). */
+/**
+ * Sprite frames, billboards and looks (docs/CODEBASE_SCALE.md DX8: a pure move out of view/sprites.ts).
+ *
+ * @module
+ */
 import type { Pivot } from "shared/theme";
 import { CAMERA_PITCH_DEG, PIXELS_PER_TILE, STUDS_PER_TILE } from "shared/config";
 import { degToRad } from "../iso";
@@ -114,6 +118,11 @@ export function floorClearanceStuds(belowStuds: number, pitchDeg: number = CAMER
 	return (belowStuds * math.cos(p)) / math.sin(p) + SPRITE_VIEW.floorClearanceMarginStuds;
 }
 
+/**
+ * The billboard of a sprite set's frame (see SpriteBillboard): its size in studs at `studsPerTile` / the set's pixels
+ * per tile, and the offsets that put the pivot pixel on the feet and clear the floor. The defaults are the game's own
+ * scale, depth bias (studs) and camera pitch (degrees); specs pass others.
+ */
 export function spriteBillboard(
 	layout: SpriteLayout,
 	studsPerTile: number = STUDS_PER_TILE,

@@ -7,6 +7,8 @@
  *
  * Time is sim time (state.tick + alpha) / SIM_HZ for the pellets themselves (they hold still under pause and the
  * freeze, like boost drops), the particle clock for the fly-in, and the score pops' SimClock for the pops.
+ *
+ * @module
  */
 import { NO_POWER_PELLET } from "shared/dungeon";
 import { PelletPhase, SIM_HZ, type PelletEaten, type SimState } from "shared/sim";
@@ -49,6 +51,10 @@ export interface PelletLook {
 	hopTiles: number;
 }
 
+/**
+ * A fresh PelletLook (hidden, full size, opaque, at its cell) for the caller to keep and hand to the look functions,
+ * which write it in place. PelletRenderController owns one.
+ */
 export function newPelletLook(): PelletLook {
 	return { shown: false, scale: 1, transparency: 0, glow: 0, offX: 0, offZ: 0, hopTiles: 0 };
 }

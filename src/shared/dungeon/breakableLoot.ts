@@ -21,6 +21,8 @@
  *
  * Output: the loaded pieces as { slot (index into the floor's breakables), kind (shared/sim Boost index) }, in slot
  * order.
+ *
+ * @module
  */
 import { u32 } from "shared/jsmath";
 import { gridToWorld } from "./collision";
@@ -32,7 +34,9 @@ import type { BreakablePieceKindName } from "./breakablesData";
 
 /** One loaded piece: its breakable slot (placement index) and the boost kind it holds (shared/sim Boost index). */
 export interface BreakableLoot {
+	/** The piece's index in the floor's breakables list. */
 	readonly slot: number;
+	/** The boost it holds (shared/sim Boost index). */
 	readonly kind: number;
 }
 

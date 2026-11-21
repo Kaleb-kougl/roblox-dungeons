@@ -6,6 +6,8 @@
  * the renderer's warning line), then fires a fast narrow 3-shot line down the locked aim: three single bullets on one
  * direction at different speeds, so the line stretches as it flies. It never fires without line of sight at the moment
  * of the shot (the volley is cancelled). No contact damage. Leashes home after losing the player.
+ *
+ * @module
  */
 
 import { HIT_NORMAL, secondsToTicks } from "../../../playerData";
@@ -27,24 +29,42 @@ import {
 	type RoomEnemyData,
 } from "./enemyShared";
 
+/**
+ * Tuning of the sniper: its keep range and strafe, and the telegraphed three-shot line. Distances in world units, times
+ * in ticks.
+ */
 export interface SniperData extends RoomEnemyData {
 	/** Preferred distance band to the player (world units). */
 	readonly keepMin: number;
+	/**
+	 * Far edge of the keep band (world units): it closes in on the player past this; inside the band it only strafes.
+	 */
 	readonly keepMax: number;
 	/** Only starts a volley when the player is this close. */
 	readonly fireRange: number;
 	/** Telegraph ticks, and the last ticks of it during which the aim is locked. */
 	readonly telegraphTicks: number;
+	/** The last ticks of the telegraph, during which the aim no longer follows the player (at most telegraphTicks). */
 	readonly lockTicks: number;
 	/** The three shots (same direction, different speeds). */
 	readonly shots: ReadonlyArray<BurstSpec>;
 	/** Ticks between volleys (random in [min, max]) and before the first one after engaging. */
 	readonly volleyCooldownMin: number;
+	/** Longest cooldown after a volley is fired (ticks, inclusive); the shortest is `volleyCooldownMin`. */
 	readonly volleyCooldownMax: number;
+	/**
+	 * Shortest cooldown before its first volley, drawn at spawn, and after a volley cancelled for lack of line of sight
+	 * (ticks, inclusive).
+	 */
 	readonly firstVolleyMin: number;
+	/** Longest cooldown before its first volley and after a cancelled one (ticks, inclusive). */
 	readonly firstVolleyMax: number;
 	/** Strafe direction flips after a random [min, max] ticks (or when a wall stops it). */
 	readonly strafeFlipMin: number;
+	/**
+	 * Longest time before the strafe side flips (ticks, inclusive; one `ctx.randomInt` draw from the sim rng); the
+	 * shortest is `strafeFlipMin`.
+	 */
 	readonly strafeFlipMax: number;
 	/** Weight of the sideways component of the move (radial is 1). */
 	readonly strafeWeight: number;
@@ -59,10 +79,13 @@ export const SNIPER_REPOSITION = STATE_ENGAGED;
 export const SNIPER_ATTACK_LINE = 1;
 
 // --- v[] slots (0..2 shared)
+/** v slot: ticks without line of sight while repositioning (past lostTicks it leashes home). */
 export const SNIPER_LOST = 3;
 /** Aim direction (unit) and warning line length (world units, to the first wall), valid while telegraphing. */
 export const SNIPER_AIM_X = 4;
+/** v slot: Z component of the unit aim direction (the pair of SNIPER_AIM_X). */
 export const SNIPER_AIM_Z = 5;
+/** v slot: the warning line's length along the aim (world units): to the first wall, at most aimMaxLength. */
 export const SNIPER_AIM_LEN = 6;
 /** Strafe side, +1 or -1. */
 export const SNIPER_STRAFE = 7;
@@ -89,6 +112,7 @@ const STRAFE_BLOCKED = 0.3;
 /** Coin flip for the first strafe side. */
 const COIN = 0.5;
 
+/** The registered `sniper` archetype (a web archetype, band 0): its data and hooks, as the module comment describes. */
 export const SNIPER = registerArchetype<SniperData>({
 	id: "sniper",
 	data: {

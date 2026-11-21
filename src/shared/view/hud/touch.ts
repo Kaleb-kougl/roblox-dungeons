@@ -3,9 +3,15 @@
  * touchLayout) and the four hint lines that replace the key-name hints on touch (MB10). The theme contract's
  * TOUCH_STRING_KEYS lists the same keys (the theme imports nothing outside shared/theme); touchHud.spec.ts checks each
  * one exists in the placeholder pack.
+ *
+ * @module
  */
 import type { TouchButtonId } from "./touchLayout";
 
+/**
+ * The touch controls' theme string keys (`touch.*`): one label per touch button, keyed by its `TouchButtonId`, and the
+ * four hint lines that replace the key-name hints on touch (the draft, the shrine, spectating, closing the map).
+ */
 export const TOUCH_STRINGS = {
 	attack: "touch.attack",
 	alt: "touch.alt",

@@ -29,6 +29,8 @@
  *   SLIME_LOST    ticks without line of sight while crawling (leashes past lostTicks).
  *   SLIME_LAST_X / SLIME_LAST_Z   where the player was last seen (the crawl's target).
  * The split's smalls start at the corpse (prevX / prevZ there: drawn bursting out) and land splitPush to either side.
+ *
+ * @module
  */
 
 import { HIT_NORMAL, secondsToTicks } from "../../../playerData";
@@ -76,13 +78,19 @@ export interface OozeData extends SlimeData {
 	readonly goo: BurstSpec;
 	/** Archetype id of the split's children, and how many (EVD4: 2, one generation). */
 	readonly splitKind: string;
+	/**
+	 * How many children spawn on its corpse when it dies (fewer when the actor pool is full); they are pushed out to
+	 * alternate sides.
+	 */
 	readonly splitCount: number;
 	/** How far each child is pushed out sideways from the corpse (world units, through the world: walls stop it). */
 	readonly splitPush: number;
 }
 
 // --- Ids
+/** Archetype id of the big slime (the Ooze): the one that is bought, leaves the goo trail and splits. */
 export const SLIME_ID = "slime";
+/** Archetype id of the small slime: only ever spawned by the big one's split (`splitKind`). */
 export const SLIME_SMALL_ID = "slime.small";
 
 // --- States (aiState)
@@ -96,6 +104,7 @@ export const SLIME_TRAIL = 3;
 export const SLIME_LOST = 4;
 /** Where the player was last seen. */
 export const SLIME_LAST_X = 5;
+/** v slot: world Z of where the player was last seen (the pair of SLIME_LAST_X). */
 export const SLIME_LAST_Z = 6;
 
 /** A puddle's life (seconds) and the trail's period (seconds of movement). */
@@ -125,6 +134,10 @@ const SLIME_ROOM = {
 	contactDamage: HIT_NORMAL,
 } as const;
 
+/**
+ * The registered `slime` archetype (band PORT_BAND_ENEMIES): the big slime, which crawls at the player, leaves goo
+ * puddles behind it and splits into `slime.small` on death.
+ */
 export const SLIME = registerArchetype<OozeData>({
 	id: SLIME_ID,
 	band: PORT_BAND_ENEMIES,
@@ -175,6 +188,10 @@ export const SLIME = registerArchetype<OozeData>({
 	},
 });
 
+/**
+ * The registered `slime.small` archetype (band PORT_BAND_ENEMIES): the split's child. The same crawl, no trail, never
+ * splits.
+ */
 export const SLIME_SMALL = registerArchetype<SlimeData>({
 	id: SLIME_SMALL_ID,
 	band: PORT_BAND_ENEMIES,
