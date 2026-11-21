@@ -1,7 +1,7 @@
 {
 	"name": "kaleb-vale-roblox",
 	"version": "0.1.0",
-	"description": "Project Kaleb-Vale ported to Roblox (roblox-ts + Flamework + Reflex + React)",
+	"description": "Roblox Dungeons: a co-op bullet-hell roguelike on Roblox (roblox-ts + Flamework + Reflex + React)",
 	"private": true,
 	"main": "index.js",
 	"scripts": {
@@ -51,7 +51,7 @@
 	},
 	"keywords": [],
 	"author": "Kaleb Kougl",
-	"license": "UNLICENSED",
+	"license": "SEE LICENSE IN LICENSE",
 	"devDependencies": {
 		"@rbxts/compiler-types": "^3.0.0-types.0",
 		"@rbxts/jest": "^3.16.0-ts.1",
