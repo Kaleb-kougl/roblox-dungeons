@@ -4,6 +4,7 @@
 	(`out/shared/**`) with real JestCircus + Expect, inside Lune. No Roblox Studio needed.
 
 	  lune run scripts/lune/run-tests.luau [filter ...] [--project default.project.json] [--census] [--flag name ...]
+	                                       [--shard i/n] [--list]
 
 	`npm test` builds first (gen fixtures -> rbxtsc) and then runs this. A filter keeps the spec
 	files whose source path contains it (e.g. `sim/rng`). Exit code is 1 when any test or suite
@@ -11,6 +12,9 @@
 	opt-in census specs read (shared/run/testing censusRequested) to run their full sample instead of
 	the small default one (docs/ARCHER.md AR13). `--flag name` (repeatable) turns on an opt-in spec
 	switch: every spec realm gets `_G.KV_SPEC_FLAGS[name] = true` (absent in Studio and without the flag).
+	`--shard i/n` (1 <= i <= n) keeps the spec files whose source path hashes into shard i of n (FNV-1a of the
+	path, so adding a spec never moves another one; docs/CI.md): CI runs one shard per job, and the same flag
+	reproduces a shard locally. `--list` prints the spec files that would run, one per line, and exits.
 
 	How it works (details in the lib/ headers):
 	  1. lib/rojoTree   builds a fake DataModel from default.project.json, mirroring the filesystem
@@ -46,6 +50,8 @@ local projectPath = "default.project.json"
 local filters: { string } = {}
 local census = false
 local specFlags: { [string]: boolean } = {}
+local shardIndex, shardCount = 1, 1
+local listOnly = false
 do
 	local i = 1
 	local args = process.args
@@ -66,6 +72,17 @@ do
 		elseif arg == "--census" then
 			census = true
 			i += 1
+		elseif arg == "--list" then
+			listOnly = true
+			i += 1
+		elseif arg == "--shard" then
+			local a, b = string.match(args[i + 1] or "", "^(%d+)/(%d+)$")
+			shardIndex, shardCount = tonumber(a) or 0, tonumber(b) or 0
+			if shardCount < 1 or shardIndex < 1 or shardIndex > shardCount then
+				stdio.ewrite("--shard needs i/n with 1 <= i <= n (e.g. --shard 2/8)\n")
+				process.exit(2)
+			end
+			i += 2
 		else
 			table.insert(filters, arg)
 			i += 1
@@ -95,6 +112,21 @@ local function matchesFilters(path: string): boolean
 		end
 	end
 	return false
+end
+
+-- 32-bit FNV-1a of the source path: a spec's shard depends on its own path only.
+local function pathHash(path: string): number
+	local h = 0x811c9dc5
+	for i = 1, #path do
+		h = bit32.bxor(h, string.byte(path, i))
+		-- h * 0x01000193 mod 2^32, split so every product stays exact in a double
+		h = (bit32.band(h, 0xffff) * 0x01000193 + bit32.lshift(bit32.band(bit32.rshift(h, 16) * 0x0193, 0xffff), 16)) % 0x100000000
+	end
+	return h
+end
+
+local function inShard(path: string): boolean
+	return shardCount == 1 or pathHash(path) % shardCount == shardIndex - 1
 end
 
 local function formatError(err: any): string
@@ -132,7 +164,7 @@ local specs = {}
 for _, inst in sharedRoot:GetDescendants() do
 	if inst.ClassName == "ModuleScript" and string.match(inst.Name, "%.spec$") then
 		local path = sourcePath(Instance.meta(inst).path)
-		if matchesFilters(path) then
+		if matchesFilters(path) and inShard(path) then
 			table.insert(specs, { inst = inst, path = path })
 		end
 	end
@@ -140,6 +172,13 @@ end
 table.sort(specs, function(a, b)
 	return a.path < b.path
 end)
+
+if listOnly then
+	for _, spec in specs do
+		stdio.write(spec.path .. "\n")
+	end
+	process.exit(0)
+end
 
 if #specs == 0 then
 	stdio.ewrite(color("red", "No spec files found under out/shared" .. (#filters > 0 and " matching the filters" or "") .. ".\n"))
