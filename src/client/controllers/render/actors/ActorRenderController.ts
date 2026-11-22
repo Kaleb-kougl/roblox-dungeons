@@ -28,7 +28,6 @@ import {
 	AFFIX_VIEW,
 	AURA_VIEW,
 	AuraView,
-	BULLET_VIEW,
 	NEW_ENEMY_SPRITE_VIEW,
 	PLAYER_OUTLINE,
 	RENDER_ORDER,
@@ -48,8 +47,6 @@ import {
 	corpseTransparency,
 	degToRad,
 	detonationCorpseView,
-	floorImageOffset,
-	floorImageSize,
 	floorStudsY,
 	isoBasis,
 	lerp,
@@ -72,7 +69,6 @@ import {
 	ShieldFlashWatch,
 	type ActorGroup,
 	type ActorLook,
-	type ActorSpriteInput,
 	type CorpseView,
 	type IsoBasis,
 	type VariantLook,
@@ -90,15 +86,7 @@ import type { JuiceSettings } from "shared/settings";
 import type { CosmeticLook } from "shared/cosmetics";
 import { VIEW_HIT_CLIP_SEC } from "shared/view/dummy";
 import { goldenFlickerTransparency, goldenTicksLeft, isGoldenKind } from "shared/view/golden";
-import {
-	cosmeticClockSec,
-	cosmeticRgb8,
-	dyeForVisual,
-	lookAnimated,
-	lookAt,
-	rgb8Key,
-	type Rgb8,
-} from "shared/view/cosmetics";
+import { cosmeticClockSec, cosmeticRgb8, dyeForVisual, lookAnimated, lookAt, rgb8Key } from "shared/view/cosmetics";
 import { FxTrackerController } from "../../fx/FxTrackerController";
 import { PreloadController } from "../../game/PreloadController";
 import { SimController } from "../../game/SimController";
@@ -106,7 +94,6 @@ import { ThemeController } from "../../game/ThemeController";
 import {
 	buildPlaceholder,
 	destroyModel,
-	renderPart,
 	setModelColor,
 	setModelParent,
 	setModelTransparency,
@@ -114,103 +101,23 @@ import {
 } from "../placeholders";
 import { SPRITE_TINT_NONE, SpriteView } from "../SpriteView";
 import { MotionFx } from "../motionFx";
+import {
+	buildOutline,
+	buildPlayerView,
+	buildRing,
+	color3Of,
+	destroyPlayerView,
+	placeModel,
+	pushFree,
+} from "./actorParts";
+import { HIDDEN, PARKED, PIP_THICKNESS, UNWRITTEN, type ActorView, type PlayerView } from "./actorViews";
 
 const RENDER_STEP = "KV_Actors";
-const PARKED = new CFrame(BULLET_VIEW.parkedStuds[0], BULLET_VIEW.parkedStuds[1], BULLET_VIEW.parkedStuds[2]);
 const TAU = 2 * math.pi;
-const HIDDEN = 1;
-/** A player view's cosmetic colour not written yet (rgb8Key gives -1 for none, >= 0 for a colour). */
-const UNWRITTEN = -2;
-
-/** Pip: a flat diamond (the ui.cursor placeholder turned 45 degrees), this thin, scaled down from its cell. */
-const PIP_THICKNESS = 0.05;
-const PIP_SCALE = 0.35;
 /** Flat floor images (the ring) turn with the camera, so their x axis is the screen's right. */
 const CAMERA_YAW = CFrame.Angles(0, degToRad(CAMERA_YAW_DEG), 0);
 /** Free-list key prefix of pooled sprite views (placeholder models use `${visualId}@${scale}`). */
 const SPRITE_KEY = "sprite:";
-
-/** The co-op ring under a player (`ui.ring.player`, a Decal on a flat invisible Part). */
-interface Ring {
-	readonly part: Part;
-	readonly decal: Decal;
-	/** From the feet to the ring's centre in the camera-yawed frame (the image's pivot; identity when centred). */
-	readonly offset: CFrame;
-	color: Color3 | undefined;
-}
-
-/**
- * One player's view (co-op: one per party member, built on first use): the sprite set of the player's visual
- * (docs/ARCHER.md AR9: their character's), or the placeholder capsule while the pack has no set or its art is not ready
- * (the stand-in, docs/STAGE_ASSETS.md SA17). Each body is built the first time it is drawn and kept until the player's
- * visual changes (a new run as another character); the one not drawn is parked.
- */
-interface PlayerView {
-	/** The theme visual it draws (shared/view playerVisualIdOf: class.vanguard for the Knight, class.ranger the Archer). */
-	readonly visualId: string;
-	model: PlaceholderModel | undefined;
-	sprite: SpriteView | undefined;
-	readonly pip: BasePart;
-	/** Built with the sprite (undefined: the pack has no ring image). */
-	ring: Ring | undefined;
-	/** The body drawn last frame (undefined: none yet). */
-	drawn: "art" | "standIn" | undefined;
-	/** As last written (undefined: rewrite, after a swap). */
-	look: ActorLook | undefined;
-	transparency: number;
-	/** The placeholder capsule sits under the player-outline Model (shared/view playerOutlined; changes reparent). */
-	outlined: boolean;
-	/**
-	 * docs/COSMETICS.md CS5: the colours last written for this player's look (rgb8Key; -2: never written): the dye,
-	 * the rim (an outline item, else playerOutline) and the roll trail, each rebuilt as a Color3 only on a change.
-	 */
-	dyeKey: number;
-	rimKey: number;
-	trailKey: number;
-	rimColor: Color3 | undefined;
-	/**
-	 * The look and sprite set the keys above were last computed for, and whether that look animates (Prismatic): an
-	 * unchanged, still look skips applyLook's colour work entirely (no allocation per frame).
-	 */
-	cosmeticRef: CosmeticLook | undefined;
-	cosmeticVisual: string;
-	cosmeticAnimated: boolean;
-}
-
-interface ActorView {
-	kind: number;
-	id: number;
-	/** The archetype's visual id (data.spriteId): the logical id whose readiness picks art or stand-in. */
-	visualId: string;
-	/** The view could be drawn as art (a sprite input and a pack set); art then follows the id's readiness (SA17). */
-	artCapable: boolean;
-	/** Exactly one of model / sprite is set. */
-	model: PlaceholderModel | undefined;
-	sprite: SpriteView | undefined;
-	/** The archetype's sprite input builder (sprite views only). */
-	spriteInput: ((a: Readonly<ActorState>, alpha: number) => ActorSpriteInput) | undefined;
-	/**
-	 * Seconds of the view-side hit clip (docs/DUMMY_ART.md DD1: shared/view/dummy VIEW_HIT_CLIP_SEC; the training
-	 * dummy's wobble), timed by HitReactSlots.hitAge. Sprite views of those archetypes only; undefined otherwise.
-	 */
-	hitClipSec: number | undefined;
-	/** The free-list key the view goes back to (sprites: set id and draw scale; placeholders: the model's visualId). */
-	poolKey: string;
-	look: VariantLook;
-	transparency: number;
-	corpseTicks: number;
-	/** The placeholder visual has an outline role (enemies and bosses; shared/view actorGroup). Sprite views: the
-	 * SpriteView was built with the rim (plan O4). */
-	hasOutline: boolean;
-	/** The model's pieces are under the enemies Model (the shared Highlight), not corpses. Sprite views: false. */
-	outlined: boolean;
-	/** Hit reaction (docs/FEEL.md J5), placeholder views only: the pieces are under the flashing Model; the push in
-	 * texels and as the world offset added to the model's origin. */
-	flashing: boolean;
-	pushX: number;
-	pushY: number;
-	push: Vector3;
-}
 
 /**
  * Every actor and the player, drawn from sim state (web ActorsView + PlayerView). Per ID, one of two paths:
@@ -415,7 +322,7 @@ export class ActorRenderController implements OnStart {
 		syncSwitch();
 		this.janitor.Add(Workspace.GetAttributeChangedSignal(ACTOR_OUTLINE.enabledAttribute).Connect(syncSwitch));
 		this.startPlayerOutline(pack, players);
-		this.players.push(this.buildPlayerView(pack, players, ACTOR_VIEW.playerVisualId));
+		this.players.push(buildPlayerView(pack, players, ACTOR_VIEW.playerVisualId));
 		this.startHitReact(pack, folder);
 		this.startMotion(folder);
 
@@ -482,10 +389,7 @@ export class ActorRenderController implements OnStart {
 	}
 
 	private place(model: PlaceholderModel, origin: CFrame): void {
-		for (const piece of model.pieces) {
-			this.moveParts.push(piece.part);
-			this.moveCFrames.push(origin.mul(piece.offset));
-		}
+		placeModel(this.moveParts, this.moveCFrames, model, origin);
 	}
 
 	/**
@@ -747,35 +651,6 @@ export class ActorRenderController implements OnStart {
 		return goldenFlickerTransparency(goldenTicksLeft(state, slot), simSec, this.fx.settings().reducedMotion);
 	}
 
-	/** A player's view: the facing pip now; the body (sprite or capsule) on its first draw (usePlayerBody). */
-	private buildPlayerView(pack: ThemePack, folder: Instance, visualId: string): PlayerView {
-		const pipVisual = pack.placeholder(ACTOR_VIEW.facingPipVisualId);
-		const pip = renderPart("Part", false);
-		pip.Name = "FacingPip";
-		pip.Size = new Vector3(pipVisual.size[0] * PIP_SCALE, PIP_THICKNESS, pipVisual.size[0] * PIP_SCALE);
-		pip.Color = pack.visualColor(pipVisual.color);
-		pip.Material = Enum.Material[pipVisual.material];
-		pip.Parent = folder;
-		return {
-			visualId,
-			model: undefined,
-			sprite: undefined,
-			pip,
-			ring: undefined,
-			drawn: undefined,
-			look: undefined,
-			transparency: -1,
-			outlined: false,
-			dyeKey: UNWRITTEN,
-			rimKey: UNWRITTEN,
-			trailKey: UNWRITTEN,
-			rimColor: undefined,
-			cosmeticRef: undefined,
-			cosmeticVisual: "",
-			cosmeticAnimated: false,
-		};
-	}
-
 	/**
 	 * Stand-ins (docs/STAGE_ASSETS.md SA17): makes `mode` the drawn body of `view`, building it on first use (the sprite
 	 * with its ring and the player-outline rim; the capsule under the players group) and parking the other one (a
@@ -833,7 +708,7 @@ export class ActorRenderController implements OnStart {
 			this.visualIds = [];
 		}
 		while (this.players.size() < n) {
-			this.players.push(this.buildPlayerView(pack, folder, this.playerVisualId(state, this.players.size())));
+			this.players.push(buildPlayerView(pack, folder, this.playerVisualId(state, this.players.size())));
 		}
 		const localIndex = this.sim.getViewPlayerIndex(); // co-op spectating: the watched player gets the local ring
 		let rimDrawn = false; // the player-outline Highlight: an outlined capsule is drawn this frame
@@ -851,7 +726,7 @@ export class ActorRenderController implements OnStart {
 				if (view.visualId !== visualId) {
 					// docs/ARCHER.md AR9: this player is another character now (a new run): their own sprite or capsule.
 					destroyPlayerView(view);
-					view = this.buildPlayerView(pack, folder, visualId);
+					view = buildPlayerView(pack, folder, visualId);
 					this.players[i] = view;
 				}
 				if (this.drawPlayer(view, state, i, alpha, pack, i === localIndex)) rimDrawn = true;
@@ -1255,61 +1130,4 @@ export class ActorRenderController implements OnStart {
 		this.freeSprites.clear();
 		this.janitor.Cleanup();
 	}
-}
-
-/** Destroys a player's view (its sprite or capsule, facing pip and ring). */
-/** A cosmetic colour (whole channels) as a Color3, or undefined. */
-function color3Of(c: Rgb8 | undefined): Color3 | undefined {
-	return c !== undefined ? Color3.fromRGB(c.r, c.g, c.b) : undefined;
-}
-
-function destroyPlayerView(view: PlayerView): void {
-	view.sprite?.destroy();
-	if (view.model !== undefined) destroyModel(view.model);
-	view.pip.Destroy();
-	view.ring?.part.Destroy();
-}
-
-function pushFree<T extends defined>(free: Map<string, T[]>, key: string, item: T): void {
-	const list = free.get(key);
-	if (list !== undefined) list.push(item);
-	else free.set(key, [item]);
-}
-
-/**
- * The `ui.ring.player` image as a Decal on a flat, invisible floor Part, sized from the player set's texel density
- * (shared/view floorImageSize), or undefined when the pack has no such image.
- */
-function buildRing(pack: ThemePack, set: SpriteSet, folder: Instance): Ring | undefined {
-	const image = pack.image(ACTOR_VIEW.ringVisualId);
-	if (image === undefined) return undefined;
-	const [w, d] = floorImageSize(image.w, image.h, set.pixelsPerTile);
-	const [ox, oz] = floorImageOffset(image.w, image.h, set.pixelsPerTile, image.pivot);
-	const part = renderPart("Part", false);
-	part.Name = "PlayerRing";
-	part.Transparency = HIDDEN;
-	part.Size = new Vector3(w, SPRITE_VIEW.ringThicknessStuds, d);
-	part.CFrame = PARKED;
-	const decal = new Instance("Decal");
-	decal.Face = Enum.NormalId.Top;
-	decal.Texture = image.assetId;
-	decal.Parent = part;
-	part.Parent = folder;
-	return { part, decal, offset: new CFrame(ox, 0, oz), color: undefined };
-}
-
-/**
- * The shared enemy outline (shared/view ACTOR_OUTLINE): one Highlight on the enemies Model, rim only, in the pack's
- * outline role, hidden behind walls like the bodies.
- */
-function buildOutline(pack: ThemePack, enemies: Model): Highlight {
-	const highlight = new Instance("Highlight");
-	highlight.Name = ACTOR_OUTLINE.highlightName;
-	highlight.FillTransparency = ACTOR_OUTLINE.fillTransparency;
-	highlight.OutlineTransparency = ACTOR_OUTLINE.outlineTransparency;
-	highlight.OutlineColor = pack.color(ACTOR_OUTLINE.role);
-	highlight.DepthMode = Enum.HighlightDepthMode[ACTOR_OUTLINE.depthMode];
-	highlight.Adornee = enemies;
-	highlight.Parent = enemies;
-	return highlight;
 }
