@@ -87,6 +87,8 @@ art/                   atlas and audio manifests and lock files; the packs thems
 l10n/                  localization context and pipeline inputs
 plugin/                the Studio test-runner plugin
 docs/                  one plan per feature, the decision log, the generated FACTS and OPEN_TASKS
+docs/decisions/        six decision records extracted from the log (docs/decisions/README.md)
+ARCHITECTURE.md        the layers, one frame of co-op, the trust boundary, the determinism invariant
 ```
 
 `client/` and `server/` never import each other; shared contracts live in `shared/`. Each directory has a barrel
