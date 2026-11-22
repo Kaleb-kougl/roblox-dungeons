@@ -1,7 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { GuiService, Players, RunService, Workspace } from "@rbxts/services";
 import { Events } from "client/network";
-import { clientStore, selectDailyStatus, selectSelectedCharacter, type RunInfo, type VerdictView } from "client/store";
+import { clientStore, selectDailyStatus, selectSelectedCharacter, type VerdictView } from "client/store";
 import { DEFAULT_CHARACTER, isCharacterId, type CharacterId, type UpgradeLevels } from "shared/characters";
 import { cosmeticLookOf, equippedMapOf, readCosmeticLook, type CosmeticLook } from "shared/cosmetics";
 import type { PartyRunStart, RunFinishVerdict, RunVerdict } from "shared/network";
@@ -20,25 +20,20 @@ import {
 	oversizeSubmission,
 	shouldRequestServerRun,
 	shouldSubmitRun,
-	takeSnapshot,
 	unsubmittedReason,
 	type FrameEvents,
-	type LiveRunSetup,
 	type RunEnding,
 	type RunView,
 } from "shared/play";
 import {
 	DEV_WORLD_KIND,
-	LIVE_RUN_WORLD,
 	TUTORIAL_WORLD_KIND,
 	buildWorldSetup,
 	clampDevFloor,
-	biomeIndexOf,
 	errorMessage,
 	isEndlessWorld,
 	isValidRunSeed,
 	type DevRunOptions,
-	type EndlessRunFloor,
 	type RunFinal,
 	type SegmentVerdict,
 	type RunSubmission,
@@ -54,33 +49,28 @@ import {
 	isDraftOpen,
 	partySize,
 	playerAt,
-	stressConfig,
 	stressTargetFrom,
 	type InputFrame,
 	type PlayerState,
-	type SimConfig,
 	type SimState,
 	type SpacingConfig,
 } from "shared/sim";
 import { TUTORIAL } from "shared/config";
 import { DAILY_WORLD_KIND } from "shared/daily";
 import { RECORDS_POLICY } from "shared/records";
-import { BIOMES, type ThemePack } from "shared/theme";
+import {} from "shared/theme";
 import {
 	LatencyProbe,
 	RENDER_ORDER,
 	SpectateTracker,
 	floorChangeStaged,
-	formatListenerTimes,
 	playerCharacterOf,
-	listenerLabel,
 	spectateCommand,
-	type ListenerTime,
 	type SpectateView,
 	type StageKind,
 } from "shared/view";
 import { codexToastChip } from "shared/view/codex";
-import { HitstopClock, simPacerFor, type FrameAdvance, type FramePacer } from "shared/view/fx";
+import { HitstopClock, simPacerFor } from "shared/view/fx";
 import { GoldenRumourClock } from "shared/view/golden";
 import { DrawnLocalPlayer, PREDICTION_VIEW, type DrawnPlayerOf, type PredictionSmoothing } from "shared/view/predict";
 import { PROGRESSION_VIEW, boardFor, toastFor, type PendingRunClaim } from "shared/view/hud";
@@ -92,9 +82,9 @@ import {
 	partyExitStep,
 	restartForfeits,
 } from "shared/view/menu";
-import { ownedCharacterOr, statusUpgrades } from "shared/view/silver";
+import { ownedCharacterOr } from "shared/view/silver";
 import type { WalletStatus } from "shared/wallet";
-import { ENDLESS_FIRST_FLOOR, type Dungeon, type FloorSecret } from "shared/dungeon";
+import { ENDLESS_FIRST_FLOOR, type FloorSecret } from "shared/dungeon";
 import { InputController } from "./InputController";
 import { ThemeController } from "./ThemeController";
 import {
@@ -107,7 +97,18 @@ import {
 	type StageDriver,
 	type StageWork,
 	type ToastChipSource,
+	FROZEN_PACER,
+	MS_FORMAT,
+	MS_PER_SECOND,
 	buildCoopClient,
+	callListeners,
+	coopSnapshot,
+	makeSoloRun,
+	readSeed,
+	readWorld,
+	runInfo,
+	soloSnapshot,
+	type MadeRun,
 	logArrivals,
 	memberName,
 	publishLatencyProbe,
@@ -125,33 +126,6 @@ export type {
 } from "./sim";
 
 const RENDER_STEP = "KV_Sim";
-const MS_PER_SECOND = 1000;
-/** The KV_Debug stage timing lines' millisecond format (SL0). */
-const MS_FORMAT = "%.1f";
-const WORLDS: ReadonlyArray<RunWorld> = ["game", "endless", "dungeonNoEncounter", "greybox"];
-
-/**
- * Paces a finished tutorial run: every frame frozen, so the run stays on screen (its last state, alpha unchanged) but
- * runs no tick, records nothing and reports no events (LiveRun.frame still resets the frame's events).
- */
-const FROZEN_PACER: FramePacer = {
-	frame(_realDeltaSeconds: number, out: FrameAdvance): FrameAdvance {
-		out.simDelta = 0;
-		out.frozen = true;
-		out.timeScale = 0;
-		out.frozenMs = 0;
-		return out;
-	},
-};
-
-interface MadeRun {
-	readonly run: LiveRun;
-	readonly config: Readonly<SimConfig>;
-	readonly dungeon: Dungeon | undefined;
-	readonly endlessFloor: ((floor: number) => EndlessRunFloor) | undefined;
-	/** RunSetup.characters (docs/ARCHER.md AR4 / AR5 / AR9). */
-	readonly characters: ReadonlyArray<CharacterId> | undefined;
-}
 
 /**
  * A finished ranked run of `world` may raise the new-best baseline while its verdict is pending (pendingRunClaims):
@@ -168,26 +142,6 @@ function claimsRecords(debug: boolean, world: RunWorldKind): boolean {
  */
 function claimsDaily(debug: boolean, world: RunWorldKind): boolean {
 	return !debug && world === DAILY_WORLD_KIND;
-}
-
-/** KV_World, else the place's play mode (shared/run LIVE_RUN_WORLD: "endless" unless shared/config PLAY_MODE is "m1"). */
-function readWorld(): RunWorld {
-	const raw = Workspace.GetAttribute(RUN_ATTRIBUTES.world);
-	return typeIs(raw, "string") && WORLDS.includes(raw as RunWorld) ? (raw as RunWorld) : LIVE_RUN_WORLD;
-}
-
-function readSeed(): number {
-	const raw = Workspace.GetAttribute(RUN_ATTRIBUTES.seed);
-	if (raw === undefined) return DEFAULT_RUN_SEED;
-	if (isValidRunSeed(raw)) return raw;
-	warn(`[Sim] ${RUN_ATTRIBUTES.seed} = ${tostring(raw)} is not an integer in [0, 2^32); using ${DEFAULT_RUN_SEED}`);
-	return DEFAULT_RUN_SEED;
-}
-
-function placeKeyFor(pack: ThemePack, dungeon: Dungeon | undefined): string {
-	if (dungeon === undefined) return "";
-	const biome = BIOMES.find((b) => b.forgeTheme === dungeon.params.themeKey);
-	return biome !== undefined ? pack.biome(biome.id).nameKey : "";
 }
 
 /**
@@ -931,7 +885,7 @@ export class SimController implements OnStart {
 				this.leftPartyRun = true;
 				clientStore.setRunLeft(ctx.counter);
 				this.hudTimer = HUD_SNAPSHOT_INTERVAL_SEC;
-				clientStore.setSnapshot(this.coopSnapshot(coop));
+				clientStore.setSnapshot(coopSnapshot(coop, this.ctx, this.getSpectateView(), this.rumour.chip()));
 				return;
 			}
 			coop.stop();
@@ -1212,7 +1166,10 @@ export class SimController implements OnStart {
 		this.frozen = false;
 		this.ctx = ctx;
 		this.rankedRuns.set(start.runId, { run: this.counter, decided: false });
-		clientStore.startRun(this.runInfo(this.theme.getPack(), ctx, ""), this.coopSnapshot(client));
+		clientStore.startRun(
+			runInfo(this.theme.getPack(), ctx, "", this.debug),
+			coopSnapshot(client, this.ctx, this.getSpectateView(), this.rumour.chip()),
+		);
 		publishLatencyProbe(ctx, client, this.drawnLocal.isActive(), this.drawnLocal.snapCount());
 		print(
 			`[Sim] co-op run ${this.counter} started: ${start.runId} seed ${start.seed}, player ${localIndex + 1} of ` +
@@ -1335,35 +1292,9 @@ export class SimController implements OnStart {
 		}
 		if (this.hudTimer >= HUD_SNAPSHOT_INTERVAL_SEC) {
 			this.hudTimer = 0;
-			clientStore.setSnapshot(this.coopSnapshot(coop));
+			clientStore.setSnapshot(coopSnapshot(coop, this.ctx, this.getSpectateView(), this.rumour.chip()));
 			publishLatencyProbe(ctx, coop, this.drawnLocal.isActive(), this.drawnLocal.snapCount());
 		}
-	}
-
-	/** The co-op HUD snapshot: this client's own items, the vitals and spectate bar of the player the views follow. */
-	private coopSnapshot(coop: LockstepClient) {
-		const over = coop.isOver();
-		const ctx = this.ctx;
-		const view = ctx !== undefined && ctx.coop === coop ? this.getSpectateView() : undefined;
-		// The spectate bar only while the run goes on: after a wipe or a server-ended run the tracker still watches the
-		// last player (the camera and vitals stay there) but the run-over panel takes over.
-		const watched = view !== undefined && view.active && !over ? view.viewIndex : undefined;
-		return takeSnapshot(coop.state, {
-			paused: false,
-			outcome: over ? "dead" : "playing",
-			recordedTicks: coop.state.tick,
-			kills: coop.kills,
-			hitsTaken: coop.hitsTaken,
-			endTick: coop.state.tick,
-			playerIndex: coop.localIndex,
-			vitalsIndex: view?.viewIndex,
-			spectate:
-				view !== undefined && watched !== undefined
-					? { name: ctx?.memberNames[watched] ?? "", position: view.position, count: view.count }
-					: undefined,
-			config: coop.config,
-			goldenRumour: this.rumour.chip(),
-		});
 	}
 
 	/** While a `startRun` is pending: starts the run once answered or timed out. True while still waiting. */
@@ -1551,8 +1482,8 @@ export class SimController implements OnStart {
 		this.ctx = ctx;
 		if (runId !== undefined) this.rankedRuns.set(runId, { run: this.counter, decided: false });
 
-		const info = this.runInfo(pack, ctx, notice);
-		clientStore.startRun(info, this.snapshot(run));
+		const info = runInfo(pack, ctx, notice, this.debug);
+		clientStore.startRun(info, soloSnapshot(run, this.rumour.chip()));
 		print(
 			`[Sim] run ${this.counter} started: seed ${seed}, world ${world}${atBossDoor ? ", boss door" : ""}` +
 				(runId !== undefined ? `, ranked run ${runId}` : "") +
@@ -1574,52 +1505,13 @@ export class SimController implements OnStart {
 	/** The run-start listeners, with the context current now (a floor change since the cut is in it). */
 	private notifyRunStarted(): void {
 		const ctx = this.ctx;
-		if (ctx !== undefined) this.callListeners(this.listeners, ctx, `run ${ctx.counter} start`);
+		if (ctx !== undefined) callListeners(this.listeners, ctx, `run ${ctx.counter} start`, this.debug);
 	}
 
 	/** The floor-change listeners, with the context current now. */
 	private notifyFloorChanged(): void {
 		const ctx = this.ctx;
-		if (ctx !== undefined) this.callListeners(this.floorListeners, ctx, `floor ${ctx.floor}`);
-	}
-
-	/**
-	 * Calls `list` in order with `ctx`. KV_Debug (docs/STAGE_LOADER.md SL0): each call timed with os.clock and printed
-	 * in one line, labelled by the listener's script (`debug.info(f, "s")`: "World" for WorldController); nothing extra
-	 * otherwise.
-	 */
-	private callListeners(list: ReadonlyArray<RunListener>, ctx: RunContext, what: string): void {
-		if (!this.debug) {
-			for (const listener of list) listener(ctx);
-			return;
-		}
-		const times = new Array<ListenerTime>();
-		const start = os.clock();
-		for (const listener of list) {
-			const t0 = os.clock();
-			listener(ctx);
-			const [source] = debug.info(listener, "s");
-			times.push({ label: listenerLabel(source ?? "?"), ms: (os.clock() - t0) * MS_PER_SECOND });
-		}
-		const total = string.format(MS_FORMAT, (os.clock() - start) * MS_PER_SECOND);
-		print(`[Stage] listeners (${what}, ${total} ms): ${formatListenerTimes(times)}`);
-	}
-
-	private runInfo(pack: ThemePack, ctx: RunContext, notice: string): RunInfo {
-		return {
-			seed: ctx.seed,
-			world: ctx.world,
-			placeKey: placeKeyFor(pack, ctx.dungeon),
-			dungeonName: ctx.dungeon?.name ?? "",
-			debug: this.debug,
-			run: ctx.counter,
-			notice,
-			biome: biomeIndexOf(ctx.dungeon),
-			coop: ctx.coop !== undefined,
-			lobbyId: ctx.lobbyId,
-			character: playerCharacterOf(ctx.characters, ctx.run.state, ctx.localIndex) ?? "",
-			floorModifier: floorModifierOf(ctx),
-		};
+		if (ctx !== undefined) callListeners(this.floorListeners, ctx, `floor ${ctx.floor}`, this.debug);
 	}
 
 	/**
@@ -1633,7 +1525,9 @@ export class SimController implements OnStart {
 		const moved: RunContext = { ...ctx, floor, config: w.config, dungeon: w.dungeon };
 		moved.spectate?.reset(); // everyone dead and still here comes back at the entrance
 		this.ctx = moved;
-		clientStore.changeFloor(this.runInfo(this.theme.getPack(), moved, clientStore.getState().game.run.notice));
+		clientStore.changeFloor(
+			runInfo(this.theme.getPack(), moved, clientStore.getState().game.run.notice, this.debug),
+		);
 		print(`[Sim] run ${moved.counter}: floor ${floor} (${w.dungeon.name}${w.bossFloor ? ", boss floor" : ""})`);
 		// The views rebuild under the stage loader's card (a frame later), except the tutorial's ending change.
 		const work: StageWork = { notify: () => this.notifyFloorChanged(), floor };
@@ -1645,11 +1539,7 @@ export class SimController implements OnStart {
 		}
 	}
 
-	/**
-	 * Builds the run's world (the world registry: the same builder as the server's) and a LiveRun (segmented when
-	 * `runId` is set: one segment per endless floor, cut on the floor-change tick); returns the error message when
-	 * the sim refuses the config. `scoring` adds M2 scoring to a non-endless world (KV_Scoring, never submitted).
-	 */
+	/** The solo build (sim/solo.ts makeSoloRun) with this controller's dev options, wallet, ranked upgrades and character. */
 	private makeRun(
 		seed: number,
 		atBossDoor: boolean,
@@ -1658,52 +1548,20 @@ export class SimController implements OnStart {
 		runId: string | undefined,
 		scoring: boolean,
 	): MadeRun | string {
-		const [ok, result] = pcall(() => {
-			const dev = world === DEV_WORLD_KIND ? this.devRun : undefined;
-			// docs/ARCHER.md AR5: the run's character (worlds without characters ignore it; the tutorial is the Knight's).
-			// docs/SILVER.md SV6: a ranked run is built with the session's upgrade levels; an unranked one with none; a
-			// dev run with its panel's choice (`mine`: the wallet's own levels, buildDevRunConfig reads entry 0).
-			const wallet = this.walletStatus();
-			const upgrades =
-				runId !== undefined && this.rankedUpgrades !== undefined
-					? [this.rankedUpgrades]
-					: dev !== undefined
-					? [statusUpgrades(wallet)]
-					: undefined;
-			// docs/SILVER.md SV18: a run the server did not issue (the unranked fallback, a debug or dev run) never builds
-			// a character the wallet does not own; a ranked run plays the server's own echo of the pick.
-			const character =
-				runId !== undefined ? this.runCharacter : ownedCharacterOr(wallet, this.runCharacter, true);
-			const setup = buildWorldSetup(world, seed, {
-				atBossDoor,
-				dev,
-				characters: [character],
-				upgrades,
-			});
-			const spawn = setup.spawn ?? { x: 0, z: 0 };
-			const stressCfg = stressConfig(stress, spawn.x, spawn.z);
-			const config: Readonly<SimConfig> =
-				stressCfg !== undefined ? { ...setup.config, stress: stressCfg } : setup.config;
-			const scored: Readonly<SimConfig> =
-				scoring && config.scoring === undefined ? { ...config, scoring: {} } : config;
-			const runSetup: LiveRunSetup = {
-				seed,
-				spawnX: spawn.x,
-				spawnZ: spawn.z,
-				config: scored,
-				atBossDoor,
-				runId,
-				segmentCutAfterTick: (state) => state.events.floorChanged !== 0,
-			};
-			return {
-				run: new LiveRun(runSetup),
-				config: scored,
-				dungeon: setup.dungeon,
-				endlessFloor: setup.endlessFloor,
-				characters: setup.characters,
-			};
-		});
-		return ok ? (result as MadeRun) : errorMessage(result);
+		return makeSoloRun(
+			{
+				devRun: this.devRun,
+				wallet: this.walletStatus(),
+				rankedUpgrades: this.rankedUpgrades,
+				runCharacter: this.runCharacter,
+			},
+			seed,
+			atBossDoor,
+			stress,
+			world,
+			runId,
+			scoring,
+		);
 	}
 
 	private frame(dt: number): void {
@@ -1811,7 +1669,7 @@ export class SimController implements OnStart {
 		}
 		if (this.hudTimer >= HUD_SNAPSHOT_INTERVAL_SEC) {
 			this.hudTimer = 0;
-			clientStore.setSnapshot(this.snapshot(run));
+			clientStore.setSnapshot(soloSnapshot(run, this.rumour.chip()));
 		}
 	}
 
@@ -1875,19 +1733,6 @@ export class SimController implements OnStart {
 			);
 		}
 		clientStore.expireToasts(now);
-	}
-
-	private snapshot(run: LiveRun) {
-		return takeSnapshot(run.state, {
-			paused: run.isPaused(),
-			outcome: run.outcome(),
-			recordedTicks: run.ticks(),
-			kills: run.kills,
-			hitsTaken: run.hitsTaken,
-			endTick: run.endTick(),
-			config: run.setup.config,
-			goldenRumour: this.rumour.chip(),
-		});
 	}
 
 	private replayCheck(run: LiveRun): void {
@@ -2063,7 +1908,7 @@ export class SimController implements OnStart {
 				coop.end(v.code ?? "ended");
 				entry.ending = "ended";
 				this.hudTimer = HUD_SNAPSHOT_INTERVAL_SEC;
-				clientStore.setSnapshot(this.coopSnapshot(coop));
+				clientStore.setSnapshot(coopSnapshot(coop, this.ctx, this.getSpectateView(), this.rumour.chip()));
 				warn(
 					`[Sim] co-op run ${entry.run} (${v.runId}) ended by the server: ${v.code ?? ""} ${v.reason ?? ""}`,
 				);
