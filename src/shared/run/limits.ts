@@ -194,6 +194,12 @@ export const RUN_START_RATE = table.freeze({ count: 10, windowSeconds: 60 });
 /** Segments per player (sliding window). An honest client sends one per floor; going over rejects the run. */
 export const SEGMENT_SUBMIT_RATE = table.freeze({ count: 30, windowSeconds: 60 });
 
+/**
+ * `finishRun` calls per player (sliding window). An honest client sends one per run, so twice RUN_START_RATE leaves
+ * room for a resend; a call over it is dropped before the run is looked up (docs/SERVER_FINDINGS.md SFD4).
+ */
+export const RUN_FINISH_RATE = table.freeze({ count: 20, windowSeconds: 60 });
+
 /** Largest party (co-op) a run session accepts: the sim's (shared/sim partyData.ts). */
 export const MAX_PARTY_SIZE = SIM_MAX_PARTY_SIZE;
 

@@ -185,7 +185,7 @@ The client side is `src/client/network.ts` (`GlobalEvents.createClient`); `SimCo
 | `REPLAY_CONCURRENCY` | 1 | Server-wide replay queue (`WorkQueue`, FIFO): concurrent players' replays run one after another instead of stacking CPU time on the same frames. The log line shows the queue wait. |
 | `SETTINGS_REQUEST_RATE` | 20 per 10 s per player | Settings remotes. |
 | `ONBOARDING_REQUEST_RATE` / `TUTORIAL_START_RATE` / `TUTORIAL_STEP_RATE` / `TUTORIAL_FINISH_RATE` / `TUTORIAL_REPORT_RATE` | 10 / 3 / 30 / 10 / 40 per 10 s per player | Onboarding remotes (`shared/onboarding/config.ts`): request / started (over it the attempt still opens, unlogged) / steps / finish (its own budget) / lesson + stuck + onboardingReport together. Tutorial telemetry is also capped per player per session (`TUTORIAL_TELEMETRY.maxAttemptsLoggedPerSession` 3, `maxEventsPerSession` 240), see "Onboarding (tutorial)". |
-| `RECORDS_REQUEST_RATE` | 10 per 10 s per player | `requestRecords` (`shared/records/config.ts`); a dropped request still answers with the cached status. |
+| `RECORDS_REQUEST_RATE` | 10 per 10 s per player | `requestRecords` (`shared/records/config.ts`); a request over it is logged and dropped unanswered (docs/SERVER_FINDINGS.md SFD6). |
 | `CODEX.claimRate` | 10 per 10 s per player, each of `requestCodex` / `codexClaim` / `codexViewed` | `shared/codex/config.ts`; a call over it is dropped unanswered (a dropped claim or view is lost); the drop warnings are throttled to `CODEX.warnRate` (1 per 10 s per player). Claims at most `CODEX.claimMaxItems` 16 items, views `viewedMaxIds` 64 ids a call (longer: refused whole). |
 | `INVITE_PROMPT_RATE` / `INVITE_RECIPIENTS_RATE` / `INVITE_ELIGIBILITY_RATE` | 5 / 10 / 10 per 60 s per player | Roblox invite remotes (`shared/invite/config.ts`); a spent prompt budget is a `rateLimited` refusal, the others drop quietly. |
 | Seeds | integers in [0, 2^32) | What the web build's `seedFromQuery` produces. |
@@ -268,7 +268,7 @@ client                                                server (RunSessionService)
                worldKind, members, characterId?, code? })
   (no answer in RUN_START_TIMEOUT_SECONDS or refused: an unranked run on the local seed, old submitRun path)
   play; LiveRun cuts a segment on a floor change (hook) or every SEGMENT_FALLBACK_TICKS
-  submitSegment({ runId, index, startTick,     ───────►  owner check -> rate limit (SEGMENT_SUBMIT_RATE) ->
+  submitSegment({ runId, index, startTick,     ───────►  rate limit (SEGMENT_SUBMIT_RATE) -> owner check ->
                   recording, claimedEndHash,             validator.offer (cheap checks, queued) -> pump: replay
                   checkpointHashes })                    through RunValidationService's replay queue (replayTurn:
                                                          at most one segment and REPLAY_TURN_MAX_TICKS per queue
@@ -318,7 +318,7 @@ client                                                server (RunSessionService)
 | `MAX_PENDING_SEGMENT_TICKS` | 72,000 |
 | `SEGMENT_CLOCK_SLACK_SECONDS` | 30 |
 | `RUN_SESSION_IDLE_SECONDS` / `RUN_SESSION_MAX_AGE_SECONDS` | 30 min / 8 h (open sessions only; a finished one validates to the end) |
-| `RUN_START_RATE` / `SEGMENT_SUBMIT_RATE` | 10 / 30 per 60 s per player |
+| `RUN_START_RATE` / `SEGMENT_SUBMIT_RATE` / `RUN_FINISH_RATE` | 10 / 30 / 20 per 60 s per player. Each is taken before the run is looked up: over it, a segment of the player's own solo run rejects that run, and any other segment or a `finishRun` is dropped unanswered (docs/SERVER_FINDINGS.md SFD4) |
 | `REPLAY_TURN_MAX_TICKS` | 1,800 (30 s of play) replayed per queue turn at most; a longer segment resumes on the session's next turn |
 | `MAX_PARTY_SIZE` | 8 |
 | `LOBBY_REQUEST_RATE` / `LOBBY_INVITE_RATE` / `LOBBY_LIST_REQUEST_RATE` (shared/lobby) | 20 lobby requests per 10 s / 10 `lobbyInvite` per 60 s / 10 `lobbyRequestList` per 10 s per player |
@@ -1021,7 +1021,7 @@ was not credited, or whose records are unknown, gets no `records`. The new numbe
 already spawned and retries on autosave / leave / shutdown if it fails (the verdict does not wait for it).
 
 **Remotes.** `records(RecordsStatus)` is sent once after the join load (and seed) ends, again after a verdict raised a
-record, and in answer to `requestRecords` (`RECORDS_REQUEST_RATE`, 10 per 10 s, logged only: a request answers with the
+record, and in answer to `requestRecords` (`RECORDS_REQUEST_RATE`, 10 per 10 s; over it the request is logged and dropped: a request answers with the
 current status once the join load and seed ended; an earlier one is not answered, the join-end push answers it, so
 the client never sees a pre-seed status).
 
