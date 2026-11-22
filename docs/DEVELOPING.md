@@ -26,7 +26,7 @@ atlases or audio (`art:build`, `audio:build`) needs the licensed packs under `ar
 
 | Script | What it does |
 |---|---|
-| `npm run verify` | The pre-merge gate, 14 steps in order: `typecheck`, `lint`, `check:docs`, `docs:check`, `check:assets`, `check:autolocalize`, `check:kvnames`, `test:art`, `test:checks`, `test:l10n`, `build`, `check:locals`, `facts:check`, `test:only` |
+| `npm run verify` | The pre-merge gate, 15 steps in order: `typecheck`, `lint`, `format:check`, `check:docs`, `docs:check`, `check:assets`, `check:autolocalize`, `check:kvnames`, `test:art`, `test:checks`, `test:l10n`, `build`, `check:locals`, `facts:check`, `test:only` |
 | `npm test` | Build, then run every `src/shared/**/*.spec.ts` headlessly (Lune + real Jest modules) |
 | `npm run test:only -- sim/rng` | Rerun specs without rebuilding; arguments filter by source path. `--census <path>` runs an opt-in census spec's full sample |
 | `npm run build` | Generate the fixture modules, compile `src/` to `out/` with rbxtsc |

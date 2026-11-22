@@ -5,7 +5,7 @@ fails when this file is stale, when the code holds a `KV_*` string the registry 
 no longer used (`scripts/check-kv-names.js`). To add a name: use it in the code, add its entry to the registry, run
 the command above.
 
-175 names: debug switches 74, attributes the game sets 1, datastores 5, instance names 77, render steps and input actions 17, spec-only names 1.
+173 names: debug switches 73, attributes the game sets 1, datastores 5, instance names 77, render steps and input actions 16, spec-only names 1.
 
 What a switch can reach: a Workspace attribute set on the server (Studio's Explorer or command bar, a server
 script) replicates to every client; one set by a client stays on that client. The server reads only its own copy,
@@ -77,7 +77,6 @@ Attributes a developer sets by hand (Explorer -> Workspace -> Attributes, or the
 | `KV_SkipMenu` | boolean | client | wherever it is set | Skips the main menu on join and starts a solo run at once. | `shared/play/config.ts` | docs/CLIENT.md |
 | `KV_SpawnBoss` | boolean | client | with `KV_Debug` | With KV_Debug, outside endless: start just outside the boss room's door. A live server rejects such a run. | `shared/play/config.ts` | docs/CLIENT.md |
 | `KV_SpikeBullets` | boolean | client | wherever it is set | Runs the bullet-count spike. Overrides `SPIKE_DEFAULTS.bullets`. Also the spike's Workspace folder. | `shared/config/spikes.ts` | docs/SPIKES.md |
-| `KV_SpikeCamera` | boolean | client | wherever it is set | Runs the camera spike. Overrides `SPIKE_DEFAULTS.camera`. Also the spike's Workspace folder and render step. | `shared/config/spikes.ts` | docs/SPIKES.md |
 | `KV_SpikePreload` | boolean | client | wherever it is set | Runs the preload spike P0 on join; the real preload queue waits for its batches. Overrides `SPIKE_DEFAULTS.preload`. Also the spike's ScreenGui. | `shared/config/spikes.ts` | docs/SPIKES.md |
 | `KV_SpikePreloadInstancesFirst` | boolean | client | wherever it is set | Preload spike: run the instance batches before the string ones. | `shared/config/spikes.ts` | docs/SPIKES.md |
 | `KV_StageAssetAudit` | boolean | client | wherever it is set | Records every logical id the views resolve during a floor and prints those missing from the floor's stage manifest. | `shared/play/config.ts` | docs/STAGE_ASSETS.md |
@@ -216,7 +215,6 @@ Names passed to `BindToRenderStep` / `ContextActionService:BindAction` (they sho
 | `KV_Sightings` | SightingController's render step (first-sighting cards). | `client/controllers/game/SightingController.ts` |  |
 | `KV_SilverHud` | SilverHudController's render step. | `client/controllers/fx/SilverHudController.ts` |  |
 | `KV_Sim` | SimController's render step: the sim's frame. | `client/controllers/game/SimController.ts` | docs/CLIENT.md |
-| `KV_SpikeCameraMove` | Camera spike: its ContextActionService move action. | `client/controllers/spikes/CameraSpikeController.ts` |  |
 | `KV_StageRenderEnd` | StageController's render step bound last in the frame. | `client/controllers/game/StageController.tsx` |  |
 | `KV_Telegraphs` | TelegraphController's render step. | `client/controllers/render/TelegraphController.ts` | docs/CLIENT.md |
 | `KV_TreasureToasts` | TreasureToastController's render step. | `client/controllers/ui/TreasureToastController.ts` | docs/TREASURE.md |

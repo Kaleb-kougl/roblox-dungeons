@@ -1058,24 +1058,6 @@
 			"doc": "docs/SPIKES.md",
 			"description": "Runs the bullet-count spike. Overrides `SPIKE_DEFAULTS.bullets`. Also the spike's Workspace folder."
 		},
-		"KV_SpikeCamera": {
-			"kind": "switch",
-			"also": [
-				"instance",
-				"binding"
-			],
-			"value": "boolean",
-			"side": "client",
-			"gate": "none",
-			"where": "shared/config/spikes.ts",
-			"doc": "docs/SPIKES.md",
-			"description": "Runs the camera spike. Overrides `SPIKE_DEFAULTS.camera`. Also the spike's Workspace folder and render step."
-		},
-		"KV_SpikeCameraMove": {
-			"kind": "binding",
-			"where": "client/controllers/spikes/CameraSpikeController.ts",
-			"description": "Camera spike: its ContextActionService move action."
-		},
 		"KV_SpikeHud": {
 			"kind": "instance",
 			"where": "client/controllers/spikes/SpikeHudController.tsx",

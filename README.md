@@ -96,7 +96,7 @@ prediction (problem 3) was built instead. The full record, including the harness
 
 ## How it stays correct at this size
 
-`npm run verify` is the gate before every merge. Its 14 steps include:
+`npm run verify` is the gate before every merge. Its 15 steps include:
 
 - typecheck and lint at zero warnings;
 - the headless spec suite: real Jest modules under [Lune](https://github.com/lune-org/lune), long statistical
