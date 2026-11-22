@@ -33,6 +33,7 @@ import {
 	isoBasis,
 	lerp,
 	newEnemyKinds,
+	placeholderDrawScale,
 	outlineSwitchOn,
 	scaledSpriteLayout,
 	studsX,
@@ -403,11 +404,12 @@ export class ActorRenderController implements OnStart {
 			};
 		} else {
 			const visual = pack.placeholder(id);
-			let scale = def.data.spriteScale ?? 1;
-			if (def.data.boss === true && visual.cellPx.w * scale < ACTOR_VIEW.bossMinDrawPx) {
-				scale = ACTOR_VIEW.bossMinDrawPx / visual.cellPx.w;
-			}
-			scale *= affixScale;
+			const scale = placeholderDrawScale(
+				def.data.spriteScale,
+				def.data.boss === true,
+				visual.cellPx.w,
+				affixScale,
+			);
 			const key = `${id}@${scale}`;
 			const hasOutline = visual.outline !== undefined;
 			const group = actorGroup(hasOutline, a.alive !== 0);

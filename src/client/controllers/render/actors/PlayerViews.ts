@@ -11,16 +11,7 @@ import { Workspace } from "@rbxts/services";
 import { clientStore, selectDisplay } from "client/store";
 import { CAMERA_YAW_DEG, STUDS_PER_TILE } from "shared/config";
 import type { CosmeticLook } from "shared/cosmetics";
-import {
-	BOW_WEAPON_ID,
-	NO_WEAPON,
-	ROLL_TICKS,
-	SWORD,
-	partySize,
-	weaponIndex,
-	type PlayerState,
-	type SimState,
-} from "shared/sim";
+import { BOW_WEAPON_ID, NO_WEAPON, SWORD, partySize, weaponIndex, type PlayerState, type SimState } from "shared/sim";
 import type { SpriteSet, ThemePack } from "shared/theme";
 import {
 	ACTOR_VIEW,
@@ -36,6 +27,7 @@ import {
 	playerOutlined,
 	playerSpriteInputFor,
 	playerVisualIdOf,
+	rollTumbleTurn,
 	studsX,
 	studsZ,
 	type ActorLook,
@@ -465,7 +457,7 @@ export class PlayerViews {
 		const halfH = model.size.Y / 2;
 		if (rolling) {
 			// Tumble forward once over the roll, around the capsule's middle.
-			const t = math.clamp((ROLL_TICKS - p.rollTicks + alpha) / ROLL_TICKS, 0, 1);
+			const t = rollTumbleTurn(p.rollTicks, alpha);
 			origin = origin
 				.mul(new CFrame(0, halfH, 0))
 				.mul(CFrame.Angles(-t * TAU, 0, 0))
