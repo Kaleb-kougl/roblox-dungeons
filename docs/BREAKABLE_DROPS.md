@@ -151,8 +151,9 @@ break; re-run the replay bench. Daily boards: the loot is part of the day's seed
 - [x] **BL6. View.** (code-complete; Studio check pending) Glint, hop, fizzle, cue, `KV_LootDebug`. -> Verify: headless specs for the pure parts; Studio:
   loaded pieces glint on every biome and never over a bullet, the hop reads, reduced motion still, 2 players see the
   same glints and the same gem.
-- [ ] **BL7. Vale audio.** Pick a Ninja Adventure clip (Audio/Sounds `Bonus`), `art/audio.json`, `audio:build`, upload,
+- [x] **BL7. Vale audio.** Pick a Ninja Adventure clip (Audio/Sounds `Bonus`), `art/audio.json`, `audio:build`, upload,
   paste the id. -> Verify: `audio:build`, `test:art`, the vale validator.
+  *Done 2026-11-21 (docs/OPEN_TASKS_TRIAGE.md): `sfx.breakable.loot` has its layout and `sfx-breakable-loot.ogg` its id in `packs/vale/assetIds.ts`.*
 - [x] **BL8. Docs.** `CLAUDE.md` decision log line (and this file's docs-table row), `src/shared/sim/README.md` (hook,
   hash), docs/CLIENT.md (glint, debug attribute), docs/DECOR.md B5 and docs/BOOSTS.md "Out of scope" point here.
   -> Verify: `npm run verify`.

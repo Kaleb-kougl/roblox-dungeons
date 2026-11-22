@@ -69,6 +69,19 @@ atlases or audio (`art:build`, `audio:build`) needs the licensed packs under `ar
 | `npm run l10n:import -- <table.csv>` | The downloaded cloud table to `shared/theme/locales/*.ts` and `l10n/report.md` |
 | `npm run l10n:check` | (after build) translation coverage, stale and context report |
 
+## Commit and pull request conventions
+
+- **Subject**: under 72 characters, imperative ("Add", "Fix", "Move"), naming the area first where it helps
+  (`Wallet: refuse a stale transaction`).
+- **Cite the plan**: the plan doc and task id go in the subject or the body (`docs/SILVER.md SV7`), so a commit can be
+  traced to the task it closes and the task to its commits.
+- **One task per commit.** A pure move, a behaviour change and a re-recorded pin are three commits, in that order.
+- **Body**: what changed and why, then what was verified and how (`npm run verify`, the specs run, an `out:digest`
+  comparison for a move or a comment-only change). Say plainly what was not verified: anything that needs Roblox
+  Studio, two clients or a device goes to its plan's Studio check, and docs/STUDIO_PASS.md collects those.
+- **Pull requests** carry the same three things: the plan and tasks, what changed, what was verified and what is still
+  owed in Studio. Tick a task in its plan doc in the commit that finishes it and run `npm run tasks:open`.
+
 ## Layout
 
 ```
