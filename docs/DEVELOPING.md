@@ -114,3 +114,7 @@ Specs are `*.spec.ts` next to the code, written against `@rbxts/jest-globals`. O
 run headlessly (client and server code need the engine). Modules under `shared/sim` and `shared/dungeon` load in
 a restricted environment where clocks, RNG and Roblox globals throw `[determinism]`. `CLAUDE.md` has the full
 rules: what is unavailable headlessly, how fixtures are imported, how a long census is sharded.
+
+Not covered by any automated test: the Flamework controllers and services themselves (Instances, rendering, input,
+DataStore calls). Keep them as wiring and put the rule in `src/shared` with a spec; `docs/SERVER_CENSUS.md` lists
+what each service trusts and which spec covers it, and `docs/STUDIO_PASS.md` is the hand check for the rest.

@@ -1670,3 +1670,20 @@ Superseded in older entries (kept as written):
   (`scripts/typedoc-doc-links.mjs`) links every `docs/NAME.md` cited in a comment or a doc (DC11). Open: a second
   look at the comments flagged as uncertain; `npm run verify` and
   `npm run docs` not yet run on the owner's Mac.
+
+- **Presentation pass (2026-11-21, docs/PRESENTATION.md).** No gameplay change: no sim, hash group, wire format,
+  ruleset or fixture touched. Five pure rules moved from `RunSessionService`, `RunValidationService` and
+  `LobbyService` into `shared/leaderboard/posting.ts`, `shared/run/serviceRules.ts` and
+  `shared/lobby/friendCache.ts` with specs, bodies unchanged (docs/SERVER_CENSUS.md). `SimController` keeps its
+  path and Flamework id; its contracts, client builds, HUD feed and submissions are in
+  `client/controllers/game/sim/`, the drawn local player in `shared/view/predict` (docs/SIM_CONTROLLER.md); three
+  controllers' `flamework:implements` ids now name `sim/context@...`. The actor renderer is
+  `client/controllers/render/actors/` and its Flamework id moved with it (docs/ACTOR_RENDER.md). Client logs go
+  through `client/log` with the text unchanged; ESLint forbids the globals `print` / `warn` in `src/client` and
+  `src/server`. Every `KV_*` name is registered (`scripts/kv-names.json`, `check:kvnames`, generated
+  docs/DEBUG_SWITCHES.md). Spike B (iso camera) left the tree with `KV_SpikeCamera`; the other seven spikes are
+  open and stay. The package, Rojo projects, place file and test plugin are named Roblox Dungeons; stored
+  identifiers keep `KV_` / `KALEB_VALE_MVP_PARAMS` / `vale`. The private source project is described, never
+  named. `verify` gains `format:check` and `check:kvnames` (15 steps). `docs/` stays flat with an index
+  (`docs/README.md`), not subfolders (SED6). Open: the owner's Studio checks of both splits, the ten findings in
+  docs/PRESENTATION.md, the Studio pass (docs/STUDIO_PASS.md).

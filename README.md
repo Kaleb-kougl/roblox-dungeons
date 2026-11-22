@@ -111,6 +111,12 @@ prediction (problem 3) was built instead. The full record, including the harness
 `npm run out:digest` hashes the compiled output with comments stripped, which proves a refactor or a
 comment-only change did not move behaviour.
 
+What no automated test covers: the engine wiring in `src/client` and `src/server` (Instances, rendering, input,
+DataStore round trips). Those layers are kept thin on purpose: the rules they apply live in `src/shared` with
+specs, and [`docs/SERVER_CENSUS.md`](docs/SERVER_CENSUS.md) maps every remote and every server write to the
+spec behind it. The wiring itself is checked by hand in Studio; [`docs/STUDIO_PASS.md`](docs/STUDIO_PASS.md) is
+that checklist, and not all of it has been run.
+
 ## Also in here
 
 - **17 languages** from the Roblox cloud table, imported into validated tables, with a pseudo-locale for layout
