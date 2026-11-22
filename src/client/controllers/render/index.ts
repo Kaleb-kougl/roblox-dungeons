@@ -14,7 +14,7 @@ export * from "./DashLayer";
 export * from "./bossAct1";
 export * from "./demonlord";
 export * from "./BulletRenderController";
-export * from "./ActorRenderController";
+export * from "./actors";
 export * from "./WeaponViewController";
 export * from "./TelegraphController";
 export * from "./AffixRingController";

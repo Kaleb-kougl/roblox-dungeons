@@ -99,10 +99,10 @@ import {
 	rgb8Key,
 	type Rgb8,
 } from "shared/view/cosmetics";
-import { FxTrackerController } from "../fx/FxTrackerController";
-import { PreloadController } from "../game/PreloadController";
-import { SimController } from "../game/SimController";
-import { ThemeController } from "../game/ThemeController";
+import { FxTrackerController } from "../../fx/FxTrackerController";
+import { PreloadController } from "../../game/PreloadController";
+import { SimController } from "../../game/SimController";
+import { ThemeController } from "../../game/ThemeController";
 import {
 	buildPlaceholder,
 	destroyModel,
@@ -111,9 +111,9 @@ import {
 	setModelParent,
 	setModelTransparency,
 	type PlaceholderModel,
-} from "./placeholders";
-import { SPRITE_TINT_NONE, SpriteView } from "./SpriteView";
-import { MotionFx } from "./motionFx";
+} from "../placeholders";
+import { SPRITE_TINT_NONE, SpriteView } from "../SpriteView";
+import { MotionFx } from "../motionFx";
 
 const RENDER_STEP = "KV_Actors";
 const PARKED = new CFrame(BULLET_VIEW.parkedStuds[0], BULLET_VIEW.parkedStuds[1], BULLET_VIEW.parkedStuds[2]);
@@ -331,7 +331,7 @@ export class ActorRenderController implements OnStart {
 	/** Players/Outlined: the outlined placeholder capsule's Model, and its ONE Highlight. */
 	private outlinedPlayers: Model | undefined;
 	private playerHighlight: Highlight | undefined;
-	/** Squash & stretch and afterimages (docs/FEEL.md J6 / J7; ./motionFx.ts), built in onStart. */
+	/** Squash & stretch and afterimages (docs/FEEL.md J6 / J7; ../motionFx.ts), built in onStart. */
 	private motion: MotionFx | undefined;
 
 	// --- hit reaction (docs/FEEL.md J4 / J5) ---------------------------------------------------
@@ -1104,7 +1104,7 @@ export class ActorRenderController implements OnStart {
 	}
 
 	// ---------------------------------------------------------------------------------------------
-	// Motion feel (docs/FEEL.md J6 squash & stretch, J7 afterimages): ./motionFx.ts does the work.
+	// Motion feel (docs/FEEL.md J6 squash & stretch, J7 afterimages): ../motionFx.ts does the work.
 
 	/** Builds the ghost pool under the actor folder and feeds it the tracker's hit / spawned / killed events. */
 	private startMotion(folder: Folder): void {
