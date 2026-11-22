@@ -228,7 +228,7 @@ split-16-bit `imul`, no getters in sim state.
 - **A new `KV_*` name needs a registry entry** in `scripts/kv-names.json` with its kind and a one-line description
   (`check:kvnames`).
 - **A client remote's handler takes its limiter first**: the `player.Parent` guard, then `tryAcquire`, then the
-  parse, any lookup and any reply (docs/SERVER_FINDINGS.md SFD4 lists the three deliberate exceptions).
+  parse, any lookup and any reply (docs/SERVER_FINDINGS.md SFD4 lists the two deliberate exceptions).
 - **Client and server code never call `print` / `warn`** (ESLint): the client logs through `client/log`
   (`logInfo` / `logWarn` pass the text unchanged, `clientLogger(source)` for new lines), the server through
   `server/log`. Never change the text of an existing line: docs and Studio checks quote them.

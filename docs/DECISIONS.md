@@ -1697,7 +1697,8 @@ Superseded in older entries (kept as written):
   (`spikeViewerAllowed`). Remote handlers take their limiter first: `player.Parent` guards on `lockstepInput` /
   `lockstepHash` / `lockstepFinal`; `submitSegment`'s limiter before the run lookup (over it, the player's own solo
   run is rejected as before and any other segment is dropped unanswered); a new `RUN_FINISH_RATE` (20 per 60 s) on
-  `finishRun`; `getLeaderboard` limits before it parses; `requestRecords` over budget is dropped. A `walletBuy` /
+  `finishRun`; `getLeaderboard` limits before it parses; `requestRecords` over budget is dropped; `submitRun` gets
+  `RUN_SUBMIT_GATE_RATE` (30 per 60 s) in front of its unbudgeted `busy` answer. A `walletBuy` /
   `walletEquip` the catalogue can refuse (`unknown`, `badSlot`) is answered without a store transaction and
   `WalletActionResult.itemId` is a catalogue id or `""` (`walletEchoId`). `tutorialStarted` over budget still
   opens an attempt (accepted). The client debug switches read outside Studio are relabelled, not gated (owner).

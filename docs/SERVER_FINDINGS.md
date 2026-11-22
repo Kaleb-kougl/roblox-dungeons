@@ -52,9 +52,10 @@ Reading the code changed two of them:
   place's creator in a test place. The session sends its lines to those players and drops a request from anyone
   else. The server output is unchanged.
 - **SFD4. A client remote's handler takes its limiter first**: the `player.Parent` guard, then the limiter, then
-  the parse, any lookup and any reply. Three handlers read one piece of server state before the limiter, each on
-  purpose, and stay as they are:
-  - `submitRun` checks `busy` first, so a submission that cannot run does not use up the budget (its comment);
+  the parse, any lookup and any reply. `submitRun` answers `busy` without charging `RUN_SUBMIT_RATE` (a submission
+  that cannot run must not use up the budget), so it gets a second, looser limiter in front: `RUN_SUBMIT_GATE_RATE`
+  (30 per 60 s), over which a call is dropped unanswered (owner, 2026-11-22). Two handlers read one piece of server
+  state before their limiter, each on purpose, and stay as they are:
   - `tutorialStarted` ignores a player in a party run first, and over budget still opens the attempt (SFD7);
   - `invitePrompt` drops a player the service has no member record for.
 - **SFD5. A wallet request the catalogue can refuse never reaches the store and never echoes the client's string.**
@@ -96,11 +97,12 @@ Reading the code changed two of them:
 | SF7 leaderboard | `tryAcquire` before `parseLeaderboardRequest` |
 | SF8 records | `return` after the `RATE_LIMITED` line; the class comment and docs/SERVER.md corrected |
 | SF9 wallet ids | `shared/wallet/book.ts` `walletEchoId`, `refusedUnread`; `WalletService`'s rate-limited answers echo through `walletEchoId`. `wallet/trustBoundary.spec.ts`: four new cases on a store that counts its transactions (junk ids and slots: zero; every catalogue item: one per buy, per equip, per emptied slot) |
+| SF6b `submitRun` | `RunValidationService`: `gateLimiter` (`RUN_SUBMIT_GATE_RATE`, `shared/run/limits.ts`) before `submit`, forgotten on `PlayerRemoving`. The `busy` check and `RUN_SUBMIT_RATE` are unchanged behind it |
 | SF10 the record | docs/SERVER_CENSUS.md and docs/PRESENTATION.md say where each finding went. Finding 9: comments in `shared/play/config.ts`, `shared/settings/config.ts`, `shared/view/decor/config.ts`, five `shared/view` configs and three client controllers |
 | SF11 close | This doc, the docs/DECISIONS.md entry, the `CLAUDE.md` row and two convention lines, the `docs/README.md` line, `shared/network.ts`'s comment (it now names every run and lockstep limit), docs/SERVER.md's rate rows |
 
 What an honest client can notice: nothing. Each changed path needs an id the catalogue does not have, a run that
-does not exist, more than 20 `finishRun` calls a minute (a client sends one per run and can start 10 runs a
+does not exist, more than 30 `submitRun` calls a minute (the submission budget is 6), more than 20 `finishRun` calls a minute (a client sends one per run and can start 10 runs a
 minute), more than 10 `requestRecords` in 10 s (a client sends one per session), or a malformed leaderboard
 request.
 
@@ -116,11 +118,11 @@ On a 4-core Linux arm64 VM with 3.9 GB of memory (Lune 0.11.0, Node 22), each `v
   `settings/`, `codex/`, `onboarding/`, `invite/`, `daily/`, `cosmetics/`, `silver/`, and of `run/`:
   `runSessions`, `segments`, `rateLimit`, `validate`, `serviceRules`, `queue`).
 
-`out:digest`: 1,815 modules against 1,813 at `600bf9c4`. Two are new (`shared/spikes/access`, its spec). Eleven
+`out:digest`: 1,815 modules against 1,813 at `600bf9c4`. Two are new (`shared/spikes/access`, its spec). Twelve
 differ because they were edited: `shared/spikes/init`, `shared/config/spikes`, `shared/run/limits`,
 `shared/wallet/book`, `shared/wallet/trustBoundary.spec`, `server/services/spikes/spikeFlags`,
-`server/services/spikes/InviteSpikeService`, and the services `RunSessionService`, `LeaderboardService`,
-`RecordsService`, `WalletService`. `client/network` and `server/network` differ only in the order of the literals
+`server/services/spikes/InviteSpikeService`, and the services `RunSessionService`, `RunValidationService`,
+`LeaderboardService`, `RecordsService`, `WalletService`. `client/network` and `server/network` differ only in the order of the literals
 inside Flamework's generated type guards, which also differs between two builds of the base commit (checked by
 building it twice). Every other module is identical, the relabelled ones (SF10) included.
 
