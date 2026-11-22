@@ -64,7 +64,7 @@ export const TEAM_MOMENTS_VIEW = {
 		role: "nearMiss.parry",
 	},
 	/**
-	 * Studio check aid (CLAUDE.md working agreement: off by default). Workspace string attribute `attribute`; every
+	 * Check aid, off by default, read wherever it is set (local effect). Workspace string attribute `attribute`; every
 	 * CHANGE to it arms once:
 	 *   "perfect" / "perfect:<n>": the next PERFECT clear of the run (solo too) is a team perfect with streak n
 	 *     (default 1; the stamp, chip, rings and sound as in a party run);

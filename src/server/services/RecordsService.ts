@@ -126,7 +126,7 @@ interface FakeEntry {
  *
  * Nothing is sent before the join load and the seed have finished (`ready`): a `requestRecords` that arrives earlier
  * is not answered (the join-end push answers it), so the client never sees a pre-seed status. `requestRecords` is
- * rate limited per player (RECORDS_REQUEST_RATE); a dropped request still answers when ready. A player who left while
+ * rate limited per player (RECORDS_REQUEST_RATE); a request over it is dropped unanswered. A player who left while
  * the join load yielded is dropped, not cached.
  *
  * Daily activity (docs/DAILY.md DS13; shared/records daily.ts / dailyLedger.ts): the doc's optional `daily` field
@@ -186,6 +186,7 @@ export class RecordsService implements OnStart {
 				if (player.Parent === undefined) return;
 				if (!this.limiter.tryAcquire(player, this.now())) {
 					log.warn("RATE_LIMITED", `${player.UserId}: requestRecords dropped`);
+					return;
 				}
 				// Before the join load and seed end, the join-end push answers instead (send skips players not ready).
 				this.send(player);

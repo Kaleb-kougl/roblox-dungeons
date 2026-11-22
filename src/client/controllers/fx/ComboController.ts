@@ -475,7 +475,7 @@ export class ComboController implements OnStart {
 		if (this.part !== undefined) this.part.CFrame = PARKED;
 	}
 
-	// --- KV_ComboDebug (Studio check aid, off by default) --------------------------------------------
+	// --- KV_ComboDebug (check aid, off by default, read anywhere) ------------------------------------
 
 	private readDebug(): void {
 		const raw = Workspace.GetAttribute(COMBO_DEBUG.attribute);

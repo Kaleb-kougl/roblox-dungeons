@@ -102,6 +102,7 @@ source commit).
 | `docs/README.md` | Index of `docs/` by group (engineering, generated, owner checklists, features, art and audio). A new doc adds its line there too |
 | `docs/decisions/README.md` | Six decision records (0001-0006) extracted from the log: lockstep, runner-enforced determinism, opt-in state hashed last, rollback not built, local prediction, the wallet. Extracts; `docs/DECISIONS.md` stays the authority |
 | `docs/PRESENTATION.md` | Presentation pass (server census and five rules moved to shared with specs, `SimController` and the actor renderer split, `client/log` and the print / warn lint, the `KV_*` registry, one name, private references out, architecture page, decision records, the Studio pass and task triage; no gameplay change): corrected findings, as built, findings left for the owner, tasks SE0-SE20, decisions SED1-SED11 |
+| `docs/SERVER_FINDINGS.md` | Server findings (the ten findings of the presentation pass closed: the `PurchaseId` ring's bound stated in the public claims, server spikes only in Studio or a `SPIKE_TEST_PLACES` place with lines to developer-mode players, the limiter first in every remote handler with a `finishRun` limiter, wallet requests the catalogue can refuse never reaching the store or echoing the client's string, `requestRecords` dropped over budget, the client switches relabelled; no gameplay change): findings, as built, tasks SF0-SF12, decisions SFD1-SFD10 |
 | `docs/SERVER_CENSUS.md` | Server census (per service the remotes and their argument checks, writes, the shared module and spec behind each rule; the five inline rules moved to shared; what is left; findings) |
 | `docs/SIM_CONTROLLER.md` | `SimController` census and split (members by responsibility, clock reads, frame order, coupling; contracts, co-op / solo build, HUD feed, submissions in `client/controllers/game/sim/`, the drawn local player in `shared/view/predict`; the class keeps its path and Flamework id; refactor only): census, as built, Studio check |
 | `docs/ACTOR_RENDER.md` | Actor render split (the controller as `render/actors/`: frame and actor pool in the class, `PlayerViews`, `ActorHitReact`, records and part builders, `shared/view/actorDraw.ts`; a pure move, presentation only): census, split, as built, tasks R0-R6, Studio check |
@@ -226,6 +227,8 @@ split-16-bit `imul`, no getters in sim state.
   `scripts/doc-coverage.json` (docs/DOC_COMMENTS.md).
 - **A new `KV_*` name needs a registry entry** in `scripts/kv-names.json` with its kind and a one-line description
   (`check:kvnames`).
+- **A client remote's handler takes its limiter first**: the `player.Parent` guard, then `tryAcquire`, then the
+  parse, any lookup and any reply (docs/SERVER_FINDINGS.md SFD4 lists the two deliberate exceptions).
 - **Client and server code never call `print` / `warn`** (ESLint): the client logs through `client/log`
   (`logInfo` / `logWarn` pass the text unchanged, `clientLogger(source)` for new lines), the server through
   `server/log`. Never change the text of an existing line: docs and Studio checks quote them.
@@ -258,3 +261,4 @@ split-16-bit `imul`, no getters in sim state.
 - A change lands on `main` by pull request with CI green (docs/CI.md): work on a branch, run `npm run verify`, push,
   open the pull request. Never push to `main` directly.
 - Spikes and debug features are off by default (Workspace attributes / `shared/config`), cleaned up with Janitor.
+  A spike's server half runs only in Studio or a place listed in `SPIKE_TEST_PLACES` (docs/SERVER_FINDINGS.md SFD2).

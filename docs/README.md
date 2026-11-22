@@ -22,6 +22,7 @@ How the project is built, tested and kept correct, and the netcode work.
 | [LOCAL_PREDICTION.md](LOCAL_PREDICTION.md) | Local prediction in co-op |
 | [ROLLBACK_SPIKE.md](ROLLBACK_SPIKE.md) | Rollback measurement spike, closed |
 | [SERVER_CENSUS.md](SERVER_CENSUS.md) | Server census: what the server trusts, writes and tests |
+| [SERVER_FINDINGS.md](SERVER_FINDINGS.md) | The census's ten findings closed: what was fixed, stated or accepted, and why |
 | [SIM_CONTROLLER.md](SIM_CONTROLLER.md) | SimController: census and split |
 | [ACTOR_RENDER.md](ACTOR_RENDER.md) | Actor render split |
 | [CLIENT.md](CLIENT.md) | Client (task 8): the playable game loop, HUD, juice and audio |

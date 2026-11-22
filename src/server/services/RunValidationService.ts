@@ -12,6 +12,7 @@ import {
 	RUNS_DATASTORE_KEPT,
 	RUNS_DATASTORE_NAME,
 	RUN_PENDING_PER_PLAYER,
+	RUN_SUBMIT_GATE_RATE,
 	RUN_SUBMIT_RATE,
 	ReplayBudget,
 	SlidingWindowLimiter,
@@ -103,6 +104,11 @@ interface StoredRun {
 export class RunValidationService implements OnStart {
 	private readonly janitor = new Janitor();
 	private readonly limiter = new SlidingWindowLimiter<Player>(RUN_SUBMIT_RATE.count, RUN_SUBMIT_RATE.windowSeconds);
+	/** Every `submitRun` call, before `busy` and the submission budget: over it the call is dropped unanswered. */
+	private readonly gateLimiter = new SlidingWindowLimiter<Player>(
+		RUN_SUBMIT_GATE_RATE.count,
+		RUN_SUBMIT_GATE_RATE.windowSeconds,
+	);
 	/** Server-wide replay queue: REPLAY_CONCURRENCY replays at once, the rest in arrival order. */
 	private readonly queue = new WorkQueue(REPLAY_CONCURRENCY, (waiter) => task.spawn(waiter));
 	/** Submissions validating or queued, per player (entries removed at 0). */
@@ -119,12 +125,15 @@ export class RunValidationService implements OnStart {
 			Events.submitRun.connect((player, submission) => {
 				// A remote that arrives after PlayerRemoving would recreate the limiter entry: drop it.
 				if (player.Parent === undefined) return;
+				// Before `busy` (answered without charging RUN_SUBMIT_RATE) and any reply: docs/SERVER_FINDINGS.md SFD4.
+				if (!this.gateLimiter.tryAcquire(player, this.now())) return;
 				this.reply(player, this.submit(player, submission));
 			}),
 		);
 		this.janitor.Add(
 			Players.PlayerRemoving.Connect((player) => {
 				this.limiter.forget(player);
+				this.gateLimiter.forget(player);
 				this.accepted.delete(player);
 			}),
 		);

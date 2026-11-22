@@ -47,6 +47,13 @@ the stored document, so concurrent servers compose.
 - Cost: one `UpdateAsync` per credited member per paying run, and one per purchase or equip.
 - Idempotency is bounded by the rings. A run id older than the last 64 grants, or a `PurchaseId` older than
   the last 128, would not be recognised.
+- The purchase bound is stated, not removed ([`../SERVER_FINDINGS.md`](../SERVER_FINDINGS.md) SFD1, 2026-11-21).
+  A second grant needs the wallet write to commit, Roblox to miss the `Processed` answer (a server crash between
+  the two) and then 128 more purchases by the same player before the receipt is delivered again: at the default
+  prices at least 128 x 20 = 2,560 Robux spent to regain at most one Hoard (2,500 Silver, 265 Robux). An exact
+  ring (an id leaves it only after it is written to a per-id store that a miss looks up) was weighed and not
+  built: it puts a two-step purchase path into the code where a mistake costs players currency.
+  [`trustBoundary.spec.ts`](../../src/shared/wallet/trustBoundary.spec.ts) pins the bound.
 - A document written by a newer server is refused, not downgraded; a grant there is lost and logged (SVD34).
   Unknown fields are kept and written back, and that codec had to be live on every server before any product
   id was configured (SHD7).

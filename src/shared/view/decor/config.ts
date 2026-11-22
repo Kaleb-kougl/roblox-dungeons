@@ -77,7 +77,10 @@ export const DECOR_DEPTH = {
 	] as ReadonlyArray<DecorDepthBand>,
 	/** Flat kinds the band's clutterWeight applies to (debris covers the pack's rocks and bricks). */
 	clutterKinds: ["bones", "debris"] as ReadonlyArray<string>,
-	/** Workspace attribute that forces a band in Studio (its index, 0 = kept); read by the client (R4). */
+	/**
+	 * Workspace attribute that forces a band (its index, 0 = kept), a development aid; the client (R4) reads it
+	 * wherever it is set, Studio or not: local effect only.
+	 */
 	forceBandAttribute: "KV_DecorBand",
 } as const;
 

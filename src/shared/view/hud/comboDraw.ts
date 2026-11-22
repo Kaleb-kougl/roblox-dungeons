@@ -71,7 +71,7 @@ export const COMBO_SHOUT_DRAW = {
 } as const;
 
 /**
- * Studio check aid (CLAUDE.md working agreement: off by default). Set the Workspace string attribute `attribute` to
+ * Check aid, off by default, read wherever it is set (local effect). Set the Workspace string attribute `attribute` to
  * "1".."4" (that tier's tier-up: the slam, flash and floor shout), "break", "small" (a small break), "lapse" or "cut";
  * every CHANGE to one of these fires it once on the next frame of a scored run, on the display and (through the same
  * quiet gate as real play) the sting / shatter. Absent / anything else: nothing.

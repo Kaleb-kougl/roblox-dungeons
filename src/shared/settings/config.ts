@@ -24,8 +24,9 @@ export const SETTINGS_REQUEST_RATE = table.freeze({ count: 20, windowSeconds: 10
 
 /**
  * Workspace attributes the client's settings read (Explorer -> Workspace -> Attributes). Off / unset by default.
- *   resetBindings  Boolean, dev only: on join, clear this player's saved key bindings (the `controls` group) once
- *                  the server's settings arrive. The other groups are kept.
+ *   resetBindings  Boolean, a development aid: on join, clear this player's saved key bindings (the `controls` group)
+ *                  once the server's settings arrive. The other groups are kept. The client reads it wherever it is
+ *                  set, Studio or not; it clears only that player's own bindings.
  */
 export const SETTINGS_ATTRIBUTES = {
 	resetBindings: "KV_ResetBindings",

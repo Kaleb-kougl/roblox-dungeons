@@ -1,13 +1,15 @@
 /**
  * The open spikes' flags and tunables (docs/SPIKES.md): the bullet spike (Task 1 spike A, hosting PA0), preload P0,
  * invites I0, touch MB0, UI art UA1, localization L0 and gamepad GM0. All are OFF unless enabled here or by a Workspace
- * attribute, so a normal play session never runs them.
+ * attribute, so a normal play session never runs them. A
+ * spike's server half also needs Studio or a place in SPIKE_TEST_PLACES (shared/spikes `serverSpikeAllowed`).
  *
  * Enable at runtime from the Studio command bar (client context while playing, or on the server
  * so it replicates):
  *   workspace:SetAttribute("KV_SpikeBullets", true)
  *   workspace:SetAttribute("KV_SpikePreload", true)   (best set before Play: it measures the join)
- *   workspace:SetAttribute("KV_InviteSpike", true)    (client + server; only a published place has the APIs)
+ *   workspace:SetAttribute("KV_InviteSpike", true)    (client + server; only a published place has the APIs:
+ *                                                      list the test place in SPIKE_TEST_PLACES first)
  *   workspace:SetAttribute("KV_UiArtSpike", true)     (client; docs/UI_ART.md UA1)
  *   workspace:SetAttribute("KV_L10nSpike", true)      (client; docs/LOCALIZATION.md L0)
  *   workspace:SetAttribute("KV_PadSpike", true)       (client; docs/GAMEPAD_MENUS.md GM0)
@@ -38,6 +40,13 @@ export const SPIKE_ATTRIBUTES = {
 	l10n: "KV_L10nSpike",
 	pad: "KV_PadSpike",
 } as const;
+
+/**
+ * PlaceIds of published test places where a spike's server half may run (docs/SERVER_FINDINGS.md SFD2). Outside
+ * Studio, a server ignores every spike flag and default unless `game.PlaceId` is listed here, so a flag set on the
+ * live place does nothing. Empty: server spikes run in Studio only. Never list the live place.
+ */
+export const SPIKE_TEST_PLACES: ReadonlyArray<number> = table.freeze([]);
 
 /**
  * The name of a spike that has an on / off flag: a key of `SPIKE_DEFAULTS` and of `SPIKE_ATTRIBUTES`. The spike flag

@@ -36,7 +36,7 @@ export const PARRY_FLASH_DRAW = {
 } as const;
 
 /**
- * Studio check aid (CLAUDE.md working agreement: off by default). Set the Workspace string attribute `attribute` to a
+ * Check aid, off by default, read wherever it is set (local effect). Set the Workspace string attribute `attribute` to a
  * whole number n >= 1: every CHANGE to it forces one PARRY! flash of n erases on the view player of a run on the next frame
  * (drawn only: no sound, no sparks, no freeze; nothing under the stage cover or after run over). Absent / anything else: nothing.
  */
