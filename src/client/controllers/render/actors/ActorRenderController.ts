@@ -73,16 +73,6 @@ import {
 	type IsoBasis,
 	type VariantLook,
 } from "shared/view";
-import {
-	FEEL_HIT,
-	HitReactSlots,
-	freezeFrameOn,
-	motionScale,
-	nearestLivingPlayer,
-	pushOffsetStuds,
-	type FxEventBuffer,
-} from "shared/view/fx";
-import type { JuiceSettings } from "shared/settings";
 import type { CosmeticLook } from "shared/cosmetics";
 import { VIEW_HIT_CLIP_SEC } from "shared/view/dummy";
 import { goldenFlickerTransparency, goldenTicksLeft, isGoldenKind } from "shared/view/golden";
@@ -101,6 +91,7 @@ import {
 } from "../placeholders";
 import { SPRITE_TINT_NONE, SpriteView } from "../SpriteView";
 import { MotionFx } from "../motionFx";
+import { ActorHitReact } from "./ActorHitReact";
 import {
 	buildOutline,
 	buildPlayerView,
@@ -241,18 +232,8 @@ export class ActorRenderController implements OnStart {
 	/** Squash & stretch and afterimages (docs/FEEL.md J6 / J7; ../motionFx.ts), built in onStart. */
 	private motion: MotionFx | undefined;
 
-	// --- hit reaction (docs/FEEL.md J4 / J5) ---------------------------------------------------
-	private readonly hitReact = new HitReactSlots(this.basis);
-	/** The hit-reaction clock (s): real frame time, stopped while paused, not slowed by the hitstop clock. */
-	private hitNow = 0;
-	private hitMotion = 1;
-	private hitFlashColor = SPRITE_TINT_NONE;
-	/** KV_Actors/Flashing: the flashing placeholder bodies, under ONE fill Highlight (J5). */
-	private flashingModel: Model | undefined;
-	private readonly hitToward = { x: 0, z: 0 };
-	private readonly pushScratch = [0, 0, 0];
-	/** Siege Bolt's pin hold (docs/BUILDS_V2.md BV11c; setPinHolds): slot -> held, or undefined. */
-	private pinHolds: ReadonlyArray<boolean> | undefined;
+	/** The hit reaction (docs/FEEL.md J4 / J5; ./ActorHitReact.ts): its clock, the flashing Model, the pin holds. */
+	private readonly hit: ActorHitReact;
 
 	// --- elite affixes (docs/ENEMY_VARIANTS.md EV9) ----------------------------------------------
 	/** Shield hits from a per-frame diff of state.affixes (the body flashes in enemyShield). */
@@ -290,7 +271,9 @@ export class ActorRenderController implements OnStart {
 		private readonly theme: ThemeController,
 		private readonly fx: FxTrackerController,
 		private readonly preload: PreloadController,
-	) {}
+	) {
+		this.hit = new ActorHitReact(sim, fx, this.basis, this.janitor);
+	}
 
 	onStart(): void {
 		const pack = this.theme.getPack();
@@ -323,7 +306,7 @@ export class ActorRenderController implements OnStart {
 		this.janitor.Add(Workspace.GetAttributeChangedSignal(ACTOR_OUTLINE.enabledAttribute).Connect(syncSwitch));
 		this.startPlayerOutline(pack, players);
 		this.players.push(buildPlayerView(pack, players, ACTOR_VIEW.playerVisualId));
-		this.startHitReact(pack, folder);
+		this.hit.start(pack, folder, this.groups, this.shieldColor);
 		this.startMotion(folder);
 
 		RunService.BindToRenderStep(RENDER_STEP, Enum.RenderPriority.Camera.Value + RENDER_ORDER.viewsAfterCamera, () =>
@@ -366,7 +349,7 @@ export class ActorRenderController implements OnStart {
 				view = this.acquire(slot, a, state);
 			}
 			const shieldFlash = this.shieldWatch.flashing(slot, a.id, state.tick);
-			this.applyHitReact(slot, view, shieldFlash);
+			this.hit.applyHitReact(slot, view, shieldFlash);
 			this.drawActor(view, a, slot, state, shieldFlash, alpha);
 			this.motionActor(slot, view, a, alpha);
 		}
@@ -577,7 +560,7 @@ export class ActorRenderController implements OnStart {
 			const hitClipSec = view.hitClipSec;
 			if (hitClipSec !== undefined) {
 				// DD1: the hit plays over the seconds since the last hit (hitReact's clock), not the 0.1 s sim flash.
-				const elapsed = this.hitReact.hitAge(slot, a.id, this.hitNow);
+				const elapsed = this.hit.hitAge(slot, a.id);
 				input = { ...input, hitClip: { elapsed, total: hitClipSec } };
 			}
 			if (corpse !== undefined) {
@@ -618,7 +601,7 @@ export class ActorRenderController implements OnStart {
 		const outlined = actorGroup(view.hasOutline, a.alive !== 0) === "enemies";
 		if (outlined !== view.outlined) {
 			view.outlined = outlined;
-			this.syncModelGroup(view, model);
+			this.hit.syncModelGroup(view, model);
 		}
 		const origin =
 			model.faces && (a.faceX !== 0 || a.faceZ !== 0)
@@ -1028,98 +1011,17 @@ export class ActorRenderController implements OnStart {
 		return ids[index];
 	}
 
-	// --- hit reaction (docs/FEEL.md J4 / J5) ---------------------------------------------------
-
-	/**
-	 * The flashing Model (a sibling of the enemies Model) with its ONE Highlight, and the tracker feed. The Highlight
-	 * fills in FEEL_HIT.flashRole; its rim is the enemies Highlight's while KV_EnemyOutline is on and hidden while it
-	 * is off (the flash itself always shows, like the sprites' rim flash).
-	 */
-	private startHitReact(pack: ThemePack, folder: Folder): void {
-		this.hitFlashColor = pack.color(FEEL_HIT.flashRole);
-		const model = new Instance("Model");
-		model.Name = FEEL_HIT.flashingGroupName;
-		model.Parent = folder;
-		this.flashingModel = model;
-		const highlight = buildOutline(pack, model);
-		highlight.Name = FEEL_HIT.flashingHighlightName;
-		highlight.FillColor = this.hitFlashColor;
-		highlight.FillTransparency = FEEL_HIT.fillTransparency;
-		const syncSwitch = () => {
-			const on = outlineSwitchOn(Workspace.GetAttribute(ACTOR_OUTLINE.enabledAttribute));
-			highlight.OutlineTransparency = on ? ACTOR_OUTLINE.outlineTransparency : HIDDEN;
-		};
-		syncSwitch();
-		this.janitor.Add(Workspace.GetAttributeChangedSignal(ACTOR_OUTLINE.enabledAttribute).Connect(syncSwitch));
-		this.fx.onFrame((events, settings, dt) => this.hitReactFrame(events, settings, dt));
-	}
-
 	/**
 	 * docs/BUILDS_V2.md BV11c, Siege Bolt: SiegeFxController's pin mask (PinHoldMask.held, slot -> carried by an arrow),
-	 * handed over once and read every frame by applyHitReact: a pinned actor's sprite holds while it is carried.
+	 * handed over once and read every frame by the hit reaction: a pinned actor's sprite holds while it is carried.
 	 */
 	setPinHolds(held: ReadonlyArray<boolean>): void {
-		this.pinHolds = held;
+		this.hit.setPinHolds(held);
 	}
 
 	/** Holds an actor's sprite for `seconds` of the hit-reaction clock (docs/ROOM_CLEAR.md RC5). */
 	holdActor(slot: number, actorId: number, seconds: number): void {
-		this.hitReact.hold(slot, actorId, this.hitNow + seconds);
-	}
-
-	/** Once per frame after the tracker: advance the hit-reaction clock, then feed the frame's events. */
-	private hitReactFrame(events: FxEventBuffer, settings: Readonly<JuiceSettings>, dt: number): void {
-		if (this.sim.getContext()?.live?.isPaused() !== true) {
-			this.hitNow += math.min(math.max(dt, 0), FEEL_HIT.maxFrameDtSec);
-		}
-		this.hitMotion = motionScale(settings);
-		const state = this.sim.getState();
-		const alpha = this.sim.getAlpha();
-		const now = this.hitNow;
-		const killHolds = freezeFrameOn(settings);
-		for (let i = 0; i < events.count(); i++) {
-			const e = events.at(i);
-			const toward =
-				e.type === "hit" && state !== undefined && nearestLivingPlayer(state, alpha, e.x, e.z, this.hitToward)
-					? this.hitToward
-					: undefined;
-			this.hitReact.onEvent(e, now, toward, killHolds);
-		}
-	}
-
-	/**
-	 * Slot `slot`'s hit look onto its view, before drawActor (a held sprite must not step this frame). `shieldFlash`: a
-	 * shield hit (docs/ENEMY_VARIANTS.md EV9) flashes a sprite's rim in enemyShield when no hit flash runs.
-	 */
-	private applyHitReact(slot: number, view: ActorView, shieldFlash: boolean): void {
-		const look = this.hitReact.look(slot, view.id, this.hitNow, this.hitMotion);
-		const sprite = view.sprite;
-		if (sprite !== undefined) {
-			sprite.setRimFlash(look.rimFlash ? this.hitFlashColor : shieldFlash ? this.shieldColor : undefined);
-			sprite.setHold(look.hold || this.pinHolds?.[slot] === true); // BV11c: a Siege Bolt pin holds the sprite
-			sprite.setPushTexels(look.pushX, look.pushY, this.basis);
-			return;
-		}
-		// Placeholders: no sprite clock to hold; the push offsets the model, the flash reparents it (on change only).
-		if (look.pushX !== view.pushX || look.pushY !== view.pushY) {
-			view.pushX = look.pushX;
-			view.pushY = look.pushY;
-			const o = pushOffsetStuds(look.pushX, look.pushY, this.basis, this.pushScratch);
-			view.push = new Vector3(o[0], o[1], o[2]);
-		}
-		if (look.rimFlash !== view.flashing && this.flashingModel !== undefined) {
-			view.flashing = look.rimFlash;
-			this.syncModelGroup(view, view.model!);
-		}
-	}
-
-	/** A placeholder's pieces to their group: flashing while the hit flash runs, else enemies / corpses. */
-	private syncModelGroup(view: ActorView, model: PlaceholderModel): void {
-		const parent =
-			view.flashing && this.flashingModel !== undefined
-				? this.flashingModel
-				: this.groups![view.outlined ? "enemies" : "corpses"];
-		setModelParent(model, parent);
+		this.hit.holdActor(slot, actorId, seconds);
 	}
 
 	/** Destroys every pooled view (not used in play; kept for tests / teardown). */
