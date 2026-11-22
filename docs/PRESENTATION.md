@@ -105,7 +105,16 @@ None lets a client gain Silver, a record or a board entry. Each fix changes beha
 
 ## Checks
 
-SPEC_RESULT
+On the integrated branch, on a 4-core Linux arm64 VM (Lune 0.11.0, Node 22), each `verify` step run on its own:
+
+- build (rbxtsc), whole-tree ESLint at zero warnings, `format:check`, `docs:check`, `check:docs`, `check:assets`,
+  `check:autolocalize`, `check:kvnames`, `check:locals` (none over 200, none at or above 185), `facts:check`: pass;
+- `test:checks` 68 of 68, `test:art` 356 pass and 5 skipped (no art packs), `test:l10n`: pass;
+- the headless spec suite: 637 of 637 files, 7,552 of 7,552 tests.
+
+`out:digest`: 1,813 modules against 1,793 at `d4936547`. Each track listed its changed modules; outside the
+moved, split and converted ones the differences are barrels, two spec titles, and Flamework metadata that names a
+moved file (`client/network`, `server/network`, three controllers' `flamework:implements`).
 
 Not run: Studio, two clients, a device, the art and audio pipelines (the packs were not on the build machine),
 `npm run verify` as one command on the Mac.

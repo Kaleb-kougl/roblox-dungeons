@@ -196,8 +196,8 @@ task in its own doc, then run the script again (docs/CODEBASE_SCALE.md DX11).
 
 ### PRESENTATION.md
 
-- [ ] SE5a. [owner] Studio check of the `SimController` split: docs/SIM_CONTROLLER.md "Studio check". Two clients: the co-op debug line and the 10 s `[Pace… (`docs/PRESENTATION.md` line 119)
-- [ ] SE6a. [owner] Studio check of the actor renderer split: docs/ACTOR_RENDER.md "Studio check (owner)", 11 steps. (`docs/PRESENTATION.md` line 121)
+- [ ] SE5a. [owner] Studio check of the `SimController` split: docs/SIM_CONTROLLER.md "Studio check". Two clients: the co-op debug line and the 10 s `[Pace… (`docs/PRESENTATION.md` line 128)
+- [ ] SE6a. [owner] Studio check of the actor renderer split: docs/ACTOR_RENDER.md "Studio check (owner)", 11 steps. (`docs/PRESENTATION.md` line 130)
 
 ### PROJECTILE_ART.md
 
@@ -437,11 +437,11 @@ task in its own doc, then run the script again (docs/CODEBASE_SCALE.md DX11).
 
 ### PRESENTATION.md
 
-- [ ] SE3a. [owner] One solo endless run and one 2-player lobby run: verdict, records and Silver arrive as before. (`docs/PRESENTATION.md` line 122)
-- [ ] SE9a. [owner] Run docs/STUDIO_PASS.md; close every task per docs/OPEN_TASKS_TRIAGE.md; file the issues. (`docs/PRESENTATION.md` line 123)
-- [ ] SE13a. [owner] Record or abandon the seven open spikes, then remove them. Decide whether Spike B's recorded result (the live rig's values) stands. (`docs/PRESENTATION.md` line 124)
-- [ ] SE15a. [owner] After the history rewrite is settled, grep the history for the machine path and the source project's name. (`docs/PRESENTATION.md` line 126)
-- [ ] SE20. [owner] The findings above: fix, accept or file each. `npm run verify` on the Mac. (`docs/PRESENTATION.md` line 128)
+- [ ] SE3a. [owner] One solo endless run and one 2-player lobby run: verdict, records and Silver arrive as before. (`docs/PRESENTATION.md` line 131)
+- [ ] SE9a. [owner] Run docs/STUDIO_PASS.md; close every task per docs/OPEN_TASKS_TRIAGE.md; file the issues. (`docs/PRESENTATION.md` line 132)
+- [ ] SE13a. [owner] Record or abandon the seven open spikes, then remove them. Decide whether Spike B's recorded result (the live rig's values) stands. (`docs/PRESENTATION.md` line 133)
+- [ ] SE15a. [owner] After the history rewrite is settled, grep the history for the machine path and the source project's name. (`docs/PRESENTATION.md` line 135)
+- [ ] SE20. [owner] The findings above: fix, accept or file each. `npm run verify` on the Mac. (`docs/PRESENTATION.md` line 137)
 
 ### PROJECTILE_ART.md
 
