@@ -151,6 +151,8 @@ The build and the spec suite do not need the licensed art packs. Rebuilding atla
 
 ## Where to read next
 
+- [`ARCHITECTURE.md`](ARCHITECTURE.md): the layers, one frame of co-op, the trust boundary and the determinism
+  invariant on one page, with six decision records in [`docs/decisions/`](docs/decisions/README.md).
 - [`docs/DECISIONS.md`](docs/DECISIONS.md): every deviation, retune and feature entry, with what must still
   replay bit for bit.
 - [`docs/SERVER.md`](docs/SERVER.md) and [`docs/CLIENT.md`](docs/CLIENT.md): the two halves as built.
