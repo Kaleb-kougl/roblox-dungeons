@@ -12,8 +12,8 @@ instead of copying a number (docs/CODEBASE_SCALE.md DX10).
 | `SIM_BUTTONS` | 114687 | `shared/sim` input.ts |
 | Boons (`BOON_COUNT`) | 20 | `shared/sim` progression |
 | Codex entries | 94 | `shared/codex` `CODEX_CATALOG` |
-| Analytics custom event names | 39 of 100 | `shared/onboarding` `ANALYTICS_CATALOG` |
-| Analytics field value combinations | 4,898 of 8,000 | `analyticsCatalogCombinations()` |
+| Analytics custom event names | 40 of 100 | `shared/onboarding` `ANALYTICS_CATALOG` |
+| Analytics field value combinations | 5,266 of 8,000 | `analyticsCatalogCombinations()` |
 | Analytics funnels | 3 | `ANALYTICS_CATALOG` (funnel + onboarding) |
 
 ## Theme lists
