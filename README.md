@@ -76,7 +76,9 @@ Robux all depend on results a client reports.
 **What was built.** A run is submitted as its inputs, about 5 bytes a tick, and the server replays it on a 4 ms
 time budget and compares the hash and the recomputed score. In co-op, clients report state hashes at
 checkpoints and the server validates its own merged log in segments. The wallet is a ledger of transactions,
-never a balance a client can set, and each purchase receipt is applied once.
+never a balance a client can set. A purchase receipt is applied once for as long as its id is among that player's
+last 128 granted purchases, a bound that is pinned by a spec and costs more Robux to reach than it returns
+([`docs/SERVER_FINDINGS.md`](docs/SERVER_FINDINGS.md) SFD1).
 
 **Proof.** [`src/shared/run/`](src/shared/run/index.ts), [`docs/SERVER.md`](docs/SERVER.md),
 [`docs/SILVER.md`](docs/SILVER.md), [`docs/SILVER_SHOP.md`](docs/SILVER_SHOP.md).

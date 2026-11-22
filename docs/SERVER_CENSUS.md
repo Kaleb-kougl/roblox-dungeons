@@ -119,8 +119,12 @@ Not pure enough to move without a refactor, or deciding nothing that is trusted.
 
 ## Findings
 
-None lets a client gain Silver, a record or a board entry. Nothing below was changed (each would be a behaviour
-change for the owner to approve).
+None lets a client gain Silver, a record or a board entry. Nothing below was changed in the census pass (each is a
+behaviour change for the owner to approve). **All were closed on 2026-11-21 in docs/SERVER_FINDINGS.md**, which also
+covers the three findings docs/PRESENTATION.md added (the invite spike's gate, the client switches' labels, the stale
+pending notes): 1 fixed (SFD5: refused before the store, never echoed), 2 fixed (SFD4: the limiter first, a
+`finishRun` limiter), 3 fixed (SFD6: dropped), 4 fixed (the guard added), 5 fixed (SFD4), 6 accepted (SFD7), 7 stated
+(SFD1: the bound stays and the public claim says so). The text below is the finding as it was found.
 
 1. **`walletBuy` / `walletEquip` echo and log the item id unbounded.** A wrong id is refused by the catalogue lookup,
    but `WalletBook.request` puts the client's string, whatever its length, into `WalletActionResult.itemId` (sent back

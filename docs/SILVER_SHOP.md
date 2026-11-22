@@ -256,7 +256,9 @@ sim / dungeon (unchanged).
 
 - **SHD1. One pool** (owner, 2026-11-14). Bought Silver buys everything earned Silver buys, power included.
 - **SHD2. A receipt is a wallet transaction:** the `PurchaseId` ring lives in the wallet doc, written in the same
-  UpdateAsync as the Silver; `Processed` only after commit or for a duplicate.
+  UpdateAsync as the Silver; `Processed` only after commit or for a duplicate. The ring holds the last 128 ids: a
+  receipt delivered again after 128 later purchases by the same player would grant again. Stated, not removed
+  (docs/SERVER_FINDINGS.md SFD1; pinned by `wallet/trustBoundary.spec.ts`).
 - **SHD3. Selling Silver never lowers what play pays** or raises a price.
 - **SHD4. Receipts grant whether or not the buyer is still on the server, and whether or not the join load worked.**
 - **SHD5. Calm selling:** two entry points, a quiet `+` beside the Armory's and the main menu's balance (owner,
@@ -280,7 +282,8 @@ sim / dungeon (unchanged).
 - **Young buyers.** Roblox's parental controls apply; ours is SHD5. Watch purchases in the first 3 runs and the main
   menu's share; lever: hide the main menu `+` for accounts in their first runs.
 - **Old servers erasing `bought`** (fact 1): SHD7.
-- **Lost or double Silver**: SHD2, redelivery, the audit store; Studio check 5.
+- **Lost or double Silver**: SHD2, redelivery, the audit store; Studio check 5. The ring's bound of 128 and why it
+  stays: docs/SERVER_FINDINGS.md SFD1.
 - **Future randomness bought with Silver** (draft rerolls on docs/SILVER.md's Later list): SHD6.
 
 ## Later

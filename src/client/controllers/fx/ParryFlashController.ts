@@ -267,7 +267,7 @@ export class ParryFlashController implements OnStart {
 		};
 	}
 
-	// --- KV_ParryDebug (Studio check aid, off by default) --------------------------------------------
+	// --- KV_ParryDebug (check aid, off by default, read anywhere) ------------------------------------
 
 	private readDebug(): void {
 		const raw = Workspace.GetAttribute(PARRY_DEBUG.attribute);

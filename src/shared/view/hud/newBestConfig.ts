@@ -2,7 +2,7 @@
  * The new-best celebration's presentation tunables (docs/NEW_BEST.md NB3): when a stored best counts as a target, when
  * the score panel's target row turns "within reach", the reach pulse, the NEW BEST slam, the score number's white
  * flash and shine, the floor shout's life, the gold confetti (in-run at the screen edges, full screen at run over),
- * the run-over record rows' roll, and the Studio debug attribute. Data only; the per-frame state machine and the pure
+ * the run-over record rows' roll, and the debug attribute. Data only; the per-frame state machine and the pure
  * helpers are newBest.ts. Presentation only (NBD1): no number here changes the sim, the score or a record.
  *
  * Units: scores are points, floors endless floor numbers; times are real (unpaused) seconds; sizes on the HUD are
@@ -67,7 +67,7 @@ export const NEW_BEST = {
 	 */
 	runOver: { rowDelaySec: 0.3, rollSec: 1.0, rowGapSec: 0.4 },
 	/**
-	 * Studio check aid (CLAUDE.md working agreement: off by default). The Workspace string attribute forces the run's
+	 * Check aid, off by default, read wherever it is set (local effect). The Workspace string attribute forces the run's
 	 * baseline (parseNewBestDebug): "score:500", "floor:2", both ("score:2000,floor:3"), "first" or "unknown".
 	 */
 	debugAttribute: "KV_NewBestDebug",

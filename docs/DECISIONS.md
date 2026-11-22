@@ -1687,3 +1687,19 @@ Superseded in older entries (kept as written):
   named. `verify` gains `format:check` and `check:kvnames` (15 steps). `docs/` stays flat with an index
   (`docs/README.md`), not subfolders (SED6). Open: the owner's Studio checks of both splits, the ten findings in
   docs/PRESENTATION.md, the Studio pass (docs/STUDIO_PASS.md).
+
+- **Server findings (2026-11-21, docs/SERVER_FINDINGS.md).** No gameplay change: no sim, hash group, wire format,
+  ruleset or fixture touched; server behaviour changes only for requests an honest client never sends. The
+  `PurchaseId` ring stays 128 and its bound is stated where the README and `ARCHITECTURE.md` said "applied once"
+  (SFD1, owner). A spike's server half runs only in Studio or a place in `SPIKE_TEST_PLACES`
+  (`shared/spikes` `serverSpikeAllowed`; the list ships empty, so spike I0's published run waits for a test place
+  id), and the invite spike sends its lines to and takes requests from developer-mode players only
+  (`spikeViewerAllowed`). Remote handlers take their limiter first: `player.Parent` guards on `lockstepInput` /
+  `lockstepHash` / `lockstepFinal`; `submitSegment`'s limiter before the run lookup (over it, the player's own solo
+  run is rejected as before and any other segment is dropped unanswered); a new `RUN_FINISH_RATE` (20 per 60 s) on
+  `finishRun`; `getLeaderboard` limits before it parses; `requestRecords` over budget is dropped. A `walletBuy` /
+  `walletEquip` the catalogue can refuse (`unknown`, `badSlot`) is answered without a store transaction and
+  `WalletActionResult.itemId` is a catalogue id or `""` (`walletEchoId`). `tutorialStarted` over budget still
+  opens an attempt (accepted). The client debug switches read outside Studio are relabelled, not gated (owner).
+  New log line `FINISH_DROPPED`; no existing line changed. Open: the owner's Studio check (SF12), the test place
+  id (OC1).

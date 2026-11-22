@@ -1,7 +1,7 @@
 /**
  * The Daily's in-run rank layer tunables (docs/DAILY.md DS10): the rank thresholds that shout, the floor shout slot's
  * priorities (new best > rank threshold > combo tier), the friend toasts' pacing and headshots, the run-over row of
- * friends passed, and the Studio debug attribute. Data only; the tracker and helpers are dailyRank.ts. Presentation
+ * friends passed, and the debug attribute. Data only; the tracker and helpers are dailyRank.ts. Presentation
  * only: no number here changes the sim, the score, a board or a record.
  *
  * @module
@@ -46,7 +46,7 @@ export const FLOOR_SHOUT_PRIORITY = {
 /**
  * The Daily's in-run rank layer tunables: the rank thresholds that shout, the shout's and the friend toasts' timings
  * (real seconds), the toast id base, the headshot and run-over row sizes (reference px before the HUD scale) and
- * counts, and the Studio debug attribute's name.
+ * counts, and the debug attribute's name.
  */
 export const DAILY_RANK = {
 	/**
@@ -72,7 +72,7 @@ export const DAILY_RANK = {
 	/** Each friend's cell in that row (the headshot centred over the name, which shrinks to fit), reference px. */
 	passedCellPx: 72,
 	/**
-	 * Studio check aid (CLAUDE.md working agreement: off by default). The Workspace string attribute forces a daily
+	 * Check aid, off by default, read wherever it is set (local effect). The Workspace string attribute forces a daily
 	 * run's rank baseline (parseDailyRankDebug): "rows:<count>:<step>" (count rows scored step x count down to step),
 	 * optional "friends:<every>" (every n-th row a friend), "best:<score>" (best today; also new best's baseline).
 	 */
