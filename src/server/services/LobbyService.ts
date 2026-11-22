@@ -17,8 +17,10 @@ import {
 	analyticsForLobbyCreated,
 	analyticsForLobbyStarted,
 	canAccess,
+	friendsWithConfirmed,
 	inviteViewsOf,
 	lobbyViewOf,
+	type ConfirmedFriends,
 	type Lobby,
 	type LobbyContext,
 	type LobbyCreateRequest,
@@ -281,16 +283,8 @@ export class LobbyService implements OnStart {
 		};
 	}
 
-	private areFriends(
-		a: number,
-		b: number,
-		confirmed: { readonly userId: number; readonly friends: ReadonlyArray<number> } | undefined,
-	): boolean {
-		if (confirmed !== undefined) {
-			if (a === confirmed.userId && confirmed.friends.includes(b)) return true;
-			if (b === confirmed.userId && confirmed.friends.includes(a)) return true;
-		}
-		return this.friends.areFriends(a, b);
+	private areFriends(a: number, b: number, confirmed: ConfirmedFriends | undefined): boolean {
+		return friendsWithConfirmed(a, b, confirmed, (x, y) => this.friends.areFriends(x, y));
 	}
 
 	/** One client request: rate limit, the handler, then the pushes it caused. */
