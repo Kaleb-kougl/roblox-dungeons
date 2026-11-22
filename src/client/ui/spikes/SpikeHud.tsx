@@ -1,7 +1,7 @@
 import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
-import { clientStore, selectBulletSpike, selectCameraSpike, selectInviteSpike } from "client/store";
-import { BULLET_SPIKE, CAMERA_SPIKE, InviteSpikeAction, SPIKE_ATTRIBUTES, STUDS_PER_TILE } from "shared/config";
+import { clientStore, selectBulletSpike, selectInviteSpike } from "client/store";
+import { BULLET_SPIKE, InviteSpikeAction, SPIKE_ATTRIBUTES } from "shared/config";
 
 const TEXT_SIZE = 16;
 const ROW_HEIGHT = 22;
@@ -122,31 +122,6 @@ function BulletPanel() {
 	);
 }
 
-function CameraPanel() {
-	const spike = useSelector(selectCameraSpike);
-	const fov = CAMERA_SPIKE.fovs[spike.fovIndex];
-	const snap = spike.snapIndex >= 0 ? `${CAMERA_SPIKE.snapTexels[spike.snapIndex]} texel` : "off";
-	return (
-		<>
-			<Label
-				order={11}
-				text={`SPIKE B  fov ${fov}  distance ${math.round(spike.distance)} studs  snap ${snap}  (F, G, T)`}
-			/>
-			<Label order={12} text={`  ${STUDS_PER_TILE} studs/tile  WASD walks the placeholder`} />
-			<Row order={13}>
-				<Button order={1} text={`fov ${fov}`} onClick={() => clientStore.cycleFov()} />
-				<Button
-					order={2}
-					text={`snap ${spike.snapIndex >= 0 ? "on" : "off"}`}
-					active={spike.snapIndex >= 0}
-					onClick={() => clientStore.cycleSnap()}
-				/>
-				<Button order={3} text="auto" active={spike.autoWalk} onClick={() => clientStore.toggleAutoWalk()} />
-			</Row>
-		</>
-	);
-}
-
 function LogLine(props: { text: string; order: number }) {
 	return (
 		<textlabel
@@ -178,7 +153,7 @@ const INVITE_BUTTONS: ReadonlyArray<ReadonlyArray<readonly [string, InviteSpikeA
 	],
 ];
 
-/** First LayoutOrder of the invites panel (after the bullet and camera panels). */
+/** First LayoutOrder of the invites panel (after the bullet panel). */
 const INVITE_ORDER = 21;
 
 function InvitePanel() {
@@ -212,9 +187,8 @@ function InvitePanel() {
 /** Readouts and touch-friendly controls for whichever spikes are running (docs/SPIKES.md). */
 export function SpikeHud() {
 	const bulletsActive = useSelector((state) => selectBulletSpike(state).active);
-	const cameraActive = useSelector((state) => selectCameraSpike(state).active);
 	const invitesActive = useSelector((state) => selectInviteSpike(state).active);
-	if (!bulletsActive && !cameraActive && !invitesActive) {
+	if (!bulletsActive && !invitesActive) {
 		return undefined;
 	}
 	return (
@@ -233,7 +207,6 @@ export function SpikeHud() {
 			/>
 			<uilistlayout Padding={new UDim(0, PADDING / 2)} SortOrder={Enum.SortOrder.LayoutOrder} />
 			{bulletsActive && <BulletPanel />}
-			{cameraActive && <CameraPanel />}
 			{invitesActive && <InvitePanel />}
 		</frame>
 	);

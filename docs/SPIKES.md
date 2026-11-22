@@ -1,14 +1,14 @@
 # Task 1 spikes (go/no-go)
 
 Two throwaway experiments that decide whether the port goes ahead (PLAN.md task 1), plus later ones for asset
-preloading (P0, docs/PRELOAD.md) and Roblox invites and parties (I0, docs/INVITES.md). A, B and P0 are client code,
-I0 is client + server; all are **off by default** and clean up everything they create (one Janitor each) when
-turned off.
+preloading (P0, docs/PRELOAD.md) and Roblox invites and parties (I0, docs/INVITES.md). A and P0 are client code, I0
+is client + server (B is closed, its code removed); all are **off by default** and clean up everything they create
+(one Janitor each) when turned off.
 
 | Spike | Question | Code |
 |---|---|---|
 | A: bullets | Can Roblox move the web build's 1,000 enemy bullets as Parts at 60 fps, on PC and on a phone? | `src/client/controllers/spikes/BulletSpikeController.ts` |
-| B: iso camera | Does a narrow-FOV perspective camera far away pass for the web build's orthographic iso view? | `src/client/controllers/spikes/CameraSpikeController.ts` |
+| B: iso camera (closed) | Does a narrow-FOV perspective camera far away pass for the web build's orthographic iso view? Answered by the live rig: yes, FOV 7 ("Removed 2026-11-21" below) | none (removed; last at `bf31d7ca`) |
 | P0: preload | Does `PreloadAsync` fetch images and sounds from content id strings, or only through instances? Does a sheet's first draw hitch? (docs/PRELOAD.md D4 / D5) | `src/client/controllers/spikes/PreloadSpikeController.ts` |
 | I0: invites | What do `PromptGameInvite`, LaunchData, `GameInvitePromptClosed`, `CanSendGameInviteAsync` and the Party API really do in a published place? (docs/INVITES.md "What the Roblox API gives us") | `src/server/services/spikes/InviteSpikeService.ts`, `src/client/controllers/spikes/InviteSpikeController.ts` |
 | UA1: UI art | Do snapped 9-slice borders land on whole screen px, does the icon atlas bleed, does a CanvasGroup keep pixels crisp, does a stretched panel centre need `flat`? (docs/UI_ART.md UA1) | `src/client/controllers/spikes/UiArtSpikeController.tsx`, `src/client/ui/spikes/UiArtSpike.tsx` |
@@ -33,10 +33,10 @@ for touch devices).
 Pick one:
 
 - **Attribute (no code change, persists in the place):** Explorer -> `Workspace` -> Properties -> Attributes -> `+`,
-  add a **Boolean** named `KV_SpikeBullets` and/or `KV_SpikeCamera`, tick it, then Play.
+  add a **Boolean** named `KV_SpikeBullets` (or another spike's attribute, named in its section), tick it, then Play.
 - **Command bar, while playing** (server context is fine, attributes replicate):
   `workspace:SetAttribute("KV_SpikeBullets", true)`. Set it to `false` to stop the spike and remove its Parts.
-- **Code default:** set `SPIKE_DEFAULTS.bullets` / `.camera` to `true` in `src/shared/config/spikes.ts`.
+- **Code default:** set `SPIKE_DEFAULTS.bullets` to `true` in `src/shared/config/spikes.ts`.
 
 ## Spike A: 1,000 pooled bullet Parts
 
@@ -169,7 +169,9 @@ Lighting as in Setup. Note the Studio frame-rate cap, CPU / GPU and `Lighting.Te
 5. Turn the spike off: the `KV_SpikeBullets` folder is gone from Workspace and the HUD panel disappears. Switch modes
    back and forth a few times first: the folder holds only the current mode's folder each time.
 
-## Spike B: iso camera rig
+## Spike B: iso camera rig (closed, code removed)
+
+Closed and removed 2026-11-21 (see "Removed 2026-11-21"): the text below is the record of what the spike did.
 
 What it does: `Camera.CameraType = Scriptable`, yaw 45 deg / pitch 55 deg (the web build's `CAMERA_YAW` /
 `CAMERA_PITCH`), and a distance chosen so the screen shows 16.875 tiles top to bottom (the web build's 270 px /
@@ -737,6 +739,18 @@ view's `RecapTally`; an unscored co-op run (M1 without `KV_Scoring`) has no feed
 
 Results pending. Notes (Studio / app versions, phone and pad models, OS versions, anything odd):
 
+## Removed 2026-11-21
+
+Closed spikes leave the tree; their results stay here (the rule the rollback spike followed).
+
+| Spike | What left | Where its result is recorded |
+|---|---|---|
+| B: iso camera | `src/client/controllers/spikes/CameraSpikeController.ts`, `CAMERA_SPIKE` and the `camera` flag (`KV_SpikeCamera`) in `src/shared/config/spikes.ts`, the `camera` group of the client store's `spikes` slice (`selectCameraSpike`, `cycleFov`, `cycleSnap`, `toggleAutoWalk`, `reportCameraDistance`, `setCameraActive`), the spike HUD's camera panel, and `CameraController`'s stand-down while the spike ran. Last commit with the code: `bf31d7ca` | "Results" > "Spike B" below, `GAME_CAMERA` (`src/shared/view/config.ts`) and docs/CLIENT.md's `CameraController` row |
+
+Every other spike here is still open (its results table is empty or says pending, and its task is unchecked in
+docs/OPEN_TASKS.md), so its code stays: A / PA0 (one controller; PA0's measurements are pending), P0 (D4 / D5 and
+`PRELOAD.warmCoreImages` wait for it), I0 (the API table is one row in), MB0, UA1, L0 and GM0.
+
 ## Rollback spike (docs/ROLLBACK_SPIKE.md), closed
 
 Not a task 1 gate: it decided whether co-op rollback is worth building. Answer (RBD8, owner, 2026-11-09): no. H 16
@@ -850,7 +864,10 @@ Verdict: best mode, its update at 1,000 + 200 on PC / N's (ratio), 60 fps held (
 | 10 | | | | |
 | 20 | | | | |
 
-Chosen FOV, studs per tile, follow damping, snap:
+Chosen FOV, studs per tile, follow damping, snap: **FOV 7, 4 studs per tile, follow tau 1/6 s (the web IsoCamera's
+damp), snap 1 texel**: the values the live rig runs (`GAME_CAMERA`, `CameraController`). The table above was never
+filled in; the answer is the shipped camera, which every Studio session since has used. Spike closed and its code
+removed 2026-11-21.
 
 ### Spike P0
 
