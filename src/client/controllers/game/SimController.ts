@@ -1,10 +1,10 @@
 import { Controller, OnStart } from "@flamework/core";
 import { GuiService, Players, RunService, Workspace } from "@rbxts/services";
 import { Events } from "client/network";
-import { clientStore, selectDailyStatus, selectSelectedCharacter, type VerdictView } from "client/store";
+import { clientStore, selectSelectedCharacter, type VerdictView } from "client/store";
 import { DEFAULT_CHARACTER, isCharacterId, type CharacterId, type UpgradeLevels } from "shared/characters";
 import { cosmeticLookOf, equippedMapOf, readCosmeticLook, type CosmeticLook } from "shared/cosmetics";
-import type { PartyRunStart, RunFinishVerdict, RunVerdict } from "shared/network";
+import type { PartyRunStart, RunFinishVerdict } from "shared/network";
 import { ArrivalLog, CoopMenuInputGate, LockstepClient, type InputSampler } from "shared/lockstep";
 import {
 	ALL_DEBUG_BUTTONS,
@@ -17,12 +17,8 @@ import {
 	RUN_START_BUSY_RETRIES,
 	RUN_START_BUSY_RETRY_SECONDS,
 	RUN_START_TIMEOUT_SECONDS,
-	oversizeSubmission,
 	shouldRequestServerRun,
-	shouldSubmitRun,
-	unsubmittedReason,
 	type FrameEvents,
-	type RunEnding,
 	type RunView,
 } from "shared/play";
 import {
@@ -34,9 +30,6 @@ import {
 	isEndlessWorld,
 	isValidRunSeed,
 	type DevRunOptions,
-	type RunFinal,
-	type SegmentVerdict,
-	type RunSubmission,
 	type RunWorld,
 	type RunWorldKind,
 	type StartRunReply,
@@ -56,8 +49,8 @@ import {
 	type SpacingConfig,
 } from "shared/sim";
 import { TUTORIAL } from "shared/config";
-import { DAILY_WORLD_KIND } from "shared/daily";
-import { RECORDS_POLICY } from "shared/records";
+import {} from "shared/daily";
+import {} from "shared/records";
 import {} from "shared/theme";
 import {
 	LatencyProbe,
@@ -73,7 +66,7 @@ import { codexToastChip } from "shared/view/codex";
 import { HitstopClock, simPacerFor } from "shared/view/fx";
 import { GoldenRumourClock } from "shared/view/golden";
 import { DrawnLocalPlayer, PREDICTION_VIEW, type DrawnPlayerOf, type PredictionSmoothing } from "shared/view/predict";
-import { PROGRESSION_VIEW, boardFor, toastFor, type PendingRunClaim } from "shared/view/hud";
+import { PROGRESSION_VIEW, toastFor, type PendingRunClaim } from "shared/view/hud";
 import {
 	LEFT_RUN_END_REASON,
 	afterForfeitStep,
@@ -98,6 +91,7 @@ import {
 	type StageWork,
 	type ToastChipSource,
 	FROZEN_PACER,
+	RunSubmissions,
 	MS_FORMAT,
 	MS_PER_SECOND,
 	buildCoopClient,
@@ -126,23 +120,6 @@ export type {
 } from "./sim";
 
 const RENDER_STEP = "KV_Sim";
-
-/**
- * A finished ranked run of `world` may raise the new-best baseline while its verdict is pending (pendingRunClaims):
- * not with KV_Debug, and only in a world whose runs count toward personal records (shared/records RECORDS_POLICY: a
- * Daily run never does, docs/DAILY.md DSD6).
- */
-function claimsRecords(debug: boolean, world: RunWorldKind): boolean {
-	return !debug && RECORDS_POLICY.eligibleWorlds.includes(world);
-}
-
-/**
- * A finished ranked Daily run may raise the next daily run's best-today baseline while its verdict is pending
- * (docs/DAILY.md DS10: pendingRunClaims with `daily`, the day): not with KV_Debug (it never posts).
- */
-function claimsDaily(debug: boolean, world: RunWorldKind): boolean {
-	return !debug && world === DAILY_WORLD_KIND;
-}
 
 /**
  * Owns the live run (port of the web build's SimDriver): builds it with shared/run `buildWorldSetup` (the world
@@ -213,9 +190,8 @@ export class SimController implements OnStart {
 	private readonly input = { ...EMPTY_INPUT };
 	private counter = 0;
 	private debug = false;
-	private submitted = false;
-	/** The last run submitted ended in a death: the next run is a retry and is submitted even if abandoned early. */
-	private lastSubmittedDied = false;
+	/** Run submission and verdict bookkeeping (sim/submissions.ts): `submitted`, the ranked runs, the uploads. */
+	private readonly submissions = new RunSubmissions(this);
 	private pendingReset = false;
 	private pendingReplayCheck = false;
 	private pausedByMenu = false;
@@ -226,18 +202,6 @@ export class SimController implements OnStart {
 	private hudTimer = 0;
 	/** Serial of the last HUD toast (M2 progression events). */
 	private toastSerial = 0;
-	/** claimedHash -> run counter of submissions waiting for a verdict. */
-	private readonly awaiting = new Map<string, { run: number; ending: string }>();
-	/**
-	 * Ranked runs started this session: runId -> run counter, (once finished) ending, and `claim`: the run's board and
-	 * final score / floor while its records may still be on the way (docs/NEW_BEST.md: the client's own numbers once
-	 * the final claim was sent and the verdict is pending, the server's once accepted with a records result; cleared
-	 * on a rejection or an accepted run that did not count). See pendingRunClaims.
-	 */
-	private readonly rankedRuns = new Map<
-		string,
-		{ run: number; ending?: string; decided: boolean; claim?: PendingRunClaim }
-	>();
 	/** The `startRun` request waiting for `runStarted`, with the local fallback run's parameters. */
 	private awaitingStart:
 		| {
@@ -384,7 +348,7 @@ export class SimController implements OnStart {
 			this.ctx?.arrivalLog?.arrived(now, coop.receivedTicks() - before);
 			coop.acknowledge(hashAck);
 		});
-		Events.runVerdict.connect((verdict) => this.onVerdict(verdict));
+		Events.runVerdict.connect((verdict) => this.submissions.onVerdict(verdict));
 		Events.runStarted.connect((reply) => {
 			if (this.awaitingStart !== undefined && reply.requestId === this.awaitingStart.requestId) {
 				this.startReply = reply;
@@ -392,7 +356,7 @@ export class SimController implements OnStart {
 		});
 		Events.segmentVerdict.connect((v) => {
 			if (!v.ok) warn(`[Sim] segment ${v.index} of run ${v.runId} refused: ${v.code ?? ""} ${v.reason ?? ""}`);
-			else this.onSegmentVerified(v);
+			else this.submissions.onSegmentVerified(v);
 		});
 		Events.runFinished.connect((verdict) => this.onRunFinished(verdict));
 		// The Roblox menu (Escape / Start: a game cannot take those keys) pauses a solo run; the pause overlay hides
@@ -615,9 +579,7 @@ export class SimController implements OnStart {
 	 * runs that did not count. NewBestController folds them into a new run's baseline (shared/view/hud withPendingRuns).
 	 */
 	pendingRunClaims(): ReadonlyArray<PendingRunClaim> {
-		const out = new Array<PendingRunClaim>();
-		for (const [, entry] of this.rankedRuns) if (entry.claim !== undefined) out.push(entry.claim);
-		return out;
+		return this.submissions.pendingRunClaims();
 	}
 
 	/** The stage loader registers itself (StageController.onStart). */
@@ -658,7 +620,7 @@ export class SimController implements OnStart {
 	startTutorial(): void {
 		if (this.ctx?.coop !== undefined && !this.ctx.coop.isOver()) return;
 		this.clearExits();
-		if (this.ctx?.live !== undefined) this.submit("abandoned");
+		if (this.ctx?.live !== undefined) this.submissions.submit("abandoned");
 		this.nextRunLobbyId = "";
 		this.beginTutorial();
 	}
@@ -671,7 +633,7 @@ export class SimController implements OnStart {
 		const ctx = this.ctx;
 		if (ctx === undefined || !ctx.tutorial || this.frozen) return;
 		this.frozen = true;
-		this.submitted = true;
+		this.submissions.submitted = true;
 		this.hitstop.clear(); // a boss-kill freeze / slow motion would otherwise hold the particles still
 		clientStore.setVerdict({ status: "skipped", run: ctx.counter, ending: "abandoned", code: "tutorial" });
 		print(`[Sim] tutorial run ${ctx.counter} finished at tick ${ctx.run.state.tick}`);
@@ -698,7 +660,7 @@ export class SimController implements OnStart {
 		if (this.ctx?.coop !== undefined && !this.ctx.coop.isOver()) return;
 		if (!isValidRunSeed(seed)) return;
 		this.clearExits();
-		if (this.ctx?.live !== undefined) this.submit("abandoned");
+		if (this.ctx?.live !== undefined) this.submissions.submit("abandoned");
 		this.nextRunLobbyId = "";
 		this.runCharacter = this.pickCharacter(character);
 		this.devRun = {
@@ -810,7 +772,7 @@ export class SimController implements OnStart {
 	startSolo(lobbyId?: string, worldKind: RunWorldKind = RANKED_WORLD_KIND, character?: CharacterId): void {
 		if (this.ctx?.coop !== undefined && !this.ctx.coop.isOver()) return;
 		this.clearExits();
-		if (this.ctx?.live !== undefined) this.submit("abandoned"); // (only if not submitted yet, as R does)
+		if (this.ctx?.live !== undefined) this.submissions.submit("abandoned"); // (only if not submitted yet, as R does)
 		this.nextRunLobbyId = lobbyId ?? "";
 		this.rankedWorld = worldKind;
 		this.runCharacter = this.pickCharacter(character);
@@ -894,7 +856,7 @@ export class SimController implements OnStart {
 		}
 		if (ctx.tutorial || ctx.dev) {
 			// Skip tutorial / leaving a dev run: never submitted (submit records the skipped verdict) or forfeited.
-			this.submit("abandoned");
+			this.submissions.submit("abandoned");
 			this.stopRun("left");
 			return;
 		}
@@ -924,7 +886,7 @@ export class SimController implements OnStart {
 			const step = partyExitStep(
 				coop.isOver(),
 				this.leftPartyRun,
-				this.rankedRuns.get(coop.runId)?.decided === true,
+				this.submissions.rankedRuns.get(coop.runId)?.decided === true,
 			);
 			if (step === "leave") {
 				this.leaveRun();
@@ -1125,7 +1087,7 @@ export class SimController implements OnStart {
 		// A new run: nothing to glide from (LP5's run-start snap).
 		this.drawnLocal.reset();
 		this.counter++;
-		this.submitted = false;
+		this.submissions.submitted = false;
 		this.hudTimer = 0;
 		this.hitstop.clear();
 		const floor = client.state.endless?.floor ?? 0;
@@ -1165,7 +1127,7 @@ export class SimController implements OnStart {
 		};
 		this.frozen = false;
 		this.ctx = ctx;
-		this.rankedRuns.set(start.runId, { run: this.counter, decided: false });
+		this.submissions.rankedRuns.set(start.runId, { run: this.counter, decided: false });
 		clientStore.startRun(
 			runInfo(this.theme.getPack(), ctx, "", this.debug),
 			coopSnapshot(client, this.ctx, this.getSpectateView(), this.rumour.chip()),
@@ -1247,10 +1209,10 @@ export class SimController implements OnStart {
 			);
 		}
 		if (res.final !== undefined) {
-			const entry = this.rankedRuns.get(runId);
+			const entry = this.submissions.rankedRuns.get(runId);
 			if (entry !== undefined) {
 				entry.ending = "death";
-				entry.claim = this.finishedClaim(ctx, coop.state);
+				entry.claim = this.submissions.finishedClaim(ctx, coop.state);
 			}
 			clientStore.setVerdict({
 				status: "pending",
@@ -1446,7 +1408,7 @@ export class SimController implements OnStart {
 		}
 		const { run, config, dungeon, endlessFloor, characters } = made;
 		this.counter++;
-		this.submitted = false;
+		this.submissions.submitted = false;
 		this.hudTimer = 0;
 		this.pausedByMenu = false;
 		this.pausedByUi = false;
@@ -1480,7 +1442,7 @@ export class SimController implements OnStart {
 		};
 		this.nextRunLobbyId = ""; // a restart (R) is a plain solo run
 		this.ctx = ctx;
-		if (runId !== undefined) this.rankedRuns.set(runId, { run: this.counter, decided: false });
+		if (runId !== undefined) this.submissions.rankedRuns.set(runId, { run: this.counter, decided: false });
 
 		const info = runInfo(pack, ctx, notice, this.debug);
 		clientStore.startRun(info, soloSnapshot(run, this.rumour.chip()));
@@ -1627,7 +1589,7 @@ export class SimController implements OnStart {
 			}
 			this.changeFloor(ctx, floor);
 		}
-		this.uploadSegments(this.ctx ?? ctx);
+		this.submissions.uploadSegments(this.ctx ?? ctx);
 		// P / Start inside the settings panel: the run resumes when the panel closes, not under it.
 		if (this.uiPauseOpen && !run.isPaused()) {
 			run.setPaused(true);
@@ -1635,7 +1597,8 @@ export class SimController implements OnStart {
 		}
 
 		const outcome = run.outcome();
-		if (outcome !== "playing" && !this.submitted) this.submit(outcome === "dead" ? "death" : "victory");
+		if (outcome !== "playing" && !this.submissions.submitted)
+			this.submissions.submit(outcome === "dead" ? "death" : "victory");
 		// Leave run / a forfeiting restart: the forfeit tick ran and its death was submitted. Leave run stays on the
 		// finished run, so its run-over panel shows the run's stats ("You left the run"; Again / Main menu from there);
 		// the pause it was asked from is lifted so the panel reads like any death.
@@ -1643,7 +1606,7 @@ export class SimController implements OnStart {
 			this.leaveAfterForfeit,
 			this.restartAfterForfeit,
 			outcome !== "playing",
-			this.submitted,
+			this.submissions.submitted,
 		);
 		if (afterForfeit === "runOver") {
 			this.leaveAfterForfeit = false;
@@ -1700,7 +1663,7 @@ export class SimController implements OnStart {
 			if (god !== undefined && this.devRun !== undefined) {
 				this.devRun = { ...this.devRun, invulnerable: god !== this.pendingGodToggle };
 			}
-			this.submit("abandoned");
+			this.submissions.submit("abandoned");
 			this.beginDev();
 			return;
 		}
@@ -1709,7 +1672,7 @@ export class SimController implements OnStart {
 			print(`[Sim] run ${ctx.counter}: restarting (forfeit; counts as a death)`);
 			return;
 		}
-		this.submit("abandoned");
+		this.submissions.submit("abandoned");
 		this.beginRun();
 	}
 
@@ -1745,141 +1708,10 @@ export class SimController implements OnStart {
 		else warn(line);
 	}
 
-	// --- submission ----------------------------------------------------------------------------
-
-	/**
-	 * Submits the current run once (death, victory, or abandoned by a restart). Short abandoned runs are not sent
-	 * (shared/play `shouldSubmitRun`), and a run over the server's caps is kept and shown as rejected locally
-	 * (`oversizeSubmission`): the server would reject it unread, after the upload.
-	 */
-	private submit(ending: RunEnding): void {
-		const ctx = this.ctx;
-		if (ctx === undefined || this.submitted) return;
-		this.submitted = true;
-		const run = ctx.live;
-		if (run === undefined) return; // co-op runs end through lockstepFinal (coopFrame)
-		if (run.ticks() === 0) return;
-		// Tutorial runs are local practice; stress configs are never built by the server; a KV_Scoring run on an M1
-		// world would never match the server's unscored replay.
-		const never = unsubmittedReason(ctx);
-		if (never !== undefined) {
-			clientStore.setVerdict({ status: "skipped", run: ctx.counter, ending, code: never });
-			return;
-		}
-		if (!shouldSubmitRun(ending, run.ticks(), this.lastSubmittedDied)) {
-			// A ranked session left open is replaced (abandoned) by the next startRun.
-			clientStore.setVerdict({ status: "skipped", run: ctx.counter, ending, code: "short" });
-			return;
-		}
-		this.lastSubmittedDied = ending === "death";
-		if (ctx.runId !== undefined) {
-			this.finishRanked(ctx, ending);
-			return;
-		}
-		const [ok, result] = pcall(() => run.submission());
-		if (!ok) {
-			warn(`[Sim] could not build the submission: ${errorMessage(result)}`);
-			clientStore.setVerdict({ status: "skipped", run: ctx.counter, ending, code: "error" });
-			return;
-		}
-		// docs/ARCHER.md AR5: the server's replay builds the world with the run's character (absent: none, M1).
-		const built = result as RunSubmission;
-		const submission: RunSubmission =
-			ctx.character !== undefined ? { ...built, characterId: ctx.character } : built;
-		const kept = oversizeSubmission(submission);
-		if (kept !== undefined) {
-			warn(
-				`[Sim] run ${ctx.counter} (${ending}) ${kept.reason}: ${buffer.len(submission.recording)} bytes, ` +
-					`${submission.claimed.ticks} ticks`,
-			);
-			clientStore.setVerdict({
-				status: "rejected",
-				run: ctx.counter,
-				ending,
-				code: kept.code,
-				reason: kept.reason,
-				claimedHash: submission.claimedHash,
-			});
-			return;
-		}
-		this.awaiting.set(submission.claimedHash, { run: ctx.counter, ending });
-		clientStore.setVerdict({ status: "pending", run: ctx.counter, ending, claimedHash: submission.claimedHash });
-		Events.submitRun.fire(submission);
-		print(
-			`[Sim] submitted run ${ctx.counter} (${ending}): ${submission.claimed.ticks} ticks, ` +
-				`${buffer.len(submission.recording)} bytes, hash ${submission.claimedHash}`,
-		);
-	}
-
-	/** A finished run's records claim: its board, final score and floor (pendingRunClaims). */
-	private claimOf(state: Readonly<SimState>): PendingRunClaim {
-		return {
-			board: boardFor(partySize(state)),
-			score: state.score?.total ?? 0,
-			floor: state.endless?.floor ?? 0,
-		};
-	}
-
-	/**
-	 * A finished ranked run's claim for pendingRunClaims, or undefined: an endless run's records claim, a Daily run's
-	 * best-today claim tagged with its day (the daily status of the run's own seed; none when that status is gone, e.g.
-	 * the day changed: the next run's baseline is a new day's anyway), nothing for any other world or KV_Debug.
-	 */
-	private finishedClaim(ctx: RunContext, state: Readonly<SimState>): PendingRunClaim | undefined {
-		if (claimsRecords(this.debug, ctx.world)) return this.claimOf(state);
-		if (!claimsDaily(this.debug, ctx.world)) return undefined;
-		const status = selectDailyStatus(clientStore.getState());
-		if (status === undefined || status.seed !== ctx.seed) return undefined;
-		return { ...this.claimOf(state), daily: status.day };
-	}
-
-	/** Sends the segments the run cut (ranked runs that the server has not rejected yet). */
-	private uploadSegments(ctx: RunContext): void {
-		const runId = ctx.runId;
-		const live = ctx.live;
-		if (runId === undefined || live === undefined) return;
-		const segments = live.takeSegments();
-		if (this.rankedRuns.get(runId)?.decided === true) return; // rejected mid-run: the rest is unranked
-		for (const segment of segments) Events.submitSegment.fire(segment);
-	}
-
-	/**
-	 * A segment of a ranked run was verified: its frames are no longer needed (a ranked run never falls back to
-	 * submitRun), so the recording is trimmed to the unverified tail. Not with KV_Debug: F8's replay check replays the
-	 * whole recording.
-	 */
-	private onSegmentVerified(v: SegmentVerdict): void {
-		const ctx = this.ctx;
-		if (ctx === undefined || ctx.runId === undefined || ctx.runId !== v.runId || this.debug) return;
-		ctx.live?.releaseVerifiedFrames(v.endTick);
-	}
-
-	/** The end of a ranked run: the last segment, then `finishRun` (answered by `runFinished`). */
-	private finishRanked(ctx: RunContext, ending: RunEnding): void {
-		const runId = ctx.runId!;
-		const live = ctx.live;
-		const entry = this.rankedRuns.get(runId);
-		if (live === undefined || entry === undefined || entry.decided) return; // already rejected (the verdict shows it)
-		entry.ending = ending;
-		const [ok, result] = pcall(() => live.final());
-		this.uploadSegments(ctx);
-		if (!ok || result === undefined) {
-			warn(`[Sim] could not build the final claim: ${errorMessage(result)}`);
-			clientStore.setVerdict({ status: "skipped", run: ctx.counter, ending, code: "error" });
-			return;
-		}
-		const final = result as RunFinal;
-		clientStore.setVerdict({ status: "pending", run: ctx.counter, ending, claimedHash: final.claimedHash });
-		entry.claim = this.finishedClaim(ctx, live.state);
-		Events.finishRun.fire(final);
-		print(
-			`[Sim] finished ranked run ${ctx.counter} (${ending}): ${final.finalTick} ticks in ` +
-				`${live.segmentCount()} segments, hash ${final.claimedHash}`,
-		);
-	}
+	// --- verdicts (submission itself: sim/submissions.ts) ---------------------------------------
 
 	private onRunFinished(v: RunFinishVerdict): void {
-		const entry = this.rankedRuns.get(v.runId);
+		const entry = this.submissions.rankedRuns.get(v.runId);
 		if (entry === undefined || entry.decided) return;
 		entry.decided = true;
 		// Records (pendingRunClaims): an accepted run that counted keeps its board with the server's numbers until the
@@ -1944,27 +1776,6 @@ export class SimController implements OnStart {
 		const line = `[Sim] ranked verdict for run ${entry.run}${current ? "" : " (left)"}: ${
 			v.ok ? "ACCEPTED" : `REJECTED ${v.code ?? ""}`
 		}${where} ${v.reason ?? ""} score ${v.score.score} floor ${v.score.floor} ${v.leaderboard ?? ""}`;
-		if (v.ok) print(line);
-		else warn(line);
-	}
-
-	private onVerdict(v: RunVerdict): void {
-		const pending = this.awaiting.get(v.claimedHash);
-		if (pending === undefined) return;
-		this.awaiting.delete(v.claimedHash);
-		const view: VerdictView = {
-			status: v.ok ? "accepted" : "rejected",
-			run: pending.run,
-			ending: pending.ending,
-			code: v.code,
-			reason: v.reason,
-			claimedHash: v.claimedHash,
-			serverHash: v.serverHash,
-		};
-		clientStore.setVerdict(view);
-		const line = `[Sim] verdict for run ${pending.run}: ${v.ok ? "ACCEPTED" : `REJECTED ${v.code ?? ""}`} ${
-			v.reason ?? ""
-		}`;
 		if (v.ok) print(line);
 		else warn(line);
 	}
