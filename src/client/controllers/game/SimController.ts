@@ -1,18 +1,11 @@
 import { Controller, OnStart } from "@flamework/core";
 import { GuiService, Players, RunService, Workspace } from "@rbxts/services";
 import { Events } from "client/network";
-import { clientStore, selectDailyStatus, selectSelectedCharacter, type RunInfo, type VerdictView } from "client/store";
+import { clientStore, selectSelectedCharacter, type VerdictView } from "client/store";
 import { DEFAULT_CHARACTER, isCharacterId, type CharacterId, type UpgradeLevels } from "shared/characters";
 import { cosmeticLookOf, equippedMapOf, readCosmeticLook, type CosmeticLook } from "shared/cosmetics";
-import type { PartyRunStart, RunFinishVerdict, RunVerdict } from "shared/network";
-import {
-	ArrivalLog,
-	CoopMenuInputGate,
-	DEFAULT_LOCKSTEP,
-	LockstepClient,
-	formatArrivalLine,
-	type InputSampler,
-} from "shared/lockstep";
+import type { PartyRunStart, RunFinishVerdict } from "shared/network";
+import { ArrivalLog, CoopMenuInputGate, LockstepClient, type InputSampler } from "shared/lockstep";
 import {
 	ALL_DEBUG_BUTTONS,
 	DEFAULT_RUN_SEED,
@@ -24,31 +17,19 @@ import {
 	RUN_START_BUSY_RETRIES,
 	RUN_START_BUSY_RETRY_SECONDS,
 	RUN_START_TIMEOUT_SECONDS,
-	oversizeSubmission,
 	shouldRequestServerRun,
-	shouldSubmitRun,
-	takeSnapshot,
-	unsubmittedReason,
 	type FrameEvents,
-	type LiveRunSetup,
-	type RunEnding,
 	type RunView,
 } from "shared/play";
 import {
 	DEV_WORLD_KIND,
-	LIVE_RUN_WORLD,
 	TUTORIAL_WORLD_KIND,
 	buildWorldSetup,
 	clampDevFloor,
-	biomeIndexOf,
 	errorMessage,
 	isEndlessWorld,
 	isValidRunSeed,
 	type DevRunOptions,
-	type EndlessRunFloor,
-	type RunFinal,
-	type SegmentVerdict,
-	type RunSubmission,
 	type RunWorld,
 	type RunWorldKind,
 	type StartRunReply,
@@ -57,53 +38,35 @@ import {
 import {
 	DEV_GOD_BUTTON,
 	EMPTY_INPUT,
-	chainhookHolderOf,
 	copyInput,
 	isDraftOpen,
-	newPlayerState,
 	partySize,
 	playerAt,
-	stressConfig,
 	stressTargetFrom,
 	type InputFrame,
 	type PlayerState,
-	type SimConfig,
 	type SimState,
 	type SpacingConfig,
 } from "shared/sim";
 import { TUTORIAL } from "shared/config";
-import { DAILY_WORLD_KIND } from "shared/daily";
-import { RECORDS_POLICY } from "shared/records";
-import { BIOMES, type ThemePack } from "shared/theme";
+import {} from "shared/daily";
+import {} from "shared/records";
+import {} from "shared/theme";
 import {
 	LatencyProbe,
 	RENDER_ORDER,
 	SpectateTracker,
 	floorChangeStaged,
-	formatListenerTimes,
 	playerCharacterOf,
-	latencyProbeView,
-	listenerLabel,
-	leadDebugView,
-	predictionDebugView,
-	pacingDebugView,
 	spectateCommand,
-	type ListenerTime,
 	type SpectateView,
 	type StageKind,
 } from "shared/view";
 import { codexToastChip } from "shared/view/codex";
-import { HitstopClock, simPacerFor, type FrameAdvance, type FramePacer } from "shared/view/fx";
+import { HitstopClock, simPacerFor } from "shared/view/fx";
 import { GoldenRumourClock } from "shared/view/golden";
-import {
-	PREDICTION_VIEW,
-	PredictionResume,
-	PredictionSmoother,
-	blendTowardMerged,
-	writeDrawnPlayer,
-	type DrawnPlayerOf,
-} from "shared/view/predict";
-import { PROGRESSION_VIEW, boardFor, toastFor, type PendingRunClaim } from "shared/view/hud";
+import { DrawnLocalPlayer, PREDICTION_VIEW, type DrawnPlayerOf, type PredictionSmoothing } from "shared/view/predict";
+import { PROGRESSION_VIEW, toastFor, type PendingRunClaim } from "shared/view/hud";
 import {
 	LEFT_RUN_END_REASON,
 	afterForfeitStep,
@@ -112,257 +75,51 @@ import {
 	partyExitStep,
 	restartForfeits,
 } from "shared/view/menu";
-import { ownedCharacterOr, statusUpgrades } from "shared/view/silver";
+import { ownedCharacterOr } from "shared/view/silver";
 import type { WalletStatus } from "shared/wallet";
-import { ENDLESS_FIRST_FLOOR, FloorModifier, type Dungeon, type FloorSecret } from "shared/dungeon";
+import { ENDLESS_FIRST_FLOOR, type FloorSecret } from "shared/dungeon";
 import { InputController } from "./InputController";
 import { ThemeController } from "./ThemeController";
+import {
+	floorModifierOf,
+	floorSecretOf,
+	type DraftRevealDriver,
+	type RunContext,
+	type RunExitListener,
+	type RunListener,
+	type StageDriver,
+	type StageWork,
+	type ToastChipSource,
+	FROZEN_PACER,
+	RunSubmissions,
+	MS_FORMAT,
+	MS_PER_SECOND,
+	buildCoopClient,
+	callListeners,
+	coopSnapshot,
+	makeSoloRun,
+	readSeed,
+	readWorld,
+	runInfo,
+	soloSnapshot,
+	type MadeRun,
+	logArrivals,
+	memberName,
+	publishLatencyProbe,
+} from "./sim";
+
+export { floorModifierOf, floorSecretOf } from "./sim";
+export type {
+	DraftRevealDriver,
+	RunContext,
+	RunExitListener,
+	RunListener,
+	StageDriver,
+	StageWork,
+	ToastChipSource,
+} from "./sim";
 
 const RENDER_STEP = "KV_Sim";
-const MS_PER_SECOND = 1000;
-/** The KV_Debug stage timing lines' millisecond format (SL0). */
-const MS_FORMAT = "%.1f";
-const WORLDS: ReadonlyArray<RunWorld> = ["game", "endless", "dungeonNoEncounter", "greybox"];
-
-/**
- * Paces a finished tutorial run: every frame frozen, so the run stays on screen (its last state, alpha unchanged) but
- * runs no tick, records nothing and reports no events (LiveRun.frame still resets the frame's events).
- */
-const FROZEN_PACER: FramePacer = {
-	frame(_realDeltaSeconds: number, out: FrameAdvance): FrameAdvance {
-		out.simDelta = 0;
-		out.frozen = true;
-		out.timeScale = 0;
-		out.frozenMs = 0;
-		return out;
-	},
-};
-
-/** Everything fixed for one run, as the views see it. */
-export interface RunContext {
-	/** What views read (state, events, score pops, alpha): the LiveRun, or the co-op LockstepClient. */
-	readonly run: RunView;
-	/** The solo run's driver (undefined in a co-op run). */
-	readonly live: LiveRun | undefined;
-	/** The co-op lockstep run (M4), or undefined for a solo run. */
-	readonly coop: LockstepClient | undefined;
-	/** This client's player index (0 solo; co-op: its place in the party). */
-	readonly localIndex: number;
-	/**
-	 * Co-op spectating (docs/SPECTATE.md): whose player the views follow once this client's player died; undefined
-	 * in a solo run and the tutorial (they never spectate).
-	 */
-	readonly spectate: SpectateTracker | undefined;
-	/** Co-op: each member's display name in player index order (the spectate bar); empty in a solo run. */
-	readonly memberNames: ReadonlyArray<string>;
-	readonly seed: number;
-	/** The world registry kind (shared/run worlds.ts). */
-	readonly world: RunWorldKind;
-	readonly atBossDoor: boolean;
-	/** The server's run session (a ranked, segmented run), or undefined for an unranked local run. */
-	readonly runId: string | undefined;
-	/** Stress target (0 = off). Stress runs are never submitted (the server never builds a stress config). */
-	readonly stress: number;
-	/**
-	 * KV_Scoring: M2 scoring opted into on a non-endless world. Those scored runs are not submitted (the server
-	 * replays the unscored M1 config). Endless runs are always scored by their own config and are submitted.
-	 */
-	readonly scoring: boolean;
-	/** The SimConfig the current floor runs with (endless: that floor's world config; else the run's config). */
-	readonly config: Readonly<SimConfig>;
-	/** The current floor's dungeon, or undefined in the greybox world. */
-	readonly dungeon: Dungeon | undefined;
-	/** Run counter: 1 for the first run, +1 per restart. */
-	readonly counter: number;
-	/** Endless mode: the current floor number (0 outside endless runs). */
-	readonly floor: number;
-	/** Endless mode: each floor's world and layout (the run's cached floors); undefined outside endless runs. */
-	readonly endlessFloor: ((floor: number) => EndlessRunFloor) | undefined;
-	/** The lobby whose start began this run (a party run, or a one-player lobby's solo run); "" otherwise. */
-	readonly lobbyId: string;
-	/**
-	 * docs/ARCHER.md AR5: every player's character, in player index order, as the run was built (RunSetup.characters);
-	 * undefined for a world without characters (M1's `game`, `dungeonNoEncounter`, `greybox`).
-	 */
-	readonly characters: ReadonlyArray<CharacterId> | undefined;
-	/** This client's player's character (`characters[localIndex]`), or undefined (a world without characters). */
-	readonly character: CharacterId | undefined;
-	/**
-	 * docs/COSMETICS.md CS5: every player's look (the cosmetics they wear), player index order: a co-op run's
-	 * PartyRunStart.looks, a ranked solo run's StartRunReply.look, else the wallet's equipped slots for the run's
-	 * character (the Knight in a world without characters, CSD12). Presentation only (never stepped, hashed or sent).
-	 */
-	readonly looks: ReadonlyArray<CosmeticLook>;
-	/**
-	 * A first-run tutorial run (world `tutorial`, docs/TUTORIAL.md): local, never submitted (verdict `tutorial`), no
-	 * segments, no R / pad restart (the pause overlay has Restart tutorial and Skip tutorial).
-	 */
-	readonly tutorial: boolean;
-	/**
-	 * A developer mode run (world `dev`, docs/DEV_MODE.md): local, never submitted (verdict code `dev`), no segments;
-	 * R / Again restart it at once on the same seed and start floor (no forfeit), Leave run just stops it.
-	 */
-	readonly dev: boolean;
-	/**
-	 * KV_Debug co-op runs only (docs/FEEL.md J9): the latency probe behind the debug line's lead and press -> stepped
-	 * tick numbers. Measurement only: nothing it does reaches what is sent, stepped, hashed or recorded.
-	 */
-	readonly latencyProbe?: LatencyProbe;
-	/**
-	 * KV_Debug co-op runs only (docs/FRAME_PACING.md FP0 / FP5): the arrival log behind the `[Pace]` line printed every
-	 * ARRIVAL_LOG.windowSec. Measurement only, like the latency probe.
-	 */
-	readonly arrivalLog?: ArrivalLog;
-	/** A co-op run built without the playout clock (KV_PacingOff, read at the run's start). */
-	readonly pacingOff?: boolean;
-	/** A co-op run built without the measured lead: the legacy miss counter (KV_LeadOff, read at the run's start). */
-	readonly leadOff?: boolean;
-	/** A co-op run built without local prediction (KV_PredictOff, read at the run's start; docs/LOCAL_PREDICTION.md). */
-	readonly predictOff?: boolean;
-}
-
-/**
- * A subscriber to the run: called with the run's context by `onRunStarted` (now if a run exists, and at every run
- * start) or by `onFloorChanged` (after the run moved to another floor, with the new floor's context). The render and UI
- * controllers rebuild their views from it.
- */
-export type RunListener = (ctx: RunContext) => void;
-
-/**
- * What a run start or floor change hands the stage loader (docs/STAGE_LOADER.md SL3; StageController): the work it
- * runs under its cover on later frames, one item per frame, once the cover is on screen.
- */
-export interface StageWork {
-	/** Solo run start only: builds the run (makeRun: floor 1 generated) and its context; prints `[Sim] run N started`. */
-	readonly forge?: () => void;
-	/** Runs the run-start / floor-change listeners with the context current at that moment (views rebuild). */
-	readonly notify: () => void;
-	/** The floor the cover loads (the label's `{floor}`; 0 for none, e.g. the greybox). */
-	readonly floor: number;
-}
-
-/**
- * The stage loader as SimController sees it (StageController implements it and registers with `setStageDriver`; one
- * direction only, so SimController never injects it). Without a driver every StageWork runs at once, as before.
- */
-export interface StageDriver {
-	/** A ranked run start asked the server: the cover ("Starting run...") goes up now; `stage` brings the work. */
-	awaitServer(): void;
-	/** Cover now (this frame); the work runs on later frames under it (stageMerge decides against a current load). */
-	stage(kind: StageKind, work: StageWork): void;
-	/** The run stopped (left / exited): any cover ends now, its pending work is dropped. */
-	cancel(): void;
-	/** Once per SimController frame, before anything else: the cover's clock and the work due. */
-	frame(dt: number): void;
-	/** A solo run start is under its cover: no tick, no pause menu, no restart. */
-	holdsSim(): boolean;
-	/** The cover owns the input until its reveal (neutral input reaches the sim, solo and co-op). */
-	blocksInput(): boolean;
-}
-/**
- * The boon draft reveal as SimController sees it (docs/DRAFT_REVEAL.md DR6; DraftRevealController implements it and
- * registers with `setDraftRevealDriver`; one direction only, so SimController never injects it). Without a driver the
- * confirm is never held, as before.
- */
-export interface DraftRevealDriver {
-	/**
-	 * The draft's confirm is held back (DraftRevealGate): the local reveal is playing, or the local draft is open and its
-	 * reveal has not begun yet (shared/play draftConfirmHeld).
-	 */
-	blocksConfirm(): boolean;
-	/** A confirm press edge during the reveal: skip it (DRD6). */
-	skip(): void;
-}
-
-/**
- * The Codex as SimController's toasts see it (claude/codex-plan.md CX6, R14; CodexController implements it and registers
- * with `setToastChipSource`; one direction only, so SimController never injects it). Without a source no toast wears
- * the chip.
- */
-export interface ToastChipSource {
-	/**
-	 * Called once per sim frame, right before the frame's toasts are pushed (solo and co-op, after the step): the Codex
-	 * tracker's frame runs here, so its chips are this frame's. Returns the entry ids whose toast this frame wears the
-	 * NEW! chip (shared/view/codex codexToastChip maps each run event to its entry). Read it before the next call only.
-	 */
-	toastChips(view: RunView): ReadonlyArray<string>;
-}
-
-/** The run was left for the menu: "left" (Leave run, mid-run) or "exited" (Main menu / Back to lobby after it). */
-export type RunExitListener = (how: "left" | "exited") => void;
-
-interface MadeRun {
-	readonly run: LiveRun;
-	readonly config: Readonly<SimConfig>;
-	readonly dungeon: Dungeon | undefined;
-	readonly endlessFloor: ((floor: number) => EndlessRunFloor) | undefined;
-	/** RunSetup.characters (docs/ARCHER.md AR4 / AR5 / AR9). */
-	readonly characters: ReadonlyArray<CharacterId> | undefined;
-}
-
-/**
- * A finished ranked run of `world` may raise the new-best baseline while its verdict is pending (pendingRunClaims):
- * not with KV_Debug, and only in a world whose runs count toward personal records (shared/records RECORDS_POLICY: a
- * Daily run never does, docs/DAILY.md DSD6).
- */
-function claimsRecords(debug: boolean, world: RunWorldKind): boolean {
-	return !debug && RECORDS_POLICY.eligibleWorlds.includes(world);
-}
-
-/**
- * A finished ranked Daily run may raise the next daily run's best-today baseline while its verdict is pending
- * (docs/DAILY.md DS10: pendingRunClaims with `daily`, the day): not with KV_Debug (it never posts).
- */
-function claimsDaily(debug: boolean, world: RunWorldKind): boolean {
-	return !debug && world === DAILY_WORLD_KIND;
-}
-
-/** KV_World, else the place's play mode (shared/run LIVE_RUN_WORLD: "endless" unless shared/config PLAY_MODE is "m1"). */
-function readWorld(): RunWorld {
-	const raw = Workspace.GetAttribute(RUN_ATTRIBUTES.world);
-	return typeIs(raw, "string") && WORLDS.includes(raw as RunWorld) ? (raw as RunWorld) : LIVE_RUN_WORLD;
-}
-
-function readSeed(): number {
-	const raw = Workspace.GetAttribute(RUN_ATTRIBUTES.seed);
-	if (raw === undefined) return DEFAULT_RUN_SEED;
-	if (isValidRunSeed(raw)) return raw;
-	warn(`[Sim] ${RUN_ATTRIBUTES.seed} = ${tostring(raw)} is not an integer in [0, 2^32); using ${DEFAULT_RUN_SEED}`);
-	return DEFAULT_RUN_SEED;
-}
-
-/**
- * The secret room plan of `ctx`'s floor (docs/SECRET_ROOMS.md SR7): EndlessRunFloor.secret of an endless floor, else
- * undefined. Read it once per floor (the floor builder caches only its last floor); SimController.getFloorSecret caches it.
- */
-export function floorSecretOf(ctx: RunContext): FloorSecret | undefined {
-	return ctx.endlessFloor !== undefined && ctx.floor > 0 ? ctx.endlessFloor(ctx.floor).secret : undefined;
-}
-
-function placeKeyFor(pack: ThemePack, dungeon: Dungeon | undefined): string {
-	if (dungeon === undefined) return "";
-	const biome = BIOMES.find((b) => b.forgeTheme === dungeon.params.themeKey);
-	return biome !== undefined ? pack.biome(biome.id).nameKey : "";
-}
-
-/**
- * docs/FLOOR_MODIFIERS.md FM5 / FM6: floor `floor`'s modifier in the run `ctx` (a shared/dungeon FloorModifier id, the
- * floor layout's EndlessFloorLayout.modifier through the run's cached floor builder), FloorModifier.NONE without an
- * endless floor (M1, the greybox, the menu) or before the first one. Pure and cheap (the floor is cached).
- */
-export function floorModifierOf(ctx: RunContext, floor: number = ctx.floor): number {
-	const build = ctx.endlessFloor;
-	if (build === undefined || floor < ENDLESS_FIRST_FLOOR) return FloorModifier.NONE;
-	return build(floor).layout.modifier;
-}
-
-/**
- * A party member's name for the spectate bar: the Player's DisplayName, or `#<userId>` (the lobby's fallback,
- * client/ui/menu useNameOf) for a member already gone from the server (never watched: left players are no candidates).
- */
-function memberName(userId: number): string {
-	return Players.GetPlayerByUserId(userId)?.DisplayName ?? `#${userId}`;
-}
 
 /**
  * Owns the live run (port of the web build's SimDriver): builds it with shared/run `buildWorldSetup` (the world
@@ -433,9 +190,8 @@ export class SimController implements OnStart {
 	private readonly input = { ...EMPTY_INPUT };
 	private counter = 0;
 	private debug = false;
-	private submitted = false;
-	/** The last run submitted ended in a death: the next run is a retry and is submitted even if abandoned early. */
-	private lastSubmittedDied = false;
+	/** Run submission and verdict bookkeeping (sim/submissions.ts): `submitted`, the ranked runs, the uploads. */
+	private readonly submissions = new RunSubmissions(this);
 	private pendingReset = false;
 	private pendingReplayCheck = false;
 	private pausedByMenu = false;
@@ -446,18 +202,6 @@ export class SimController implements OnStart {
 	private hudTimer = 0;
 	/** Serial of the last HUD toast (M2 progression events). */
 	private toastSerial = 0;
-	/** claimedHash -> run counter of submissions waiting for a verdict. */
-	private readonly awaiting = new Map<string, { run: number; ending: string }>();
-	/**
-	 * Ranked runs started this session: runId -> run counter, (once finished) ending, and `claim`: the run's board and
-	 * final score / floor while its records may still be on the way (docs/NEW_BEST.md: the client's own numbers once
-	 * the final claim was sent and the verdict is pending, the server's once accepted with a records result; cleared
-	 * on a rejection or an accepted run that did not count). See pendingRunClaims.
-	 */
-	private readonly rankedRuns = new Map<
-		string,
-		{ run: number; ending?: string; decided: boolean; claim?: PendingRunClaim }
-	>();
 	/** The `startRun` request waiting for `runStarted`, with the local fallback run's parameters. */
 	private awaitingStart:
 		| {
@@ -559,25 +303,12 @@ export class SimController implements OnStart {
 	private secretPlan: FloorSecret | undefined;
 
 	/**
-	 * Local prediction on screen (docs/LOCAL_PREDICTION.md LP5): the co-op client's predicted head smoothed into the
-	 * drawn local player (updateDrawn, once per co-op frame after the pump). `drawnState` / `drawnIndex`: the state and
-	 * the player it was drawn for; `drawnActive` false while nothing is predicted (solo, KV_PredictOff, spectating, dead,
-	 * a draft, the stage cover), then every view gets the merged player exactly as before.
+	 * Local prediction on screen (docs/LOCAL_PREDICTION.md LP5; shared/view/predict DrawnLocalPlayer): the co-op client's
+	 * predicted head smoothed into the drawn local player (its `update`, once per co-op frame after the pump). Nothing is
+	 * drawn predicted in a solo run, with KV_PredictOff, spectating, dead, in a draft or under the stage cover: then every
+	 * view gets the merged player exactly as before.
 	 */
-	private readonly smoother = new PredictionSmoother(PREDICTION_VIEW);
-	/**
-	 * docs/NEW_ENEMIES_2.md NX7: prediction suspended while merged state says a Chainhook drags the local player
-	 * (chainhookHolderOf), then blended back over PREDICTION_VIEW.resumeSec (shared/view/predict PredictionResume).
-	 */
-	private readonly predictResume = new PredictionResume(PREDICTION_VIEW);
-	private readonly drawnBody: PlayerState = newPlayerState(0, 0);
-	private drawnState: SimState | undefined;
-	private drawnIndex = -1;
-	private drawnActive = false;
-	private drawnAheadTicks = 0;
-	/** The drawn pose this frame (the aim origin of the next sample). */
-	private drawnX = 0;
-	private drawnZ = 0;
+	private readonly drawnLocal = new DrawnLocalPlayer(PREDICTION_VIEW);
 
 	/**
 	 * getDrawnPlayer as a function value, for the shared/view helpers that place things on a player
@@ -617,7 +348,7 @@ export class SimController implements OnStart {
 			this.ctx?.arrivalLog?.arrived(now, coop.receivedTicks() - before);
 			coop.acknowledge(hashAck);
 		});
-		Events.runVerdict.connect((verdict) => this.onVerdict(verdict));
+		Events.runVerdict.connect((verdict) => this.submissions.onVerdict(verdict));
 		Events.runStarted.connect((reply) => {
 			if (this.awaitingStart !== undefined && reply.requestId === this.awaitingStart.requestId) {
 				this.startReply = reply;
@@ -625,7 +356,7 @@ export class SimController implements OnStart {
 		});
 		Events.segmentVerdict.connect((v) => {
 			if (!v.ok) warn(`[Sim] segment ${v.index} of run ${v.runId} refused: ${v.code ?? ""} ${v.reason ?? ""}`);
-			else this.onSegmentVerified(v);
+			else this.submissions.onSegmentVerified(v);
 		});
 		Events.runFinished.connect((verdict) => this.onRunFinished(verdict));
 		// The Roblox menu (Escape / Start: a game cannot take those keys) pauses a solo run; the pause overlay hides
@@ -755,8 +486,7 @@ export class SimController implements OnStart {
 	 * draw on or at the player (the census's "drawn" rows); what shows the sim's decisions keeps `playerAt`. Read only.
 	 */
 	getDrawnPlayer(state: Readonly<SimState>, index: number): Readonly<PlayerState> {
-		if (this.drawnActive && index === this.drawnIndex && state === this.drawnState) return this.drawnBody;
-		return playerAt(state, index);
+		return this.drawnLocal.playerOf(state, index);
 	}
 
 	/**
@@ -766,16 +496,12 @@ export class SimController implements OnStart {
 	 * spectating, dead, a draft, the stage cover, no run).
 	 */
 	getPredictionAheadTicks(): number {
-		return this.drawnActive ? this.drawnAheadTicks : 0;
+		return this.drawnLocal.aheadTicks();
 	}
 
 	/** The smoother's snaps and corrections so far this session (the KV_Debug co-op line, LP6). */
-	getPredictionSmoothing(): { readonly snaps: number; readonly corrections: number; readonly offsetTiles: number } {
-		return {
-			snaps: this.smoother.snapCount(),
-			corrections: this.smoother.correctionCount(),
-			offsetTiles: this.smoother.offset(),
-		};
+	getPredictionSmoothing(): PredictionSmoothing {
+		return this.drawnLocal.smoothing();
 	}
 
 	/** Co-op spectating: the spectate view after the last frame; undefined outside a co-op run or before its first frame. */
@@ -853,9 +579,7 @@ export class SimController implements OnStart {
 	 * runs that did not count. NewBestController folds them into a new run's baseline (shared/view/hud withPendingRuns).
 	 */
 	pendingRunClaims(): ReadonlyArray<PendingRunClaim> {
-		const out = new Array<PendingRunClaim>();
-		for (const [, entry] of this.rankedRuns) if (entry.claim !== undefined) out.push(entry.claim);
-		return out;
+		return this.submissions.pendingRunClaims();
 	}
 
 	/** The stage loader registers itself (StageController.onStart). */
@@ -896,7 +620,7 @@ export class SimController implements OnStart {
 	startTutorial(): void {
 		if (this.ctx?.coop !== undefined && !this.ctx.coop.isOver()) return;
 		this.clearExits();
-		if (this.ctx?.live !== undefined) this.submit("abandoned");
+		if (this.ctx?.live !== undefined) this.submissions.submit("abandoned");
 		this.nextRunLobbyId = "";
 		this.beginTutorial();
 	}
@@ -909,7 +633,7 @@ export class SimController implements OnStart {
 		const ctx = this.ctx;
 		if (ctx === undefined || !ctx.tutorial || this.frozen) return;
 		this.frozen = true;
-		this.submitted = true;
+		this.submissions.submitted = true;
 		this.hitstop.clear(); // a boss-kill freeze / slow motion would otherwise hold the particles still
 		clientStore.setVerdict({ status: "skipped", run: ctx.counter, ending: "abandoned", code: "tutorial" });
 		print(`[Sim] tutorial run ${ctx.counter} finished at tick ${ctx.run.state.tick}`);
@@ -936,7 +660,7 @@ export class SimController implements OnStart {
 		if (this.ctx?.coop !== undefined && !this.ctx.coop.isOver()) return;
 		if (!isValidRunSeed(seed)) return;
 		this.clearExits();
-		if (this.ctx?.live !== undefined) this.submit("abandoned");
+		if (this.ctx?.live !== undefined) this.submissions.submit("abandoned");
 		this.nextRunLobbyId = "";
 		this.runCharacter = this.pickCharacter(character);
 		this.devRun = {
@@ -1048,7 +772,7 @@ export class SimController implements OnStart {
 	startSolo(lobbyId?: string, worldKind: RunWorldKind = RANKED_WORLD_KIND, character?: CharacterId): void {
 		if (this.ctx?.coop !== undefined && !this.ctx.coop.isOver()) return;
 		this.clearExits();
-		if (this.ctx?.live !== undefined) this.submit("abandoned"); // (only if not submitted yet, as R does)
+		if (this.ctx?.live !== undefined) this.submissions.submit("abandoned"); // (only if not submitted yet, as R does)
 		this.nextRunLobbyId = lobbyId ?? "";
 		this.rankedWorld = worldKind;
 		this.runCharacter = this.pickCharacter(character);
@@ -1123,7 +847,7 @@ export class SimController implements OnStart {
 				this.leftPartyRun = true;
 				clientStore.setRunLeft(ctx.counter);
 				this.hudTimer = HUD_SNAPSHOT_INTERVAL_SEC;
-				clientStore.setSnapshot(this.coopSnapshot(coop));
+				clientStore.setSnapshot(coopSnapshot(coop, this.ctx, this.getSpectateView(), this.rumour.chip()));
 				return;
 			}
 			coop.stop();
@@ -1132,7 +856,7 @@ export class SimController implements OnStart {
 		}
 		if (ctx.tutorial || ctx.dev) {
 			// Skip tutorial / leaving a dev run: never submitted (submit records the skipped verdict) or forfeited.
-			this.submit("abandoned");
+			this.submissions.submit("abandoned");
 			this.stopRun("left");
 			return;
 		}
@@ -1162,7 +886,7 @@ export class SimController implements OnStart {
 			const step = partyExitStep(
 				coop.isOver(),
 				this.leftPartyRun,
-				this.rankedRuns.get(coop.runId)?.decided === true,
+				this.submissions.rankedRuns.get(coop.runId)?.decided === true,
 			);
 			if (step === "leave") {
 				this.leaveRun();
@@ -1359,45 +1083,11 @@ export class SimController implements OnStart {
 		const setup = result as ReturnType<typeof buildWorldSetup>;
 		const spawn = setup.spawn ?? { x: 0, z: 0 };
 		this.draftGate.reset();
-		// KV_PacingOff (docs/FRAME_PACING.md FPD8), KV_LeadOff (Design 12) and KV_LeadBump (Revision 3, FP20): A/B
-		// switches for playtests, read at every co-op start, combinable (KV_LeadOff wins over KV_LeadBump).
-		const pacingOff = Workspace.GetAttribute(RUN_ATTRIBUTES.pacingOff) === true;
-		const leadOff = Workspace.GetAttribute(RUN_ATTRIBUTES.leadOff) === true;
-		const leadBump = !leadOff && Workspace.GetAttribute(RUN_ATTRIBUTES.leadBump) === true;
-		// KV_PredictOff (docs/LOCAL_PREDICTION.md LPD6): the same kind of switch for local prediction.
-		const predictOff = Workspace.GetAttribute(RUN_ATTRIBUTES.predictOff) === true;
-		const shippedLead = DEFAULT_LOCKSTEP.lead;
-		const client = new LockstepClient({
-			runId: start.runId,
-			seed: start.seed,
-			spawn,
-			config: setup.config,
-			players: start.members.size(),
-			localIndex,
-			tunables:
-				pacingOff || leadOff || leadBump || predictOff
-					? {
-							...DEFAULT_LOCKSTEP,
-							pacing: pacingOff ? undefined : DEFAULT_LOCKSTEP.pacing,
-							lead:
-								leadOff || shippedLead === undefined
-									? undefined
-									: leadBump
-									? { ...shippedLead, lateBump: true }
-									: shippedLead,
-							prediction: predictOff ? undefined : DEFAULT_LOCKSTEP.prediction,
-					  }
-					: undefined,
-		});
-		if (pacingOff) print(`[Sim] co-op run ${start.runId}: frame pacing off (${RUN_ATTRIBUTES.pacingOff})`);
-		if (leadOff) print(`[Sim] co-op run ${start.runId}: measured lead off (${RUN_ATTRIBUTES.leadOff})`);
-		if (leadBump) print(`[Sim] co-op run ${start.runId}: late bump on (${RUN_ATTRIBUTES.leadBump})`);
-		if (predictOff) print(`[Sim] co-op run ${start.runId}: local prediction off (${RUN_ATTRIBUTES.predictOff})`);
+		const { client, pacingOff, leadOff, predictOff } = buildCoopClient(start, setup, spawn, localIndex);
 		// A new run: nothing to glide from (LP5's run-start snap).
-		this.smoother.snap();
-		this.drawnActive = false;
+		this.drawnLocal.reset();
 		this.counter++;
-		this.submitted = false;
+		this.submissions.submitted = false;
 		this.hudTimer = 0;
 		this.hitstop.clear();
 		const floor = client.state.endless?.floor ?? 0;
@@ -1437,9 +1127,12 @@ export class SimController implements OnStart {
 		};
 		this.frozen = false;
 		this.ctx = ctx;
-		this.rankedRuns.set(start.runId, { run: this.counter, decided: false });
-		clientStore.startRun(this.runInfo(this.theme.getPack(), ctx, ""), this.coopSnapshot(client));
-		this.publishLatencyProbe(ctx, client);
+		this.submissions.rankedRuns.set(start.runId, { run: this.counter, decided: false });
+		clientStore.startRun(
+			runInfo(this.theme.getPack(), ctx, "", this.debug),
+			coopSnapshot(client, this.ctx, this.getSpectateView(), this.rumour.chip()),
+		);
+		publishLatencyProbe(ctx, client, this.drawnLocal.isActive(), this.drawnLocal.snapCount());
 		print(
 			`[Sim] co-op run ${this.counter} started: ${start.runId} seed ${start.seed}, player ${localIndex + 1} of ` +
 				`${start.members.size()}`,
@@ -1454,8 +1147,8 @@ export class SimController implements OnStart {
 		// docs/LOCAL_PREDICTION.md Design 6: the aim (and the touch facing / auto-target) from the knight as drawn last
 		// frame; the shot that input fires leaves from where the sim will have it.
 		const drawn = this.getDrawnPlayer(coop.state, ctx.localIndex);
-		const aimX = this.drawnActive && drawn === this.drawnBody ? this.drawnX : me.x;
-		const aimZ = this.drawnActive && drawn === this.drawnBody ? this.drawnZ : me.z;
+		const aimX = this.drawnLocal.aimX(drawn, me.x);
+		const aimZ = this.drawnLocal.aimZ(drawn, me.z);
 		// A menu over the run (party overlay, Options, a rebind capture, leaderboards, the Roblox menu): the pad and
 		// keys drive the menu, never the character (solo pauses instead).
 		const covered = this.stage?.blocksInput() === true; // the stage loader's cover (docs/STAGE_LOADER.md SL7)
@@ -1504,7 +1197,7 @@ export class SimController implements OnStart {
 		const res = coop.pump(dt, sample, now);
 		const stepMs = this.debug ? (os.clock() - now) * MS_PER_SECOND : 0;
 		probe?.stepped(coop.state.tick, os.clock(), coop.mismatches > mismatchesBefore);
-		this.logArrivals(ctx, coop, now, dt);
+		logArrivals(ctx, coop, now, dt);
 		const runId = coop.runId;
 		for (const b of res.inputs) Events.lockstepInput.fire(runId, b.firstTick, b.data);
 		// One call with every report due (new ones and unacknowledged resends; LockstepClient throttles it).
@@ -1516,10 +1209,10 @@ export class SimController implements OnStart {
 			);
 		}
 		if (res.final !== undefined) {
-			const entry = this.rankedRuns.get(runId);
+			const entry = this.submissions.rankedRuns.get(runId);
 			if (entry !== undefined) {
 				entry.ending = "death";
-				entry.claim = this.finishedClaim(ctx, coop.state);
+				entry.claim = this.submissions.finishedClaim(ctx, coop.state);
 			}
 			clientStore.setVerdict({
 				status: "pending",
@@ -1542,7 +1235,14 @@ export class SimController implements OnStart {
 		const view = ctx.spectate?.update(coop.state, dt, cmd);
 		this.spectateView = view;
 		const spectateChanged = view !== undefined && (view.viewIndex !== viewBefore || view.active !== activeBefore);
-		this.updateDrawn(ctx, coop, dt, floorChanged || spectateChanged);
+		this.drawnLocal.update(
+			coop,
+			ctx.localIndex,
+			this.getViewPlayerIndex() === ctx.localIndex,
+			this.stage?.blocksInput() === true,
+			dt,
+			floorChanged || spectateChanged,
+		);
 		// KV_Debug latency probe (LP6): press -> drawn, once the drawn knight shows the ticks a press was sent for.
 		probe?.drawn(coop.state.tick, this.getPredictionAheadTicks(), os.clock());
 		// M2 progression: the local player's toasts; while any draft is open (the world frozen until every player
@@ -1554,123 +1254,9 @@ export class SimController implements OnStart {
 		}
 		if (this.hudTimer >= HUD_SNAPSHOT_INTERVAL_SEC) {
 			this.hudTimer = 0;
-			clientStore.setSnapshot(this.coopSnapshot(coop));
-			this.publishLatencyProbe(ctx, coop);
+			clientStore.setSnapshot(coopSnapshot(coop, this.ctx, this.getSpectateView(), this.rumour.chip()));
+			publishLatencyProbe(ctx, coop, this.drawnLocal.isActive(), this.drawnLocal.snapCount());
 		}
-	}
-
-	/**
-	 * Local prediction on screen (docs/LOCAL_PREDICTION.md LP5): this frame's prediction into the smoother and the drawn
-	 * local player. Nothing is predicted while the views follow a teammate, under the stage cover, or whenever the client
-	 * predicts nothing (KV_PredictOff, dead or left, a draft open, the run over): the smoother then resets (the death,
-	 * revive and draft snaps); `snap` (a floor change, a spectate switch) drops any glide first.
-	 */
-	private updateDrawn(ctx: RunContext, coop: LockstepClient, dt: number, snap: boolean): void {
-		const viewingSelf = this.getViewPlayerIndex() === ctx.localIndex;
-		const covered = this.stage?.blocksInput() === true;
-		const index = ctx.localIndex;
-		// docs/NEW_ENEMIES_2.md NX7: a drag the predictor cannot mirror; drawn merged while hooked, then blended back.
-		if (snap) this.predictResume.reset();
-		const weight = this.predictResume.update(chainhookHolderOf(coop.state, index) >= 0, dt);
-		const head = viewingSelf && !covered && weight > 0 ? coop.predicted() : undefined;
-		if (snap) this.smoother.snap();
-		this.smoother.feed(head, head !== undefined ? coop.predictedPath() : undefined);
-		const alpha = coop.getAlpha();
-		const pose = this.smoother.draw(alpha, dt);
-		if (head === undefined || pose === undefined) {
-			this.drawnActive = false;
-			this.drawnAheadTicks = 0;
-			return;
-		}
-		const merged = playerAt(coop.state, index);
-		writeDrawnPlayer(this.drawnBody, merged, head, this.smoother.offsetX(), this.smoother.offsetZ());
-		blendTowardMerged(this.drawnBody, merged, weight);
-		this.drawnState = coop.state;
-		this.drawnIndex = index;
-		this.drawnActive = true;
-		this.drawnAheadTicks =
-			weight >= 1 ? coop.predictionHorizonTicks() : math.floor(coop.predictionHorizonTicks() * weight);
-		const body = this.drawnBody;
-		this.drawnX = weight >= 1 ? pose.x : body.prevX + (body.x - body.prevX) * alpha;
-		this.drawnZ = weight >= 1 ? pose.z : body.prevZ + (body.z - body.prevZ) * alpha;
-	}
-
-	/**
-	 * KV_Debug co-op: the latency probe's numbers, the effective and net lead and the pacing part to the debug line
-	 * (with the HUD snapshot); nothing otherwise.
-	 */
-	private publishLatencyProbe(ctx: RunContext, coop: LockstepClient): void {
-		const probe = ctx.latencyProbe;
-		if (probe === undefined) return;
-		const pacing = pacingDebugView(coop.pacingStats(), coop.backlog(), ctx.pacingOff !== true);
-		const lead = leadDebugView(coop.leadStats(), ctx.leadOff !== true);
-		const prediction = predictionDebugView(
-			coop.predictionStats(),
-			ctx.predictOff !== true,
-			this.drawnActive,
-			this.smoother.snapCount(),
-		);
-		clientStore.setLatencyProbe(
-			latencyProbeView(
-				probe,
-				coop.inputLead(),
-				coop.misses,
-				coop.netLead(),
-				pacing,
-				lead,
-				coop.mismatches,
-				prediction,
-			),
-		);
-	}
-
-	/**
-	 * KV_Debug co-op (docs/FRAME_PACING.md FP0): the frame into the arrival log, and its `[Pace]` line once a window is
-	 * full. Nothing without the log (it only exists under KV_Debug).
-	 */
-	private logArrivals(ctx: RunContext, coop: LockstepClient, now: number, dt: number): void {
-		const log = ctx.arrivalLog;
-		if (log === undefined) return;
-		log.frame(now, dt);
-		if (!log.due(now)) return;
-		print(
-			formatArrivalLine(log.take(now), {
-				pacing: coop.pacingStats(),
-				pacingOff: ctx.pacingOff === true,
-				lead: coop.inputLead(),
-				netLead: coop.netLead(),
-				misses: coop.mismatches,
-				leadStats: coop.leadStats(),
-				leadOff: ctx.leadOff === true,
-				backlog: coop.backlog(),
-			}),
-		);
-	}
-
-	/** The co-op HUD snapshot: this client's own items, the vitals and spectate bar of the player the views follow. */
-	private coopSnapshot(coop: LockstepClient) {
-		const over = coop.isOver();
-		const ctx = this.ctx;
-		const view = ctx !== undefined && ctx.coop === coop ? this.getSpectateView() : undefined;
-		// The spectate bar only while the run goes on: after a wipe or a server-ended run the tracker still watches the
-		// last player (the camera and vitals stay there) but the run-over panel takes over.
-		const watched = view !== undefined && view.active && !over ? view.viewIndex : undefined;
-		return takeSnapshot(coop.state, {
-			paused: false,
-			outcome: over ? "dead" : "playing",
-			recordedTicks: coop.state.tick,
-			kills: coop.kills,
-			hitsTaken: coop.hitsTaken,
-			endTick: coop.state.tick,
-			playerIndex: coop.localIndex,
-			vitalsIndex: view?.viewIndex,
-			spectate:
-				view !== undefined && watched !== undefined
-					? { name: ctx?.memberNames[watched] ?? "", position: view.position, count: view.count }
-					: undefined,
-			config: coop.config,
-			goldenRumour: this.rumour.chip(),
-		});
 	}
 
 	/** While a `startRun` is pending: starts the run once answered or timed out. True while still waiting. */
@@ -1822,7 +1408,7 @@ export class SimController implements OnStart {
 		}
 		const { run, config, dungeon, endlessFloor, characters } = made;
 		this.counter++;
-		this.submitted = false;
+		this.submissions.submitted = false;
 		this.hudTimer = 0;
 		this.pausedByMenu = false;
 		this.pausedByUi = false;
@@ -1856,10 +1442,10 @@ export class SimController implements OnStart {
 		};
 		this.nextRunLobbyId = ""; // a restart (R) is a plain solo run
 		this.ctx = ctx;
-		if (runId !== undefined) this.rankedRuns.set(runId, { run: this.counter, decided: false });
+		if (runId !== undefined) this.submissions.rankedRuns.set(runId, { run: this.counter, decided: false });
 
-		const info = this.runInfo(pack, ctx, notice);
-		clientStore.startRun(info, this.snapshot(run));
+		const info = runInfo(pack, ctx, notice, this.debug);
+		clientStore.startRun(info, soloSnapshot(run, this.rumour.chip()));
 		print(
 			`[Sim] run ${this.counter} started: seed ${seed}, world ${world}${atBossDoor ? ", boss door" : ""}` +
 				(runId !== undefined ? `, ranked run ${runId}` : "") +
@@ -1881,52 +1467,13 @@ export class SimController implements OnStart {
 	/** The run-start listeners, with the context current now (a floor change since the cut is in it). */
 	private notifyRunStarted(): void {
 		const ctx = this.ctx;
-		if (ctx !== undefined) this.callListeners(this.listeners, ctx, `run ${ctx.counter} start`);
+		if (ctx !== undefined) callListeners(this.listeners, ctx, `run ${ctx.counter} start`, this.debug);
 	}
 
 	/** The floor-change listeners, with the context current now. */
 	private notifyFloorChanged(): void {
 		const ctx = this.ctx;
-		if (ctx !== undefined) this.callListeners(this.floorListeners, ctx, `floor ${ctx.floor}`);
-	}
-
-	/**
-	 * Calls `list` in order with `ctx`. KV_Debug (docs/STAGE_LOADER.md SL0): each call timed with os.clock and printed
-	 * in one line, labelled by the listener's script (`debug.info(f, "s")`: "World" for WorldController); nothing extra
-	 * otherwise.
-	 */
-	private callListeners(list: ReadonlyArray<RunListener>, ctx: RunContext, what: string): void {
-		if (!this.debug) {
-			for (const listener of list) listener(ctx);
-			return;
-		}
-		const times = new Array<ListenerTime>();
-		const start = os.clock();
-		for (const listener of list) {
-			const t0 = os.clock();
-			listener(ctx);
-			const [source] = debug.info(listener, "s");
-			times.push({ label: listenerLabel(source ?? "?"), ms: (os.clock() - t0) * MS_PER_SECOND });
-		}
-		const total = string.format(MS_FORMAT, (os.clock() - start) * MS_PER_SECOND);
-		print(`[Stage] listeners (${what}, ${total} ms): ${formatListenerTimes(times)}`);
-	}
-
-	private runInfo(pack: ThemePack, ctx: RunContext, notice: string): RunInfo {
-		return {
-			seed: ctx.seed,
-			world: ctx.world,
-			placeKey: placeKeyFor(pack, ctx.dungeon),
-			dungeonName: ctx.dungeon?.name ?? "",
-			debug: this.debug,
-			run: ctx.counter,
-			notice,
-			biome: biomeIndexOf(ctx.dungeon),
-			coop: ctx.coop !== undefined,
-			lobbyId: ctx.lobbyId,
-			character: playerCharacterOf(ctx.characters, ctx.run.state, ctx.localIndex) ?? "",
-			floorModifier: floorModifierOf(ctx),
-		};
+		if (ctx !== undefined) callListeners(this.floorListeners, ctx, `floor ${ctx.floor}`, this.debug);
 	}
 
 	/**
@@ -1940,7 +1487,9 @@ export class SimController implements OnStart {
 		const moved: RunContext = { ...ctx, floor, config: w.config, dungeon: w.dungeon };
 		moved.spectate?.reset(); // everyone dead and still here comes back at the entrance
 		this.ctx = moved;
-		clientStore.changeFloor(this.runInfo(this.theme.getPack(), moved, clientStore.getState().game.run.notice));
+		clientStore.changeFloor(
+			runInfo(this.theme.getPack(), moved, clientStore.getState().game.run.notice, this.debug),
+		);
 		print(`[Sim] run ${moved.counter}: floor ${floor} (${w.dungeon.name}${w.bossFloor ? ", boss floor" : ""})`);
 		// The views rebuild under the stage loader's card (a frame later), except the tutorial's ending change.
 		const work: StageWork = { notify: () => this.notifyFloorChanged(), floor };
@@ -1952,11 +1501,7 @@ export class SimController implements OnStart {
 		}
 	}
 
-	/**
-	 * Builds the run's world (the world registry: the same builder as the server's) and a LiveRun (segmented when
-	 * `runId` is set: one segment per endless floor, cut on the floor-change tick); returns the error message when
-	 * the sim refuses the config. `scoring` adds M2 scoring to a non-endless world (KV_Scoring, never submitted).
-	 */
+	/** The solo build (sim/solo.ts makeSoloRun) with this controller's dev options, wallet, ranked upgrades and character. */
 	private makeRun(
 		seed: number,
 		atBossDoor: boolean,
@@ -1965,52 +1510,20 @@ export class SimController implements OnStart {
 		runId: string | undefined,
 		scoring: boolean,
 	): MadeRun | string {
-		const [ok, result] = pcall(() => {
-			const dev = world === DEV_WORLD_KIND ? this.devRun : undefined;
-			// docs/ARCHER.md AR5: the run's character (worlds without characters ignore it; the tutorial is the Knight's).
-			// docs/SILVER.md SV6: a ranked run is built with the session's upgrade levels; an unranked one with none; a
-			// dev run with its panel's choice (`mine`: the wallet's own levels, buildDevRunConfig reads entry 0).
-			const wallet = this.walletStatus();
-			const upgrades =
-				runId !== undefined && this.rankedUpgrades !== undefined
-					? [this.rankedUpgrades]
-					: dev !== undefined
-					? [statusUpgrades(wallet)]
-					: undefined;
-			// docs/SILVER.md SV18: a run the server did not issue (the unranked fallback, a debug or dev run) never builds
-			// a character the wallet does not own; a ranked run plays the server's own echo of the pick.
-			const character =
-				runId !== undefined ? this.runCharacter : ownedCharacterOr(wallet, this.runCharacter, true);
-			const setup = buildWorldSetup(world, seed, {
-				atBossDoor,
-				dev,
-				characters: [character],
-				upgrades,
-			});
-			const spawn = setup.spawn ?? { x: 0, z: 0 };
-			const stressCfg = stressConfig(stress, spawn.x, spawn.z);
-			const config: Readonly<SimConfig> =
-				stressCfg !== undefined ? { ...setup.config, stress: stressCfg } : setup.config;
-			const scored: Readonly<SimConfig> =
-				scoring && config.scoring === undefined ? { ...config, scoring: {} } : config;
-			const runSetup: LiveRunSetup = {
-				seed,
-				spawnX: spawn.x,
-				spawnZ: spawn.z,
-				config: scored,
-				atBossDoor,
-				runId,
-				segmentCutAfterTick: (state) => state.events.floorChanged !== 0,
-			};
-			return {
-				run: new LiveRun(runSetup),
-				config: scored,
-				dungeon: setup.dungeon,
-				endlessFloor: setup.endlessFloor,
-				characters: setup.characters,
-			};
-		});
-		return ok ? (result as MadeRun) : errorMessage(result);
+		return makeSoloRun(
+			{
+				devRun: this.devRun,
+				wallet: this.walletStatus(),
+				rankedUpgrades: this.rankedUpgrades,
+				runCharacter: this.runCharacter,
+			},
+			seed,
+			atBossDoor,
+			stress,
+			world,
+			runId,
+			scoring,
+		);
 	}
 
 	private frame(dt: number): void {
@@ -2076,7 +1589,7 @@ export class SimController implements OnStart {
 			}
 			this.changeFloor(ctx, floor);
 		}
-		this.uploadSegments(this.ctx ?? ctx);
+		this.submissions.uploadSegments(this.ctx ?? ctx);
 		// P / Start inside the settings panel: the run resumes when the panel closes, not under it.
 		if (this.uiPauseOpen && !run.isPaused()) {
 			run.setPaused(true);
@@ -2084,7 +1597,8 @@ export class SimController implements OnStart {
 		}
 
 		const outcome = run.outcome();
-		if (outcome !== "playing" && !this.submitted) this.submit(outcome === "dead" ? "death" : "victory");
+		if (outcome !== "playing" && !this.submissions.submitted)
+			this.submissions.submit(outcome === "dead" ? "death" : "victory");
 		// Leave run / a forfeiting restart: the forfeit tick ran and its death was submitted. Leave run stays on the
 		// finished run, so its run-over panel shows the run's stats ("You left the run"; Again / Main menu from there);
 		// the pause it was asked from is lifted so the panel reads like any death.
@@ -2092,7 +1606,7 @@ export class SimController implements OnStart {
 			this.leaveAfterForfeit,
 			this.restartAfterForfeit,
 			outcome !== "playing",
-			this.submitted,
+			this.submissions.submitted,
 		);
 		if (afterForfeit === "runOver") {
 			this.leaveAfterForfeit = false;
@@ -2118,7 +1632,7 @@ export class SimController implements OnStart {
 		}
 		if (this.hudTimer >= HUD_SNAPSHOT_INTERVAL_SEC) {
 			this.hudTimer = 0;
-			clientStore.setSnapshot(this.snapshot(run));
+			clientStore.setSnapshot(soloSnapshot(run, this.rumour.chip()));
 		}
 	}
 
@@ -2149,7 +1663,7 @@ export class SimController implements OnStart {
 			if (god !== undefined && this.devRun !== undefined) {
 				this.devRun = { ...this.devRun, invulnerable: god !== this.pendingGodToggle };
 			}
-			this.submit("abandoned");
+			this.submissions.submit("abandoned");
 			this.beginDev();
 			return;
 		}
@@ -2158,7 +1672,7 @@ export class SimController implements OnStart {
 			print(`[Sim] run ${ctx.counter}: restarting (forfeit; counts as a death)`);
 			return;
 		}
-		this.submit("abandoned");
+		this.submissions.submit("abandoned");
 		this.beginRun();
 	}
 
@@ -2184,19 +1698,6 @@ export class SimController implements OnStart {
 		clientStore.expireToasts(now);
 	}
 
-	private snapshot(run: LiveRun) {
-		return takeSnapshot(run.state, {
-			paused: run.isPaused(),
-			outcome: run.outcome(),
-			recordedTicks: run.ticks(),
-			kills: run.kills,
-			hitsTaken: run.hitsTaken,
-			endTick: run.endTick(),
-			config: run.setup.config,
-			goldenRumour: this.rumour.chip(),
-		});
-	}
-
 	private replayCheck(run: LiveRun): void {
 		const r = run.replayCheck();
 		clientStore.setReplayCheck(r);
@@ -2207,141 +1708,10 @@ export class SimController implements OnStart {
 		else warn(line);
 	}
 
-	// --- submission ----------------------------------------------------------------------------
-
-	/**
-	 * Submits the current run once (death, victory, or abandoned by a restart). Short abandoned runs are not sent
-	 * (shared/play `shouldSubmitRun`), and a run over the server's caps is kept and shown as rejected locally
-	 * (`oversizeSubmission`): the server would reject it unread, after the upload.
-	 */
-	private submit(ending: RunEnding): void {
-		const ctx = this.ctx;
-		if (ctx === undefined || this.submitted) return;
-		this.submitted = true;
-		const run = ctx.live;
-		if (run === undefined) return; // co-op runs end through lockstepFinal (coopFrame)
-		if (run.ticks() === 0) return;
-		// Tutorial runs are local practice; stress configs are never built by the server; a KV_Scoring run on an M1
-		// world would never match the server's unscored replay.
-		const never = unsubmittedReason(ctx);
-		if (never !== undefined) {
-			clientStore.setVerdict({ status: "skipped", run: ctx.counter, ending, code: never });
-			return;
-		}
-		if (!shouldSubmitRun(ending, run.ticks(), this.lastSubmittedDied)) {
-			// A ranked session left open is replaced (abandoned) by the next startRun.
-			clientStore.setVerdict({ status: "skipped", run: ctx.counter, ending, code: "short" });
-			return;
-		}
-		this.lastSubmittedDied = ending === "death";
-		if (ctx.runId !== undefined) {
-			this.finishRanked(ctx, ending);
-			return;
-		}
-		const [ok, result] = pcall(() => run.submission());
-		if (!ok) {
-			warn(`[Sim] could not build the submission: ${errorMessage(result)}`);
-			clientStore.setVerdict({ status: "skipped", run: ctx.counter, ending, code: "error" });
-			return;
-		}
-		// docs/ARCHER.md AR5: the server's replay builds the world with the run's character (absent: none, M1).
-		const built = result as RunSubmission;
-		const submission: RunSubmission =
-			ctx.character !== undefined ? { ...built, characterId: ctx.character } : built;
-		const kept = oversizeSubmission(submission);
-		if (kept !== undefined) {
-			warn(
-				`[Sim] run ${ctx.counter} (${ending}) ${kept.reason}: ${buffer.len(submission.recording)} bytes, ` +
-					`${submission.claimed.ticks} ticks`,
-			);
-			clientStore.setVerdict({
-				status: "rejected",
-				run: ctx.counter,
-				ending,
-				code: kept.code,
-				reason: kept.reason,
-				claimedHash: submission.claimedHash,
-			});
-			return;
-		}
-		this.awaiting.set(submission.claimedHash, { run: ctx.counter, ending });
-		clientStore.setVerdict({ status: "pending", run: ctx.counter, ending, claimedHash: submission.claimedHash });
-		Events.submitRun.fire(submission);
-		print(
-			`[Sim] submitted run ${ctx.counter} (${ending}): ${submission.claimed.ticks} ticks, ` +
-				`${buffer.len(submission.recording)} bytes, hash ${submission.claimedHash}`,
-		);
-	}
-
-	/** A finished run's records claim: its board, final score and floor (pendingRunClaims). */
-	private claimOf(state: Readonly<SimState>): PendingRunClaim {
-		return {
-			board: boardFor(partySize(state)),
-			score: state.score?.total ?? 0,
-			floor: state.endless?.floor ?? 0,
-		};
-	}
-
-	/**
-	 * A finished ranked run's claim for pendingRunClaims, or undefined: an endless run's records claim, a Daily run's
-	 * best-today claim tagged with its day (the daily status of the run's own seed; none when that status is gone, e.g.
-	 * the day changed: the next run's baseline is a new day's anyway), nothing for any other world or KV_Debug.
-	 */
-	private finishedClaim(ctx: RunContext, state: Readonly<SimState>): PendingRunClaim | undefined {
-		if (claimsRecords(this.debug, ctx.world)) return this.claimOf(state);
-		if (!claimsDaily(this.debug, ctx.world)) return undefined;
-		const status = selectDailyStatus(clientStore.getState());
-		if (status === undefined || status.seed !== ctx.seed) return undefined;
-		return { ...this.claimOf(state), daily: status.day };
-	}
-
-	/** Sends the segments the run cut (ranked runs that the server has not rejected yet). */
-	private uploadSegments(ctx: RunContext): void {
-		const runId = ctx.runId;
-		const live = ctx.live;
-		if (runId === undefined || live === undefined) return;
-		const segments = live.takeSegments();
-		if (this.rankedRuns.get(runId)?.decided === true) return; // rejected mid-run: the rest is unranked
-		for (const segment of segments) Events.submitSegment.fire(segment);
-	}
-
-	/**
-	 * A segment of a ranked run was verified: its frames are no longer needed (a ranked run never falls back to
-	 * submitRun), so the recording is trimmed to the unverified tail. Not with KV_Debug: F8's replay check replays the
-	 * whole recording.
-	 */
-	private onSegmentVerified(v: SegmentVerdict): void {
-		const ctx = this.ctx;
-		if (ctx === undefined || ctx.runId === undefined || ctx.runId !== v.runId || this.debug) return;
-		ctx.live?.releaseVerifiedFrames(v.endTick);
-	}
-
-	/** The end of a ranked run: the last segment, then `finishRun` (answered by `runFinished`). */
-	private finishRanked(ctx: RunContext, ending: RunEnding): void {
-		const runId = ctx.runId!;
-		const live = ctx.live;
-		const entry = this.rankedRuns.get(runId);
-		if (live === undefined || entry === undefined || entry.decided) return; // already rejected (the verdict shows it)
-		entry.ending = ending;
-		const [ok, result] = pcall(() => live.final());
-		this.uploadSegments(ctx);
-		if (!ok || result === undefined) {
-			warn(`[Sim] could not build the final claim: ${errorMessage(result)}`);
-			clientStore.setVerdict({ status: "skipped", run: ctx.counter, ending, code: "error" });
-			return;
-		}
-		const final = result as RunFinal;
-		clientStore.setVerdict({ status: "pending", run: ctx.counter, ending, claimedHash: final.claimedHash });
-		entry.claim = this.finishedClaim(ctx, live.state);
-		Events.finishRun.fire(final);
-		print(
-			`[Sim] finished ranked run ${ctx.counter} (${ending}): ${final.finalTick} ticks in ` +
-				`${live.segmentCount()} segments, hash ${final.claimedHash}`,
-		);
-	}
+	// --- verdicts (submission itself: sim/submissions.ts) ---------------------------------------
 
 	private onRunFinished(v: RunFinishVerdict): void {
-		const entry = this.rankedRuns.get(v.runId);
+		const entry = this.submissions.rankedRuns.get(v.runId);
 		if (entry === undefined || entry.decided) return;
 		entry.decided = true;
 		// Records (pendingRunClaims): an accepted run that counted keeps its board with the server's numbers until the
@@ -2370,7 +1740,7 @@ export class SimController implements OnStart {
 				coop.end(v.code ?? "ended");
 				entry.ending = "ended";
 				this.hudTimer = HUD_SNAPSHOT_INTERVAL_SEC;
-				clientStore.setSnapshot(this.coopSnapshot(coop));
+				clientStore.setSnapshot(coopSnapshot(coop, this.ctx, this.getSpectateView(), this.rumour.chip()));
 				warn(
 					`[Sim] co-op run ${entry.run} (${v.runId}) ended by the server: ${v.code ?? ""} ${v.reason ?? ""}`,
 				);
@@ -2406,27 +1776,6 @@ export class SimController implements OnStart {
 		const line = `[Sim] ranked verdict for run ${entry.run}${current ? "" : " (left)"}: ${
 			v.ok ? "ACCEPTED" : `REJECTED ${v.code ?? ""}`
 		}${where} ${v.reason ?? ""} score ${v.score.score} floor ${v.score.floor} ${v.leaderboard ?? ""}`;
-		if (v.ok) print(line);
-		else warn(line);
-	}
-
-	private onVerdict(v: RunVerdict): void {
-		const pending = this.awaiting.get(v.claimedHash);
-		if (pending === undefined) return;
-		this.awaiting.delete(v.claimedHash);
-		const view: VerdictView = {
-			status: v.ok ? "accepted" : "rejected",
-			run: pending.run,
-			ending: pending.ending,
-			code: v.code,
-			reason: v.reason,
-			claimedHash: v.claimedHash,
-			serverHash: v.serverHash,
-		};
-		clientStore.setVerdict(view);
-		const line = `[Sim] verdict for run ${pending.run}: ${v.ok ? "ACCEPTED" : `REJECTED ${v.code ?? ""}`} ${
-			v.reason ?? ""
-		}`;
 		if (v.ok) print(line);
 		else warn(line);
 	}
