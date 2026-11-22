@@ -25,6 +25,7 @@
 		"check:autolocalize": "node scripts/check-autolocalize.js",
 		"check:locals": "node scripts/check-luau-locals.js",
 		"check:docs": "node scripts/check-doc-coverage.js",
+		"check:kvnames": "node scripts/check-kv-names.js",
 		"dump:lists": "lune run scripts/lune/dump-lists.luau",
 		"out:digest": "node scripts/out-digest.js",
 		"facts": "node scripts/facts.js",
@@ -46,7 +47,7 @@
 		"audio:build": "node scripts/audio/build-audio.js",
 		"audio:lock": "node scripts/audio/build-audio.js --lock",
 		"audio:audition": "node scripts/audio/build-audio.js --audition",
-		"verify": "npm run typecheck && npm run lint && npm run check:docs && npm run docs:check && npm run check:assets && npm run check:autolocalize && npm run test:art && npm run test:checks && npm run test:l10n && npm run build && npm run check:locals && npm run facts:check && npm run test:only",
+		"verify": "npm run typecheck && npm run lint && npm run check:docs && npm run docs:check && npm run check:assets && npm run check:autolocalize && npm run check:kvnames && npm run test:art && npm run test:checks && npm run test:l10n && npm run build && npm run check:locals && npm run facts:check && npm run test:only",
 		"build:place": "npm run build && node -e \"require('fs').mkdirSync('build',{recursive:true})\" && rojo build publish.project.json -o build/kaleb-vale.rbxl"
 	},
 	"keywords": [],

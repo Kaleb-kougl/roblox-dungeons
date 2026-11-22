@@ -1,0 +1,1348 @@
+{
+	"names": {
+		"KV_Actors": {
+			"kind": "instance",
+			"also": [
+				"binding"
+			],
+			"where": "shared/view/config.ts",
+			"doc": "docs/CLIENT.md",
+			"description": "Folder of the actor bodies (players and enemies); ActorRenderController's render step."
+		},
+		"KV_AffixRings": {
+			"kind": "instance",
+			"also": [
+				"binding"
+			],
+			"where": "shared/view/variantsConfig.ts",
+			"description": "Folder of the elite affix rings; AffixRingController's render step."
+		},
+		"KV_AllowDebugRuns": {
+			"kind": "switch",
+			"value": "boolean",
+			"side": "server",
+			"gate": "studio",
+			"where": "server/services/RunValidationService.ts",
+			"doc": "docs/SERVER.md",
+			"description": "Run validation accepts debug input bits and boss-door starts, so runs played with the debug keys (K / J) or KV_SpawnBoss can be validated while developing."
+		},
+		"KV_AnalyticsDebug": {
+			"kind": "switch",
+			"value": "boolean",
+			"side": "server",
+			"gate": "none",
+			"where": "shared/onboarding/analyticsDebug.ts",
+			"doc": "docs/TUTORIAL_FUNNEL.md",
+			"description": "TelemetryService echoes every analytics and economy event to the server log; in Studio it also lets runs count in the new-player window. Set on the server (a client's own copy is never read)."
+		},
+		"KV_Audio": {
+			"kind": "instance",
+			"where": "shared/view/audio/config.ts",
+			"doc": "docs/CLIENT.md",
+			"description": "Folder under SoundService holding the pooled Sounds."
+		},
+		"KV_BoostAuras": {
+			"kind": "instance",
+			"also": [
+				"binding"
+			],
+			"where": "shared/view/boosts/config.ts",
+			"doc": "docs/CLIENT.md",
+			"description": "Folder of the boost aura rings round players; their render step."
+		},
+		"KV_BossBarPlacement": {
+			"kind": "binding",
+			"where": "client/controllers/ui/BossBarPlacementController.ts",
+			"description": "BossBarPlacementController's render step (places the boss bar each frame)."
+		},
+		"KV_Breakables": {
+			"kind": "instance",
+			"also": [
+				"binding"
+			],
+			"where": "shared/view/breakablesConfig.ts",
+			"doc": "docs/DECOR.md",
+			"description": "Folder of the breakable pieces and their decals; BreakableRenderController's render step."
+		},
+		"KV_BuildFx": {
+			"kind": "instance",
+			"where": "client/controllers/fx/BuildFxController.ts",
+			"description": "Folder of the build boons' effect parts."
+		},
+		"KV_BulletTrails": {
+			"kind": "instance",
+			"where": "shared/view/buildBulletsConfig.ts",
+			"description": "Folder of the build bullets' trails."
+		},
+		"KV_Bullets": {
+			"kind": "instance",
+			"also": [
+				"binding"
+			],
+			"where": "shared/view/config.ts",
+			"doc": "docs/CLIENT.md",
+			"description": "Folder of the bullet parts; BulletRenderController's render step."
+		},
+		"KV_Census": {
+			"kind": "switch",
+			"value": "boolean",
+			"side": "specs",
+			"gate": "runner",
+			"where": "shared/run/testing/characterTune.ts",
+			"description": "Set by the headless spec runner's `--census` flag (scripts/lune/run-tests.luau): census specs run their full sample instead of the small default one."
+		},
+		"KV_Codex_v1": {
+			"kind": "datastore",
+			"where": "shared/codex/config.ts",
+			"doc": "docs/CODEX.md",
+			"description": "DataStore of the Codex: one doc per player of the entries seen and found."
+		},
+		"KV_CollisionDebug": {
+			"kind": "switch",
+			"value": "boolean",
+			"side": "client",
+			"gate": "studio-or-debug",
+			"where": "shared/view/collisionDebugConfig.ts",
+			"doc": "docs/WALL_SLIDE.md",
+			"description": "Draws the collision overlay (the blocking cells and the bodies) while true; read live. Presentation only."
+		},
+		"KV_ComboDebug": {
+			"kind": "switch",
+			"value": "string",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/view/hud/comboDraw.ts",
+			"doc": "docs/COMBO.md",
+			"description": "Each change forces one combo event on the next frame of a scored run: \"1\"..\"4\" a tier-up, \"break\", \"small\", \"lapse\" or \"cut\". Display and sound only."
+		},
+		"KV_ComboShout": {
+			"kind": "instance",
+			"where": "shared/view/hud/comboDraw.ts",
+			"doc": "docs/COMBO.md",
+			"description": "Folder of the combo's floor shout."
+		},
+		"KV_CounterWaves": {
+			"kind": "instance",
+			"where": "client/controllers/fx/CounterWaveController.ts",
+			"doc": "docs/BUILDS_V2.md",
+			"description": "Folder of the Riposte counter-wave rings."
+		},
+		"KV_Cursor": {
+			"kind": "instance",
+			"also": [
+				"binding"
+			],
+			"where": "client/controllers/ui/CursorController.ts",
+			"doc": "docs/CURSOR.md",
+			"description": "The gauntlet cursor's ScreenGui; CursorController's render step."
+		},
+		"KV_Daily": {
+			"kind": "switch",
+			"value": "boolean",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/play/config.ts",
+			"doc": "docs/DAILY.md",
+			"description": "The main menu's Play solo (and KV_SkipMenu's start) starts the Daily: a ranked run on the server's seed of the day."
+		},
+		"KV_DailyRankDebug": {
+			"kind": "switch",
+			"value": "string",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/view/hud/dailyRankConfig.ts",
+			"doc": "docs/DAILY.md",
+			"description": "Forces a daily run's rank baseline: \"rows:<count>:<step>\", optional \"friends:<every>\" and \"best:<score>\" (parseDailyRankDebug). Display only."
+		},
+		"KV_DamageNumbers": {
+			"kind": "instance",
+			"also": [
+				"binding"
+			],
+			"where": "shared/view/fx/config.ts",
+			"doc": "docs/CLIENT.md",
+			"description": "Folder of the damage numbers; DamageNumberController's render step."
+		},
+		"KV_Debug": {
+			"kind": "switch",
+			"value": "boolean",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/play/config.ts",
+			"doc": "docs/CLIENT.md",
+			"description": "The debug keys (K, J, F8) and the debug HUD line; also unlocks the label switches outside Studio. A live server rejects a run that carries debug input."
+		},
+		"KV_Decor": {
+			"kind": "instance",
+			"also": [
+				"binding"
+			],
+			"where": "shared/view/decor/fxConfig.ts",
+			"doc": "docs/CLIENT.md",
+			"description": "Folder of the room decor; DecorController's render step."
+		},
+		"KV_DecorBand": {
+			"kind": "switch",
+			"value": "number",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/view/decor/config.ts",
+			"doc": "docs/DECOR.md",
+			"description": "Forces the decor depth band by index (0 = the floor's own); decor and void rebuild at once."
+		},
+		"KV_DecorDebug": {
+			"kind": "switch",
+			"also": [
+				"instance"
+			],
+			"value": "boolean",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/view/decor/fxConfig.ts",
+			"doc": "docs/DECOR.md",
+			"description": "Draws decor fade boxes, footprint stencils and breakable cells; read live. Also the folder of what it draws."
+		},
+		"KV_DecorFx": {
+			"kind": "instance",
+			"also": [
+				"binding"
+			],
+			"where": "shared/view/decor/fxConfig.ts",
+			"doc": "docs/VOID_DECOR.md",
+			"description": "Folder of the decor effects (torch flames, motes); DecorFxController's render step."
+		},
+		"KV_DevAllowed": {
+			"kind": "attribute",
+			"where": "shared/config/devMode.ts",
+			"doc": "docs/DEV_MODE.md",
+			"description": "Player attribute the server sets (true) on players allowed developer mode: everyone in Studio, else an allow-listed UserId or the place's creator. The client opens the dev panel and hidden locales on it."
+		},
+		"KV_DevMode": {
+			"kind": "instance",
+			"where": "client/controllers/ui/DevModeController.tsx",
+			"description": "The developer panel's ScreenGui."
+		},
+		"KV_DevPanel": {
+			"kind": "switch",
+			"value": "boolean",
+			"side": "client",
+			"gate": "dev-mode",
+			"where": "shared/config/devMode.ts",
+			"doc": "docs/DEV_MODE.md",
+			"description": "Opens the developer panel as soon as the player is allowed (KV_DevAllowed), without pressing F2."
+		},
+		"KV_DraftRevealDebug": {
+			"kind": "switch",
+			"value": "string",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/view/hud/draftRevealView.ts",
+			"doc": "docs/DRAFT_REVEAL.md",
+			"description": "The next boon reveals' rarities as a list (`c,l,r`): what the cards show while they flip, not what is dealt."
+		},
+		"KV_Drops": {
+			"kind": "instance",
+			"also": [
+				"binding"
+			],
+			"where": "shared/view/boosts/config.ts",
+			"doc": "docs/BOOSTS.md",
+			"description": "Folder of the boost drops; their render step and profiler label."
+		},
+		"KV_EmberSprites": {
+			"kind": "instance",
+			"where": "shared/view/hazardsConfig.ts",
+			"doc": "docs/HAZARD_ART.md",
+			"description": "Folder of the build embers drawn as sprites."
+		},
+		"KV_Embers": {
+			"kind": "instance",
+			"where": "shared/view/buildBulletsConfig.ts",
+			"description": "Folder of the build embers' floor discs."
+		},
+		"KV_EnemyBulletSprites": {
+			"kind": "instance",
+			"where": "shared/view/bullets/config.ts",
+			"description": "Folder of the enemy bullets drawn as sprites."
+		},
+		"KV_EnemyOutline": {
+			"kind": "switch",
+			"value": "boolean",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/view/outline.ts",
+			"doc": "docs/OUTLINE.md",
+			"description": "false turns every enemy outline off (Highlight and sprite rims); absent = on. Read live."
+		},
+		"KV_FakeAssetLatency": {
+			"kind": "switch",
+			"value": "number",
+			"side": "client",
+			"gate": "studio",
+			"where": "shared/play/config.ts",
+			"doc": "docs/STAGE_ASSETS.md",
+			"description": "Seconds the preload worker waits before each chunk, with resolved ids fetched once more, so stage gates and stand-in swaps can be exercised against Studio's cache. Unset or 0: off."
+		},
+		"KV_FakeCodex": {
+			"kind": "switch",
+			"value": "string",
+			"side": "server",
+			"gate": "studio",
+			"where": "shared/codex/config.ts",
+			"doc": "docs/CODEX.md",
+			"description": "A fake Codex for every player in the session, nothing written: \"all\", \"seen\", \"none\", \"unknown\" or `<entry>:<tier>` pairs (parseFakeCodex)."
+		},
+		"KV_FakeFriends": {
+			"kind": "switch",
+			"value": "string",
+			"side": "server",
+			"gate": "studio",
+			"where": "shared/daily/config.ts",
+			"doc": "docs/DAILY.md",
+			"description": "UserIds standing in for the friends list on the Daily's friends board (GetFriendsAsync fails in Studio)."
+		},
+		"KV_FakeInviteEligible": {
+			"kind": "switch",
+			"value": "boolean",
+			"side": "both",
+			"gate": "studio",
+			"where": "shared/invite/config.ts",
+			"doc": "docs/INVITES.md",
+			"description": "Forces the `inviteEligible` answer the lobby's Invite button reads."
+		},
+		"KV_FakeInviteRecipients": {
+			"kind": "switch",
+			"value": "string",
+			"side": "server",
+			"gate": "studio",
+			"where": "shared/invite/config.ts",
+			"doc": "docs/INVITES.md",
+			"description": "UserIds (\"-2,-3\") the server treats as the recipients of each invite prompt (Studio never fires GameInvitePromptClosed). Player attribute, else Workspace."
+		},
+		"KV_FakeLaunchData": {
+			"kind": "switch",
+			"value": "string",
+			"side": "server",
+			"gate": "studio",
+			"where": "shared/invite/config.ts",
+			"doc": "docs/INVITES.md",
+			"description": "Stands in for the join's `LaunchData` (an invite's lobby payload). Player attribute, else Workspace."
+		},
+		"KV_FakePartyId": {
+			"kind": "switch",
+			"value": "string",
+			"side": "server",
+			"gate": "studio",
+			"where": "shared/invite/config.ts",
+			"doc": "docs/INVITES.md",
+			"description": "Stands in for `Player.PartyId` (\"\" = no party). Player attribute, else Workspace."
+		},
+		"KV_FakePasses": {
+			"kind": "switch",
+			"value": "string",
+			"side": "server",
+			"gate": "studio",
+			"where": "server/services/CosmeticPassService.ts",
+			"doc": "docs/COSMETICS.md",
+			"description": "Fakes the Robux-only cosmetics' game passes: `off` takes them off sale, one whole Robux price puts them on sale and a press grants into the Studio memory store (parseFakePasses)."
+		},
+		"KV_FakeRecords": {
+			"kind": "switch",
+			"value": "string",
+			"side": "server",
+			"gate": "studio",
+			"where": "shared/records/config.ts",
+			"doc": "docs/NEW_BEST.md",
+			"description": "Fake personal records for every player in the session, nothing written: `solo:<best>:<floor>,coop:...`, \"none\" or \"unknown\" (parseFakeRecords)."
+		},
+		"KV_FakeShop": {
+			"kind": "switch",
+			"value": "string",
+			"side": "server",
+			"gate": "studio",
+			"where": "shared/wallet/config.ts",
+			"doc": "docs/SILVER_SHOP.md",
+			"description": "Fakes the Silver shop: `off` hides it, four whole Robux prices turn it on and a press grants into the Studio memory store (parseFakeShop)."
+		},
+		"KV_FakeWallet": {
+			"kind": "switch",
+			"value": "string",
+			"side": "server",
+			"gate": "studio",
+			"where": "shared/wallet/config.ts",
+			"doc": "docs/SILVER.md",
+			"description": "A fake wallet for every player in the session, transactions in memory only: a balance, `<balance>;<item>:<level>,...`, \"unknown\" (parseFakeWallet)."
+		},
+		"KV_FloorModifier": {
+			"kind": "switch",
+			"value": "string or number",
+			"side": "client",
+			"gate": "dev-mode",
+			"where": "shared/run/dev.ts",
+			"doc": "docs/FLOOR_MODIFIERS.md",
+			"description": "Read when a dev run starts: a floor modifier's key or number, forced on every floor where it is eligible (parseFloorModifierOverride)."
+		},
+		"KV_FocusDebug": {
+			"kind": "switch",
+			"value": "boolean",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/view/menu/config.ts",
+			"doc": "docs/GAMEPAD_MENUS.md",
+			"description": "Prints every change of the scope that owns the gamepad and every selection FocusController makes."
+		},
+		"KV_FxSprites": {
+			"kind": "instance",
+			"also": [
+				"binding"
+			],
+			"where": "shared/view/fx/config.ts",
+			"doc": "docs/CLIENT.md",
+			"description": "Folder of the sprite effects; their render step."
+		},
+		"KV_FxTracker": {
+			"kind": "binding",
+			"where": "client/controllers/fx/FxTrackerController.ts",
+			"doc": "docs/CLIENT.md",
+			"description": "FxTrackerController's render step (turns sim changes into effect events)."
+		},
+		"KV_GameCamera": {
+			"kind": "binding",
+			"where": "client/controllers/game/CameraController.ts",
+			"doc": "docs/CLIENT.md",
+			"description": "CameraController's render step."
+		},
+		"KV_GameHud": {
+			"kind": "instance",
+			"where": "client/controllers/game/TouchControlsController.ts",
+			"doc": "docs/CLIENT.md",
+			"description": "The in-run HUD's ScreenGui; the touch controls measure its corner panels."
+		},
+		"KV_GameInput": {
+			"kind": "binding",
+			"where": "client/controllers/game/InputController.ts",
+			"description": "InputController's ContextActionService action that sinks gameplay input."
+		},
+		"KV_GameMenu": {
+			"kind": "instance",
+			"where": "client/ui/hud/GameHud.tsx",
+			"doc": "docs/MINIMAP.md",
+			"description": "The ScreenGui of the run overlays (pause menu, draft, run over)."
+		},
+		"KV_GameMenuDim": {
+			"kind": "instance",
+			"where": "client/ui/hud/GameHud.tsx",
+			"doc": "docs/UI_ART.md",
+			"description": "The full-screen ScreenGui under KV_GameMenu that the overlays dim."
+		},
+		"KV_Golden": {
+			"kind": "instance",
+			"also": [
+				"binding"
+			],
+			"where": "shared/view/golden/config.ts",
+			"doc": "docs/FORTUNE.md",
+			"description": "Folder of the Goldling's view; GoldenRenderController's render step and profiler label."
+		},
+		"KV_GoldenLabel": {
+			"kind": "switch",
+			"value": "boolean",
+			"side": "client",
+			"gate": "studio-or-debug",
+			"where": "shared/view/golden/config.ts",
+			"doc": "docs/FORTUNE.md",
+			"description": "A label over the Goldling with its status, ticks left and hp."
+		},
+		"KV_Goo": {
+			"kind": "instance",
+			"where": "shared/view/variantsConfig.ts",
+			"description": "Folder of the Ooze's goo puddles."
+		},
+		"KV_GooSprites": {
+			"kind": "instance",
+			"where": "shared/view/variantsConfig.ts",
+			"description": "Folder of the goo sprite anchors, under the bullets folder."
+		},
+		"KV_HapticDebug": {
+			"kind": "switch",
+			"value": "boolean or number",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/view/fx/hapticsConfig.ts",
+			"doc": "docs/HAPTICS.md",
+			"description": "Any truthy value prints every haptic cue played or dropped; an integer 1-7 also fires that test cue once per change (kill, parry, stagger, boss death, three hurts)."
+		},
+		"KV_Haptics": {
+			"kind": "instance",
+			"where": "client/controllers/fx/HapticsController.ts",
+			"doc": "docs/HAPTICS.md",
+			"description": "Folder of the phone HapticEffect instances."
+		},
+		"KV_HealthBars": {
+			"kind": "instance",
+			"also": [
+				"binding"
+			],
+			"where": "shared/view/fx/config.ts",
+			"doc": "docs/CLIENT.md",
+			"description": "Folder of the enemy health bars; HealthBarController's render step."
+		},
+		"KV_HeartBeam": {
+			"kind": "instance",
+			"where": "client/controllers/fx/HeartBeamController.ts",
+			"description": "Folder of the Full Heart beam's parts."
+		},
+		"KV_HudOcclusion": {
+			"kind": "binding",
+			"where": "client/controllers/ui/HudOcclusionController.ts",
+			"description": "HudOcclusionController's render step (fades HUD corners over the action)."
+		},
+		"KV_HudRoot": {
+			"kind": "instance",
+			"where": "client/controllers/ui/HudController.tsx",
+			"description": "The React root folder of the HUD and menus under PlayerGui."
+		},
+		"KV_HurtFlash": {
+			"kind": "instance",
+			"where": "client/controllers/fx/HurtFlashController.ts",
+			"description": "The hurt flash's ScreenGui."
+		},
+		"KV_InviteSpike": {
+			"kind": "switch",
+			"also": [
+				"instance"
+			],
+			"value": "boolean",
+			"side": "both",
+			"gate": "none",
+			"where": "shared/config/spikes.ts",
+			"doc": "docs/SPIKES.md",
+			"description": "Runs the invites spike I0: the server makes a ReplicatedStorage folder with a RemoteEvent while on, the client its checks. Overrides `SPIKE_DEFAULTS.invites`. Also that folder's name."
+		},
+		"KV_InviteSpikeMessageId": {
+			"kind": "switch",
+			"value": "string",
+			"side": "server",
+			"gate": "none",
+			"where": "shared/config/spikes.ts",
+			"doc": "docs/SPIKES.md",
+			"description": "Invites spike: a Notification String id for `InviteMessageId`; unset = Roblox's default text."
+		},
+		"KV_InviteSpikeRecipient": {
+			"kind": "switch",
+			"value": "number",
+			"side": "server",
+			"gate": "none",
+			"where": "shared/config/spikes.ts",
+			"doc": "docs/SPIKES.md",
+			"description": "Invites spike: the recipient UserId for the with-recipient checks, else the first other player."
+		},
+		"KV_ItemTooltip": {
+			"kind": "instance",
+			"where": "client/ui/hud/GameHud.tsx",
+			"doc": "docs/ITEM_TOOLTIPS.md",
+			"description": "The item tooltip's ScreenGui."
+		},
+		"KV_ItemTooltips": {
+			"kind": "binding",
+			"where": "client/controllers/ui/TooltipController.ts",
+			"doc": "docs/ITEM_TOOLTIPS.md",
+			"description": "TooltipController's render step."
+		},
+		"KV_L10nSpike": {
+			"kind": "switch",
+			"also": [
+				"instance"
+			],
+			"value": "boolean",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/config/spikes.ts",
+			"doc": "docs/SPIKES.md",
+			"description": "Runs the localization spike L0 (its probe ScreenGuis). Overrides `SPIKE_DEFAULTS.l10n`. Also its main ScreenGui."
+		},
+		"KV_L10nSpikeAuto": {
+			"kind": "instance",
+			"where": "client/controllers/spikes/L10nSpikeController.ts",
+			"doc": "docs/SPIKES.md",
+			"description": "Localization spike: the probe ScreenGui with AutoLocalize on (the only one ever made so)."
+		},
+		"KV_LeadBump": {
+			"kind": "switch",
+			"value": "boolean",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/play/config.ts",
+			"doc": "docs/FRAME_PACING.md",
+			"description": "Read at each co-op run start: builds the client with Revision 2's late bump, for an A/B in a playtest. Ignored with KV_LeadOff."
+		},
+		"KV_LeadOff": {
+			"kind": "switch",
+			"value": "boolean",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/play/config.ts",
+			"doc": "docs/FRAME_PACING.md",
+			"description": "Read at each co-op run start: builds the client without the measured input lead (the legacy miss counter), for an A/B in a playtest."
+		},
+		"KV_Loading": {
+			"kind": "instance",
+			"where": "client/ui/loading/LoadingScreen.tsx",
+			"description": "The join loading screen's ScreenGui."
+		},
+		"KV_LoadingRoot": {
+			"kind": "instance",
+			"where": "client/controllers/ui/LoadingController.tsx",
+			"description": "The loading screen's React root folder under PlayerGui."
+		},
+		"KV_LocaleAudit": {
+			"kind": "switch",
+			"value": "boolean",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/l10n/fitAudit.ts",
+			"doc": "docs/LOCALIZATION.md",
+			"description": "true starts the fit audit: LocaleAuditController walks PlayerGui on a timer and reports each text that overflows, once."
+		},
+		"KV_LootDebug": {
+			"kind": "switch",
+			"value": "boolean",
+			"side": "client",
+			"gate": "studio-or-debug",
+			"where": "shared/view/breakableLootConfig.ts",
+			"doc": "docs/BREAKABLE_DROPS.md",
+			"description": "A label with the boost kind over every loaded, intact barrel or crate."
+		},
+		"KV_Markings": {
+			"kind": "instance",
+			"where": "shared/view/config.ts",
+			"description": "Folder of the floor markings (telegraph dashes, the arena seal)."
+		},
+		"KV_Menu": {
+			"kind": "spec",
+			"where": "shared/view/menu/focus.spec.ts",
+			"description": "A made-up GUI name in `focus.spec.ts` paths; no instance has it."
+		},
+		"KV_MenuBackdrop": {
+			"kind": "instance",
+			"where": "client/ui/menu/MenuLayer.tsx",
+			"doc": "docs/UI_ART.md",
+			"description": "The main menu backdrop's ScreenGui."
+		},
+		"KV_MenuShell": {
+			"kind": "instance",
+			"where": "client/controllers/ui/HudController.tsx",
+			"doc": "docs/CLIENT.md",
+			"description": "The menu layer's ScreenGui (and its React key in HudController)."
+		},
+		"KV_Minimap": {
+			"kind": "binding",
+			"where": "client/controllers/ui/MinimapController.ts",
+			"doc": "docs/MINIMAP.md",
+			"description": "MinimapController's render step."
+		},
+		"KV_MinimapLayer": {
+			"kind": "instance",
+			"where": "client/controllers/ui/MinimapController.ts",
+			"description": "The Frame a minimap host draws its tiles and markers in."
+		},
+		"KV_NameTags": {
+			"kind": "instance",
+			"where": "shared/view/nameTagsConfig.ts",
+			"doc": "docs/PLAYER_NAMES.md",
+			"description": "Folder of the co-op name tags."
+		},
+		"KV_NewBestConfetti": {
+			"kind": "instance",
+			"where": "client/controllers/fx/NewBestController.ts",
+			"doc": "docs/NEW_BEST.md",
+			"description": "The new-best edge confetti's ScreenGui."
+		},
+		"KV_NewBestDebug": {
+			"kind": "switch",
+			"value": "string",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/view/hud/newBestConfig.ts",
+			"doc": "docs/NEW_BEST.md",
+			"description": "Forces the run's new-best baseline: \"score:500\", \"floor:2\", both, \"first\" or \"unknown\" (parseNewBestDebug). Display only."
+		},
+		"KV_NewEnemy2Marks": {
+			"kind": "instance",
+			"also": [
+				"binding"
+			],
+			"where": "shared/view/newEnemies2Config.ts",
+			"description": "Folder of the New enemies 2 floor marks and flames (the Shieldwall's guard arc); NewEnemy2MarksController's render step."
+		},
+		"KV_NewEnemy3Marks": {
+			"kind": "instance",
+			"also": [
+				"binding"
+			],
+			"where": "shared/view/newEnemies3Config.ts",
+			"description": "Folder of the New enemies 3 floor marks and the Mortar's shell; NewEnemy3MarksController's render step."
+		},
+		"KV_NewEnemyMarks": {
+			"kind": "instance",
+			"also": [
+				"binding"
+			],
+			"where": "shared/view/newEnemiesConfig.ts",
+			"description": "Folder of the New enemies floor marks (the Warbanner's aura ring); NewEnemyMarksController's render step."
+		},
+		"KV_NoSelectionImage": {
+			"kind": "instance",
+			"where": "shared/view/menu/config.ts",
+			"description": "The Name of FocusController's empty SelectionImageObject; the pad spike reads it as \"no image\"."
+		},
+		"KV_Onboarding_v1": {
+			"kind": "datastore",
+			"where": "shared/onboarding/config.ts",
+			"doc": "docs/TUTORIAL.md",
+			"description": "DataStore of onboarding: one doc per player (the tutorial's outcome, first sightings seen, the new-player window's counters)."
+		},
+		"KV_OvercapPops": {
+			"kind": "instance",
+			"also": [
+				"binding"
+			],
+			"where": "client/controllers/fx/OvercapPopController.ts",
+			"description": "Folder of the overcap boss point pops; OvercapPopController's render step."
+		},
+		"KV_PacingOff": {
+			"kind": "switch",
+			"value": "boolean",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/play/config.ts",
+			"doc": "docs/FRAME_PACING.md",
+			"description": "Read at each co-op run start: builds the client without the playout clock (frames step as they arrive), for an A/B in a playtest."
+		},
+		"KV_PactLabel": {
+			"kind": "switch",
+			"value": "boolean",
+			"side": "client",
+			"gate": "studio-or-debug",
+			"where": "shared/view/pacts/config.ts",
+			"doc": "docs/FORTUNE.md",
+			"description": "A label over each pact altar with its status, the Horde phase and the view player."
+		},
+		"KV_Pacts": {
+			"kind": "instance",
+			"also": [
+				"binding"
+			],
+			"where": "shared/view/pacts/config.ts",
+			"doc": "docs/FORTUNE.md",
+			"description": "Folder of the pact altars; PactRenderController's render step and profiler label."
+		},
+		"KV_PadSpike": {
+			"kind": "switch",
+			"also": [
+				"instance"
+			],
+			"value": "boolean",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/config/spikes.ts",
+			"doc": "docs/SPIKES.md",
+			"description": "Runs the gamepad spike GM0 (its test ScreenGuis). Overrides `SPIKE_DEFAULTS.pad`. Also its main ScreenGui."
+		},
+		"KV_PadSpikeInsetProbe": {
+			"kind": "instance",
+			"where": "client/controllers/spikes/PadSpikeController.tsx",
+			"description": "Gamepad spike: the ScreenGui that probes the safe-area insets."
+		},
+		"KV_PadSpikeTrap": {
+			"kind": "instance",
+			"where": "client/controllers/spikes/PadSpikeController.tsx",
+			"doc": "docs/SPIKES.md",
+			"description": "Gamepad spike: the ScreenGui that tests a selection trap."
+		},
+		"KV_ParryDebug": {
+			"kind": "switch",
+			"value": "string",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/view/hud/parryFlash.ts",
+			"doc": "docs/GRAZE_PARRY.md",
+			"description": "A whole number n >= 1: each change forces one drawn PARRY! flash of n erases on the view player (no sound, sparks or freeze)."
+		},
+		"KV_ParryFlash": {
+			"kind": "instance",
+			"where": "shared/view/hud/parryFlash.ts",
+			"description": "Folder of the PARRY! floor flash."
+		},
+		"KV_Particles": {
+			"kind": "instance",
+			"also": [
+				"binding"
+			],
+			"where": "shared/view/fx/config.ts",
+			"doc": "docs/CLIENT.md",
+			"description": "Folder of the particle parts; ParticleController's render step."
+		},
+		"KV_PauseButton": {
+			"kind": "instance",
+			"where": "client/ui/hud/GameHud.tsx",
+			"description": "The pause button's ScreenGui in the Roblox top bar (mouse and touch)."
+		},
+		"KV_PelletDebug": {
+			"kind": "switch",
+			"value": "boolean",
+			"side": "client",
+			"gate": "studio-or-debug",
+			"where": "shared/view/pellets/config.ts",
+			"doc": "docs/PELLETS.md",
+			"description": "A `left / count` label over every live room's centre."
+		},
+		"KV_Pellets": {
+			"kind": "instance",
+			"also": [
+				"binding"
+			],
+			"where": "shared/view/pellets/config.ts",
+			"doc": "docs/CLIENT.md",
+			"description": "Folder of the pellets; PelletRenderController's render step and profiler label."
+		},
+		"KV_PlayerBulletSprites": {
+			"kind": "instance",
+			"where": "shared/view/bullets/config.ts",
+			"description": "Folder of the player bullets drawn as sprites."
+		},
+		"KV_PlayerOutline": {
+			"kind": "switch",
+			"value": "boolean",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/view/outline.ts",
+			"doc": "docs/PLAYER_OUTLINE.md",
+			"description": "false turns the player outline off (Highlight and sprite rim); absent = on. Read live."
+		},
+		"KV_PredictOff": {
+			"kind": "switch",
+			"value": "boolean",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/play/config.ts",
+			"doc": "docs/LOCAL_PREDICTION.md",
+			"description": "Read at each co-op run start: builds the client without local prediction (your knight drawn at the merged state), for an A/B in a playtest."
+		},
+		"KV_Purchases_v1": {
+			"kind": "datastore",
+			"where": "shared/wallet/config.ts",
+			"doc": "docs/SILVER_SHOP.md",
+			"description": "DataStore of the Silver shop's best-effort purchase audit log (key `p_<PurchaseId>`): for support only, it never decides a grant."
+		},
+		"KV_RecapConfirm": {
+			"kind": "binding",
+			"where": "client/controllers/fx/RecapController.ts",
+			"description": "RecapController's ContextActionService action for Again / confirm on run over."
+		},
+		"KV_RecapTabs": {
+			"kind": "binding",
+			"where": "client/controllers/fx/RecapController.ts",
+			"description": "RecapController's ContextActionService action that switches the run-over tabs."
+		},
+		"KV_Records_v1": {
+			"kind": "datastore",
+			"where": "shared/records/config.ts",
+			"doc": "docs/NEW_BEST.md",
+			"description": "DataStore of personal records: one doc per player of best scores and deepest floors."
+		},
+		"KV_ResetBindings": {
+			"kind": "switch",
+			"value": "boolean",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/settings/config.ts",
+			"doc": "docs/CLIENT.md",
+			"description": "On join, clears this player's saved key bindings once the server's settings arrive; the other settings groups are kept."
+		},
+		"KV_ResetOnboarding": {
+			"kind": "switch",
+			"value": "boolean",
+			"side": "server",
+			"gate": "studio",
+			"where": "shared/onboarding/config.ts",
+			"doc": "docs/TUTORIAL.md",
+			"description": "A joining player's onboarding doc is reset to empty and saved, so the tutorial is offered on every Studio join."
+		},
+		"KV_RetryTiming": {
+			"kind": "switch",
+			"value": "boolean",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/view/hud/recapConfig.ts",
+			"doc": "docs/RUN_RECAP.md",
+			"description": "A run-over retry prints `[Recap] retry: press -> control <s> s` once the next run takes input."
+		},
+		"KV_RoomEdges": {
+			"kind": "instance",
+			"also": [
+				"binding"
+			],
+			"where": "shared/view/roomEdgesConfig.ts",
+			"doc": "docs/ROOM_EDGES.md",
+			"description": "Folder of the room-edge dash layers; RoomEdgeController's render step."
+		},
+		"KV_RunMarkers": {
+			"kind": "instance",
+			"also": [
+				"binding"
+			],
+			"where": "client/controllers/render/RunMarkerController.ts",
+			"description": "Folder of the relic pedestals and the curse shrine's zone; RunMarkerController's render step."
+		},
+		"KV_RunValidationWorld": {
+			"kind": "switch",
+			"value": "string",
+			"side": "server",
+			"gate": "studio",
+			"where": "server/services/RunValidationService.ts",
+			"doc": "docs/SERVER.md",
+			"description": "The world run validation replays in (\"game\", \"endless\", \"dungeonNoEncounter\" or \"greybox\"); pair it with the client's KV_World."
+		},
+		"KV_Scorches": {
+			"kind": "instance",
+			"where": "shared/view/hazardsConfig.ts",
+			"doc": "docs/HAZARD_ART.md",
+			"description": "Folder of the scorch marks a strike leaves."
+		},
+		"KV_ScorePops": {
+			"kind": "instance",
+			"also": [
+				"binding"
+			],
+			"where": "client/controllers/fx/ScorePopController.ts",
+			"description": "Folder of the score pops; ScorePopController's render step."
+		},
+		"KV_Scoring": {
+			"kind": "switch",
+			"value": "boolean",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/play/config.ts",
+			"doc": "docs/CLIENT.md",
+			"description": "M2 scoring on the M1 run (score HUD, combo meter, score pops, results breakdown). Such a run hashes differently and is not submitted."
+		},
+		"KV_Secret": {
+			"kind": "instance",
+			"also": [
+				"binding"
+			],
+			"where": "shared/view/secrets/config.ts",
+			"doc": "docs/SECRET_ROOMS.md",
+			"description": "Folder of the secret room's crack and chamber; SecretRenderController's render step."
+		},
+		"KV_SecretDebug": {
+			"kind": "switch",
+			"value": "string",
+			"side": "client",
+			"gate": "dev-mode",
+			"where": "shared/run/dev.ts",
+			"doc": "docs/SECRET_ROOMS.md",
+			"description": "Read when a dev run starts, words in any order: `every` puts a secret room on every floor, `rare` / `legendary` fixes its chest's tier (parseSecretDebug)."
+		},
+		"KV_SecretLabel": {
+			"kind": "switch",
+			"value": "boolean",
+			"side": "client",
+			"gate": "studio-or-debug",
+			"where": "shared/play/config.ts",
+			"doc": "docs/SECRET_ROOMS.md",
+			"description": "Outlines the floor's crack, chamber and front box and labels the crack with the chest's tier and the secret's status."
+		},
+		"KV_Seed": {
+			"kind": "switch",
+			"value": "number",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/play/config.ts",
+			"doc": "docs/CLIENT.md",
+			"description": "The run's seed, an integer in [0, 2^32); read on every restart. A run on a picked seed is local and unranked (ranked seeds come from the server)."
+		},
+		"KV_SiegeFx": {
+			"kind": "instance",
+			"where": "shared/view/fx/siegeDraw.ts",
+			"doc": "docs/BUILDS_V2.md",
+			"description": "Folder of the Siege Bolt effect parts."
+		},
+		"KV_Sightings": {
+			"kind": "binding",
+			"where": "client/controllers/game/SightingController.ts",
+			"description": "SightingController's render step (first-sighting cards)."
+		},
+		"KV_SilverCoins": {
+			"kind": "instance",
+			"where": "client/controllers/fx/SilverHudController.ts",
+			"description": "The ScreenGui the flying Silver coins are drawn in."
+		},
+		"KV_SilverDebug": {
+			"kind": "switch",
+			"value": "string",
+			"side": "client",
+			"gate": "dev-mode",
+			"where": "shared/run/dev.ts",
+			"doc": "docs/SILVER.md",
+			"description": "Read when a dev run starts: `every` makes every candidate barrel and crate hold Silver (parseSilverDebug)."
+		},
+		"KV_SilverHud": {
+			"kind": "binding",
+			"where": "client/controllers/fx/SilverHudController.ts",
+			"description": "SilverHudController's render step."
+		},
+		"KV_SilverLabel": {
+			"kind": "switch",
+			"value": "boolean",
+			"side": "client",
+			"gate": "studio-or-debug",
+			"where": "shared/view/silver/config.ts",
+			"doc": "docs/SILVER.md",
+			"description": "A label with the Silver amount over every barrel or crate that holds Silver."
+		},
+		"KV_SilverPops": {
+			"kind": "instance",
+			"where": "client/controllers/fx/SilverHudController.ts",
+			"description": "Folder of the Silver amount pops."
+		},
+		"KV_Sim": {
+			"kind": "binding",
+			"where": "client/controllers/game/SimController.ts",
+			"doc": "docs/CLIENT.md",
+			"description": "SimController's render step: the sim's frame."
+		},
+		"KV_SkipLoading": {
+			"kind": "switch",
+			"value": "boolean",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/play/config.ts",
+			"doc": "docs/PRELOAD.md",
+			"description": "Read once on join: releases the join loading screen at once; the download queue still runs behind the menu."
+		},
+		"KV_SkipMenu": {
+			"kind": "switch",
+			"value": "boolean",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/play/config.ts",
+			"doc": "docs/CLIENT.md",
+			"description": "Skips the main menu on join and starts a solo run at once."
+		},
+		"KV_SolidStandIns": {
+			"kind": "instance",
+			"where": "shared/view/standInsConfig.ts",
+			"doc": "docs/STAGE_ASSETS.md",
+			"description": "Folder of the stand-in boxes drawn for solid decor still downloading."
+		},
+		"KV_SpawnBoss": {
+			"kind": "switch",
+			"value": "boolean",
+			"side": "client",
+			"gate": "needs-debug",
+			"where": "shared/play/config.ts",
+			"doc": "docs/CLIENT.md",
+			"description": "With KV_Debug, outside endless: start just outside the boss room's door. A live server rejects such a run."
+		},
+		"KV_SpikeBullets": {
+			"kind": "switch",
+			"also": [
+				"instance"
+			],
+			"value": "boolean",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/config/spikes.ts",
+			"doc": "docs/SPIKES.md",
+			"description": "Runs the bullet-count spike. Overrides `SPIKE_DEFAULTS.bullets`. Also the spike's Workspace folder."
+		},
+		"KV_SpikeCamera": {
+			"kind": "switch",
+			"also": [
+				"instance",
+				"binding"
+			],
+			"value": "boolean",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/config/spikes.ts",
+			"doc": "docs/SPIKES.md",
+			"description": "Runs the camera spike. Overrides `SPIKE_DEFAULTS.camera`. Also the spike's Workspace folder and render step."
+		},
+		"KV_SpikeCameraMove": {
+			"kind": "binding",
+			"where": "client/controllers/spikes/CameraSpikeController.ts",
+			"description": "Camera spike: its ContextActionService move action."
+		},
+		"KV_SpikeHud": {
+			"kind": "instance",
+			"where": "client/controllers/spikes/SpikeHudController.tsx",
+			"description": "The spikes' shared readout ScreenGui."
+		},
+		"KV_SpikePreload": {
+			"kind": "switch",
+			"also": [
+				"instance"
+			],
+			"value": "boolean",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/config/spikes.ts",
+			"doc": "docs/SPIKES.md",
+			"description": "Runs the preload spike P0 on join; the real preload queue waits for its batches. Overrides `SPIKE_DEFAULTS.preload`. Also the spike's ScreenGui."
+		},
+		"KV_SpikePreloadInstancesFirst": {
+			"kind": "switch",
+			"value": "boolean",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/config/spikes.ts",
+			"doc": "docs/SPIKES.md",
+			"description": "Preload spike: run the instance batches before the string ones."
+		},
+		"KV_Stage": {
+			"kind": "instance",
+			"where": "client/ui/loading/StageCard.tsx",
+			"description": "The stage card's ScreenGui (the cover while a floor loads)."
+		},
+		"KV_StageAssetAudit": {
+			"kind": "switch",
+			"value": "boolean",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/play/config.ts",
+			"doc": "docs/STAGE_ASSETS.md",
+			"description": "Records every logical id the views resolve during a floor and prints those missing from the floor's stage manifest."
+		},
+		"KV_StageRenderEnd": {
+			"kind": "binding",
+			"where": "client/controllers/game/StageController.tsx",
+			"description": "StageController's render step bound last in the frame."
+		},
+		"KV_StageRoot": {
+			"kind": "instance",
+			"where": "client/controllers/game/StageController.tsx",
+			"description": "The stage card's React root folder under PlayerGui."
+		},
+		"KV_StandInsForce": {
+			"kind": "switch",
+			"value": "string",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/play/config.ts",
+			"doc": "docs/STAGE_ASSETS.md",
+			"description": "\"all\" draws every logical id as its stand-in, a comma list of id prefixes (\"enemy., bullet.\") draws those; read live."
+		},
+		"KV_Stress": {
+			"kind": "switch",
+			"value": "number",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/play/config.ts",
+			"doc": "docs/SPIKES.md",
+			"description": "Outside endless: the stress target (the web build's `?stress=N`). Stress runs are never submitted."
+		},
+		"KV_StrikeSprites": {
+			"kind": "instance",
+			"where": "shared/view/hazardsConfig.ts",
+			"doc": "docs/HAZARD_ART.md",
+			"description": "Folder of the Stormcaller strikes drawn as sprites."
+		},
+		"KV_Strikes": {
+			"kind": "instance",
+			"where": "shared/view/newEnemiesConfig.ts",
+			"description": "Folder of the strike telegraph and flash parts."
+		},
+		"KV_SyncCallout": {
+			"kind": "instance",
+			"where": "shared/view/fx/teamMomentsConfig.ts",
+			"description": "Folder of the co-op SYNC! callout."
+		},
+		"KV_SystemCursor": {
+			"kind": "switch",
+			"value": "boolean",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/play/config.ts",
+			"doc": "docs/CURSOR.md",
+			"description": "Forces Roblox's own pointer everywhere, the gauntlet cursor never drawn: a debug aid and the fallback if an engine update breaks the software cursor."
+		},
+		"KV_TeamMomentsDebug": {
+			"kind": "switch",
+			"value": "string",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/view/fx/teamMomentsConfig.ts",
+			"doc": "docs/RUN_RECAP.md",
+			"description": "Each change arms once: \"perfect[:n]\" makes the next PERFECT clear a team perfect, \"sync\", \"sync:far\" or \"sync:3\" a SYNC! at the view player. Counts toward nothing."
+		},
+		"KV_Telegraphs": {
+			"kind": "binding",
+			"where": "client/controllers/render/TelegraphController.ts",
+			"doc": "docs/CLIENT.md",
+			"description": "TelegraphController's render step."
+		},
+		"KV_TouchControls": {
+			"kind": "instance",
+			"also": [
+				"binding"
+			],
+			"where": "client/controllers/game/TouchControlsController.ts",
+			"doc": "docs/MOBILE_IMPL.md",
+			"description": "The touch controls' ScreenGui; TouchControlsController's render step."
+		},
+		"KV_TouchSpike": {
+			"kind": "switch",
+			"also": [
+				"instance"
+			],
+			"value": "boolean",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/config/spikes.ts",
+			"doc": "docs/SPIKES.md",
+			"description": "Runs the touch-input spike (its ScreenGui). Overrides `SPIKE_DEFAULTS.touch`. Also its ScreenGui."
+		},
+		"KV_TouchStrip": {
+			"kind": "instance",
+			"where": "shared/view/hud/touchStrip.ts",
+			"doc": "docs/UI_ART.md",
+			"description": "The touch HUD strip's ScreenGui; its Footprint folder is measured for the controls' keep-out."
+		},
+		"KV_TouchTarget": {
+			"kind": "instance",
+			"where": "client/controllers/game/TouchControlsController.ts",
+			"doc": "docs/MOBILE_IMPL.md",
+			"description": "Folder of the touch controls' auto-target marker."
+		},
+		"KV_Treasure": {
+			"kind": "instance",
+			"also": [
+				"binding"
+			],
+			"where": "shared/view/treasure/config.ts",
+			"doc": "docs/CLIENT.md",
+			"description": "Folder of the vault's cage and chest; TreasureRenderController's render step."
+		},
+		"KV_TreasureDebug": {
+			"kind": "switch",
+			"value": "string",
+			"side": "client",
+			"gate": "dev-mode",
+			"where": "shared/run/dev.ts",
+			"doc": "docs/TREASURE.md",
+			"description": "Read when a dev run starts, words in any order: `every` puts a vault on every floor, `rare` / `legendary` its tier, `untouched` / `swift` its lock (parseTreasureDebug)."
+		},
+		"KV_TreasureLabel": {
+			"kind": "switch",
+			"value": "boolean",
+			"side": "client",
+			"gate": "studio-or-debug",
+			"where": "shared/view/treasure/config.ts",
+			"doc": "docs/TREASURE.md",
+			"description": "A label over the vault chest with its lock, tier, status and ticks left / hits."
+		},
+		"KV_TreasureToasts": {
+			"kind": "binding",
+			"where": "client/controllers/ui/TreasureToastController.ts",
+			"doc": "docs/TREASURE.md",
+			"description": "TreasureToastController's render step."
+		},
+		"KV_Tutorial": {
+			"kind": "switch",
+			"also": [
+				"binding"
+			],
+			"value": "boolean",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/play/config.ts",
+			"doc": "docs/TUTORIAL.md",
+			"description": "Read once on join: true starts the first-run tutorial whatever the server says, false never starts it; unset, the server's onboarding status decides. Also TutorialController's render step."
+		},
+		"KV_TutorialArrow": {
+			"kind": "instance",
+			"also": [
+				"binding"
+			],
+			"where": "client/controllers/render/TutorialArrowController.ts",
+			"doc": "docs/TUTORIAL_ARROW.md",
+			"description": "Folder of the tutorial's floor arrow; TutorialArrowController's render step."
+		},
+		"KV_TutorialMarker": {
+			"kind": "instance",
+			"also": [
+				"binding"
+			],
+			"where": "client/controllers/render/TutorialMarkerController.ts",
+			"description": "Folder of the tutorial's objective marker; TutorialMarkerController's render step."
+		},
+		"KV_UiArtSpike": {
+			"kind": "switch",
+			"also": [
+				"instance"
+			],
+			"value": "boolean",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/config/spikes.ts",
+			"doc": "docs/SPIKES.md",
+			"description": "Runs the UI art spike UA1 (its ScreenGui). Overrides `SPIKE_DEFAULTS.uiArt`. Also its ScreenGui."
+		},
+		"KV_Void": {
+			"kind": "instance",
+			"where": "shared/view/voidDecor/viewConfig.ts",
+			"doc": "docs/VOID_DECOR.md",
+			"description": "Folder of the void decoration's Parts, rebuilt per floor."
+		},
+		"KV_VoidDebug": {
+			"kind": "switch",
+			"value": "boolean",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/view/voidDecor/viewConfig.ts",
+			"doc": "docs/VOID_DECOR.md",
+			"description": "Tints every void layer its debug colour; toggles at once."
+		},
+		"KV_VoidOff": {
+			"kind": "switch",
+			"value": "boolean",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/view/voidDecor/viewConfig.ts",
+			"doc": "docs/VOID_DECOR.md",
+			"description": "Builds no void Parts and no abyss motes; toggles at once."
+		},
+		"KV_Wallet_v1": {
+			"kind": "datastore",
+			"where": "shared/wallet/config.ts",
+			"doc": "docs/SILVER.md",
+			"description": "DataStore of the Silver wallet: one doc per player, changed by transactions only."
+		},
+		"KV_Weapons": {
+			"kind": "binding",
+			"where": "client/controllers/render/WeaponViewController.ts",
+			"doc": "docs/CLIENT.md",
+			"description": "WeaponViewController's render step."
+		},
+		"KV_World": {
+			"kind": "switch",
+			"also": [
+				"instance"
+			],
+			"value": "string",
+			"side": "client",
+			"gate": "none",
+			"where": "shared/play/config.ts",
+			"doc": "docs/CLIENT.md",
+			"description": "\"endless\", \"game\", \"dungeonNoEncounter\" or \"greybox\": a local, unranked run in that world on KV_Seed. Also the folder of the world geometry."
+		},
+		"KV_WreckerFx": {
+			"kind": "instance",
+			"where": "client/controllers/fx/WreckerFxController.ts",
+			"description": "Folder of the Wrecker splinter effect parts."
+		}
+	}
+}

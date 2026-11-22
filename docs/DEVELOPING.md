@@ -26,7 +26,7 @@ atlases or audio (`art:build`, `audio:build`) needs the licensed packs under `ar
 
 | Script | What it does |
 |---|---|
-| `npm run verify` | The pre-merge gate, 13 steps in order: `typecheck`, `lint`, `check:docs`, `docs:check`, `check:assets`, `check:autolocalize`, `test:art`, `test:checks`, `test:l10n`, `build`, `check:locals`, `facts:check`, `test:only` |
+| `npm run verify` | The pre-merge gate, 14 steps in order: `typecheck`, `lint`, `check:docs`, `docs:check`, `check:assets`, `check:autolocalize`, `check:kvnames`, `test:art`, `test:checks`, `test:l10n`, `build`, `check:locals`, `facts:check`, `test:only` |
 | `npm test` | Build, then run every `src/shared/**/*.spec.ts` headlessly (Lune + real Jest modules) |
 | `npm run test:only -- sim/rng` | Rerun specs without rebuilding; arguments filter by source path. `--census <path>` runs an opt-in census spec's full sample |
 | `npm run build` | Generate the fixture modules, compile `src/` to `out/` with rbxtsc |
@@ -43,6 +43,7 @@ atlases or audio (`art:build`, `audio:build`) needs the licensed packs under `ar
 | `docs:check` | TypeDoc without output: broken `{@link}`, unknown tags, a `@param` naming no parameter |
 | `check:assets` | No hard-coded asset id outside `src/shared/theme` |
 | `check:autolocalize` | AutoLocalize is off on every GUI (docs/LOCALIZATION.md) |
+| `check:kvnames` | every `KV_*` string in `src/` is in `scripts/kv-names.json` and still used; `docs/DEBUG_SWITCHES.md` is its table (`-- --write` regenerates it) |
 | `check:locals` | (after build) top-level locals per compiled module: fails past Luau's 200, warns from 185 |
 | `facts:check` | `docs/FACTS.md` matches the build |
 | `test:art` / `test:checks` / `test:l10n` | node:test specs of the atlas pipeline, the check scripts and the localization pipeline |
