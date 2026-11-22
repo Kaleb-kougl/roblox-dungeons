@@ -6,3 +6,4 @@
  * @module
  */
 export * from "./context";
+export * from "./coop";

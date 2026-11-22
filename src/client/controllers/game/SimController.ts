@@ -5,14 +5,7 @@ import { clientStore, selectDailyStatus, selectSelectedCharacter, type RunInfo, 
 import { DEFAULT_CHARACTER, isCharacterId, type CharacterId, type UpgradeLevels } from "shared/characters";
 import { cosmeticLookOf, equippedMapOf, readCosmeticLook, type CosmeticLook } from "shared/cosmetics";
 import type { PartyRunStart, RunFinishVerdict, RunVerdict } from "shared/network";
-import {
-	ArrivalLog,
-	CoopMenuInputGate,
-	DEFAULT_LOCKSTEP,
-	LockstepClient,
-	formatArrivalLine,
-	type InputSampler,
-} from "shared/lockstep";
+import { ArrivalLog, CoopMenuInputGate, LockstepClient, type InputSampler } from "shared/lockstep";
 import {
 	ALL_DEBUG_BUTTONS,
 	DEFAULT_RUN_SEED,
@@ -80,11 +73,7 @@ import {
 	floorChangeStaged,
 	formatListenerTimes,
 	playerCharacterOf,
-	latencyProbeView,
 	listenerLabel,
-	leadDebugView,
-	predictionDebugView,
-	pacingDebugView,
 	spectateCommand,
 	type ListenerTime,
 	type SpectateView,
@@ -118,6 +107,10 @@ import {
 	type StageDriver,
 	type StageWork,
 	type ToastChipSource,
+	buildCoopClient,
+	logArrivals,
+	memberName,
+	publishLatencyProbe,
 } from "./sim";
 
 export { floorModifierOf, floorSecretOf } from "./sim";
@@ -195,14 +188,6 @@ function placeKeyFor(pack: ThemePack, dungeon: Dungeon | undefined): string {
 	if (dungeon === undefined) return "";
 	const biome = BIOMES.find((b) => b.forgeTheme === dungeon.params.themeKey);
 	return biome !== undefined ? pack.biome(biome.id).nameKey : "";
-}
-
-/**
- * A party member's name for the spectate bar: the Player's DisplayName, or `#<userId>` (the lobby's fallback,
- * client/ui/menu useNameOf) for a member already gone from the server (never watched: left players are no candidates).
- */
-function memberName(userId: number): string {
-	return Players.GetPlayerByUserId(userId)?.DisplayName ?? `#${userId}`;
 }
 
 /**
@@ -1182,40 +1167,7 @@ export class SimController implements OnStart {
 		const setup = result as ReturnType<typeof buildWorldSetup>;
 		const spawn = setup.spawn ?? { x: 0, z: 0 };
 		this.draftGate.reset();
-		// KV_PacingOff (docs/FRAME_PACING.md FPD8), KV_LeadOff (Design 12) and KV_LeadBump (Revision 3, FP20): A/B
-		// switches for playtests, read at every co-op start, combinable (KV_LeadOff wins over KV_LeadBump).
-		const pacingOff = Workspace.GetAttribute(RUN_ATTRIBUTES.pacingOff) === true;
-		const leadOff = Workspace.GetAttribute(RUN_ATTRIBUTES.leadOff) === true;
-		const leadBump = !leadOff && Workspace.GetAttribute(RUN_ATTRIBUTES.leadBump) === true;
-		// KV_PredictOff (docs/LOCAL_PREDICTION.md LPD6): the same kind of switch for local prediction.
-		const predictOff = Workspace.GetAttribute(RUN_ATTRIBUTES.predictOff) === true;
-		const shippedLead = DEFAULT_LOCKSTEP.lead;
-		const client = new LockstepClient({
-			runId: start.runId,
-			seed: start.seed,
-			spawn,
-			config: setup.config,
-			players: start.members.size(),
-			localIndex,
-			tunables:
-				pacingOff || leadOff || leadBump || predictOff
-					? {
-							...DEFAULT_LOCKSTEP,
-							pacing: pacingOff ? undefined : DEFAULT_LOCKSTEP.pacing,
-							lead:
-								leadOff || shippedLead === undefined
-									? undefined
-									: leadBump
-									? { ...shippedLead, lateBump: true }
-									: shippedLead,
-							prediction: predictOff ? undefined : DEFAULT_LOCKSTEP.prediction,
-					  }
-					: undefined,
-		});
-		if (pacingOff) print(`[Sim] co-op run ${start.runId}: frame pacing off (${RUN_ATTRIBUTES.pacingOff})`);
-		if (leadOff) print(`[Sim] co-op run ${start.runId}: measured lead off (${RUN_ATTRIBUTES.leadOff})`);
-		if (leadBump) print(`[Sim] co-op run ${start.runId}: late bump on (${RUN_ATTRIBUTES.leadBump})`);
-		if (predictOff) print(`[Sim] co-op run ${start.runId}: local prediction off (${RUN_ATTRIBUTES.predictOff})`);
+		const { client, pacingOff, leadOff, predictOff } = buildCoopClient(start, setup, spawn, localIndex);
 		// A new run: nothing to glide from (LP5's run-start snap).
 		this.drawnLocal.reset();
 		this.counter++;
@@ -1261,7 +1213,7 @@ export class SimController implements OnStart {
 		this.ctx = ctx;
 		this.rankedRuns.set(start.runId, { run: this.counter, decided: false });
 		clientStore.startRun(this.runInfo(this.theme.getPack(), ctx, ""), this.coopSnapshot(client));
-		this.publishLatencyProbe(ctx, client);
+		publishLatencyProbe(ctx, client, this.drawnLocal.isActive(), this.drawnLocal.snapCount());
 		print(
 			`[Sim] co-op run ${this.counter} started: ${start.runId} seed ${start.seed}, player ${localIndex + 1} of ` +
 				`${start.members.size()}`,
@@ -1326,7 +1278,7 @@ export class SimController implements OnStart {
 		const res = coop.pump(dt, sample, now);
 		const stepMs = this.debug ? (os.clock() - now) * MS_PER_SECOND : 0;
 		probe?.stepped(coop.state.tick, os.clock(), coop.mismatches > mismatchesBefore);
-		this.logArrivals(ctx, coop, now, dt);
+		logArrivals(ctx, coop, now, dt);
 		const runId = coop.runId;
 		for (const b of res.inputs) Events.lockstepInput.fire(runId, b.firstTick, b.data);
 		// One call with every report due (new ones and unacknowledged resends; LockstepClient throttles it).
@@ -1384,60 +1336,8 @@ export class SimController implements OnStart {
 		if (this.hudTimer >= HUD_SNAPSHOT_INTERVAL_SEC) {
 			this.hudTimer = 0;
 			clientStore.setSnapshot(this.coopSnapshot(coop));
-			this.publishLatencyProbe(ctx, coop);
+			publishLatencyProbe(ctx, coop, this.drawnLocal.isActive(), this.drawnLocal.snapCount());
 		}
-	}
-
-	/**
-	 * KV_Debug co-op: the latency probe's numbers, the effective and net lead and the pacing part to the debug line
-	 * (with the HUD snapshot); nothing otherwise.
-	 */
-	private publishLatencyProbe(ctx: RunContext, coop: LockstepClient): void {
-		const probe = ctx.latencyProbe;
-		if (probe === undefined) return;
-		const pacing = pacingDebugView(coop.pacingStats(), coop.backlog(), ctx.pacingOff !== true);
-		const lead = leadDebugView(coop.leadStats(), ctx.leadOff !== true);
-		const prediction = predictionDebugView(
-			coop.predictionStats(),
-			ctx.predictOff !== true,
-			this.drawnLocal.isActive(),
-			this.drawnLocal.snapCount(),
-		);
-		clientStore.setLatencyProbe(
-			latencyProbeView(
-				probe,
-				coop.inputLead(),
-				coop.misses,
-				coop.netLead(),
-				pacing,
-				lead,
-				coop.mismatches,
-				prediction,
-			),
-		);
-	}
-
-	/**
-	 * KV_Debug co-op (docs/FRAME_PACING.md FP0): the frame into the arrival log, and its `[Pace]` line once a window is
-	 * full. Nothing without the log (it only exists under KV_Debug).
-	 */
-	private logArrivals(ctx: RunContext, coop: LockstepClient, now: number, dt: number): void {
-		const log = ctx.arrivalLog;
-		if (log === undefined) return;
-		log.frame(now, dt);
-		if (!log.due(now)) return;
-		print(
-			formatArrivalLine(log.take(now), {
-				pacing: coop.pacingStats(),
-				pacingOff: ctx.pacingOff === true,
-				lead: coop.inputLead(),
-				netLead: coop.netLead(),
-				misses: coop.mismatches,
-				leadStats: coop.leadStats(),
-				leadOff: ctx.leadOff === true,
-				backlog: coop.backlog(),
-			}),
-		);
 	}
 
 	/** The co-op HUD snapshot: this client's own items, the vitals and spectate bar of the player the views follow. */
