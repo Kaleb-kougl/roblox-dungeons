@@ -57,10 +57,8 @@ import {
 import {
 	DEV_GOD_BUTTON,
 	EMPTY_INPUT,
-	chainhookHolderOf,
 	copyInput,
 	isDraftOpen,
-	newPlayerState,
 	partySize,
 	playerAt,
 	stressConfig,
@@ -95,14 +93,7 @@ import {
 import { codexToastChip } from "shared/view/codex";
 import { HitstopClock, simPacerFor, type FrameAdvance, type FramePacer } from "shared/view/fx";
 import { GoldenRumourClock } from "shared/view/golden";
-import {
-	PREDICTION_VIEW,
-	PredictionResume,
-	PredictionSmoother,
-	blendTowardMerged,
-	writeDrawnPlayer,
-	type DrawnPlayerOf,
-} from "shared/view/predict";
+import { DrawnLocalPlayer, PREDICTION_VIEW, type DrawnPlayerOf, type PredictionSmoothing } from "shared/view/predict";
 import { PROGRESSION_VIEW, boardFor, toastFor, type PendingRunClaim } from "shared/view/hud";
 import {
 	LEFT_RUN_END_REASON,
@@ -409,25 +400,12 @@ export class SimController implements OnStart {
 	private secretPlan: FloorSecret | undefined;
 
 	/**
-	 * Local prediction on screen (docs/LOCAL_PREDICTION.md LP5): the co-op client's predicted head smoothed into the
-	 * drawn local player (updateDrawn, once per co-op frame after the pump). `drawnState` / `drawnIndex`: the state and
-	 * the player it was drawn for; `drawnActive` false while nothing is predicted (solo, KV_PredictOff, spectating, dead,
-	 * a draft, the stage cover), then every view gets the merged player exactly as before.
+	 * Local prediction on screen (docs/LOCAL_PREDICTION.md LP5; shared/view/predict DrawnLocalPlayer): the co-op client's
+	 * predicted head smoothed into the drawn local player (its `update`, once per co-op frame after the pump). Nothing is
+	 * drawn predicted in a solo run, with KV_PredictOff, spectating, dead, in a draft or under the stage cover: then every
+	 * view gets the merged player exactly as before.
 	 */
-	private readonly smoother = new PredictionSmoother(PREDICTION_VIEW);
-	/**
-	 * docs/NEW_ENEMIES_2.md NX7: prediction suspended while merged state says a Chainhook drags the local player
-	 * (chainhookHolderOf), then blended back over PREDICTION_VIEW.resumeSec (shared/view/predict PredictionResume).
-	 */
-	private readonly predictResume = new PredictionResume(PREDICTION_VIEW);
-	private readonly drawnBody: PlayerState = newPlayerState(0, 0);
-	private drawnState: SimState | undefined;
-	private drawnIndex = -1;
-	private drawnActive = false;
-	private drawnAheadTicks = 0;
-	/** The drawn pose this frame (the aim origin of the next sample). */
-	private drawnX = 0;
-	private drawnZ = 0;
+	private readonly drawnLocal = new DrawnLocalPlayer(PREDICTION_VIEW);
 
 	/**
 	 * getDrawnPlayer as a function value, for the shared/view helpers that place things on a player
@@ -605,8 +583,7 @@ export class SimController implements OnStart {
 	 * draw on or at the player (the census's "drawn" rows); what shows the sim's decisions keeps `playerAt`. Read only.
 	 */
 	getDrawnPlayer(state: Readonly<SimState>, index: number): Readonly<PlayerState> {
-		if (this.drawnActive && index === this.drawnIndex && state === this.drawnState) return this.drawnBody;
-		return playerAt(state, index);
+		return this.drawnLocal.playerOf(state, index);
 	}
 
 	/**
@@ -616,16 +593,12 @@ export class SimController implements OnStart {
 	 * spectating, dead, a draft, the stage cover, no run).
 	 */
 	getPredictionAheadTicks(): number {
-		return this.drawnActive ? this.drawnAheadTicks : 0;
+		return this.drawnLocal.aheadTicks();
 	}
 
 	/** The smoother's snaps and corrections so far this session (the KV_Debug co-op line, LP6). */
-	getPredictionSmoothing(): { readonly snaps: number; readonly corrections: number; readonly offsetTiles: number } {
-		return {
-			snaps: this.smoother.snapCount(),
-			corrections: this.smoother.correctionCount(),
-			offsetTiles: this.smoother.offset(),
-		};
+	getPredictionSmoothing(): PredictionSmoothing {
+		return this.drawnLocal.smoothing();
 	}
 
 	/** Co-op spectating: the spectate view after the last frame; undefined outside a co-op run or before its first frame. */
@@ -1244,8 +1217,7 @@ export class SimController implements OnStart {
 		if (leadBump) print(`[Sim] co-op run ${start.runId}: late bump on (${RUN_ATTRIBUTES.leadBump})`);
 		if (predictOff) print(`[Sim] co-op run ${start.runId}: local prediction off (${RUN_ATTRIBUTES.predictOff})`);
 		// A new run: nothing to glide from (LP5's run-start snap).
-		this.smoother.snap();
-		this.drawnActive = false;
+		this.drawnLocal.reset();
 		this.counter++;
 		this.submitted = false;
 		this.hudTimer = 0;
@@ -1304,8 +1276,8 @@ export class SimController implements OnStart {
 		// docs/LOCAL_PREDICTION.md Design 6: the aim (and the touch facing / auto-target) from the knight as drawn last
 		// frame; the shot that input fires leaves from where the sim will have it.
 		const drawn = this.getDrawnPlayer(coop.state, ctx.localIndex);
-		const aimX = this.drawnActive && drawn === this.drawnBody ? this.drawnX : me.x;
-		const aimZ = this.drawnActive && drawn === this.drawnBody ? this.drawnZ : me.z;
+		const aimX = this.drawnLocal.aimX(drawn, me.x);
+		const aimZ = this.drawnLocal.aimZ(drawn, me.z);
 		// A menu over the run (party overlay, Options, a rebind capture, leaderboards, the Roblox menu): the pad and
 		// keys drive the menu, never the character (solo pauses instead).
 		const covered = this.stage?.blocksInput() === true; // the stage loader's cover (docs/STAGE_LOADER.md SL7)
@@ -1392,7 +1364,14 @@ export class SimController implements OnStart {
 		const view = ctx.spectate?.update(coop.state, dt, cmd);
 		this.spectateView = view;
 		const spectateChanged = view !== undefined && (view.viewIndex !== viewBefore || view.active !== activeBefore);
-		this.updateDrawn(ctx, coop, dt, floorChanged || spectateChanged);
+		this.drawnLocal.update(
+			coop,
+			ctx.localIndex,
+			this.getViewPlayerIndex() === ctx.localIndex,
+			this.stage?.blocksInput() === true,
+			dt,
+			floorChanged || spectateChanged,
+		);
 		// KV_Debug latency probe (LP6): press -> drawn, once the drawn knight shows the ticks a press was sent for.
 		probe?.drawn(coop.state.tick, this.getPredictionAheadTicks(), os.clock());
 		// M2 progression: the local player's toasts; while any draft is open (the world frozen until every player
@@ -1410,42 +1389,6 @@ export class SimController implements OnStart {
 	}
 
 	/**
-	 * Local prediction on screen (docs/LOCAL_PREDICTION.md LP5): this frame's prediction into the smoother and the drawn
-	 * local player. Nothing is predicted while the views follow a teammate, under the stage cover, or whenever the client
-	 * predicts nothing (KV_PredictOff, dead or left, a draft open, the run over): the smoother then resets (the death,
-	 * revive and draft snaps); `snap` (a floor change, a spectate switch) drops any glide first.
-	 */
-	private updateDrawn(ctx: RunContext, coop: LockstepClient, dt: number, snap: boolean): void {
-		const viewingSelf = this.getViewPlayerIndex() === ctx.localIndex;
-		const covered = this.stage?.blocksInput() === true;
-		const index = ctx.localIndex;
-		// docs/NEW_ENEMIES_2.md NX7: a drag the predictor cannot mirror; drawn merged while hooked, then blended back.
-		if (snap) this.predictResume.reset();
-		const weight = this.predictResume.update(chainhookHolderOf(coop.state, index) >= 0, dt);
-		const head = viewingSelf && !covered && weight > 0 ? coop.predicted() : undefined;
-		if (snap) this.smoother.snap();
-		this.smoother.feed(head, head !== undefined ? coop.predictedPath() : undefined);
-		const alpha = coop.getAlpha();
-		const pose = this.smoother.draw(alpha, dt);
-		if (head === undefined || pose === undefined) {
-			this.drawnActive = false;
-			this.drawnAheadTicks = 0;
-			return;
-		}
-		const merged = playerAt(coop.state, index);
-		writeDrawnPlayer(this.drawnBody, merged, head, this.smoother.offsetX(), this.smoother.offsetZ());
-		blendTowardMerged(this.drawnBody, merged, weight);
-		this.drawnState = coop.state;
-		this.drawnIndex = index;
-		this.drawnActive = true;
-		this.drawnAheadTicks =
-			weight >= 1 ? coop.predictionHorizonTicks() : math.floor(coop.predictionHorizonTicks() * weight);
-		const body = this.drawnBody;
-		this.drawnX = weight >= 1 ? pose.x : body.prevX + (body.x - body.prevX) * alpha;
-		this.drawnZ = weight >= 1 ? pose.z : body.prevZ + (body.z - body.prevZ) * alpha;
-	}
-
-	/**
 	 * KV_Debug co-op: the latency probe's numbers, the effective and net lead and the pacing part to the debug line
 	 * (with the HUD snapshot); nothing otherwise.
 	 */
@@ -1457,8 +1400,8 @@ export class SimController implements OnStart {
 		const prediction = predictionDebugView(
 			coop.predictionStats(),
 			ctx.predictOff !== true,
-			this.drawnActive,
-			this.smoother.snapCount(),
+			this.drawnLocal.isActive(),
+			this.drawnLocal.snapCount(),
 		);
 		clientStore.setLatencyProbe(
 			latencyProbeView(
