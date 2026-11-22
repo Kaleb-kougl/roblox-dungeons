@@ -1,6 +1,6 @@
 {
 	"$schema": "https://typedoc.org/schema.json",
-	"name": "Kaleb-Vale (Roblox)",
+	"name": "Roblox Dungeons",
 	"entryPoints": ["src"],
 	"entryPointStrategy": "expand",
 	"exclude": ["**/*.spec.ts", "**/*.spec.tsx", "**/fixtures-generated/**"],

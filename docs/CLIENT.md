@@ -520,7 +520,7 @@ the centre bands. Corner panels fade when the watched player, an enemy or an ene
 | centre (menu, tutorial) | `TutorialOutro` | 1.5 s after the tutorial's end: `That's the descent.`, what a real run is (the bound leaderboard key, default `B`; `Start` on a pad: `tutorialLeaderboardHint`), Start my first run / Play the tutorial again; gamepad selection on the first button |
 | on the taught element (tutorial) | `HighlightRing` (`TutorialFx.tsx`) | a pulsing `uiAccent` UIStroke on the hearts row / flask row (StatusPanel `highlight`), WeaponPanel, ScorePanel or BossBar (`highlight` props, from the slice); static under reduced motion. StatusPanel's `ghostHeart` token flashes a fading half heart (`uiHealth`) after the first harmless hits |
 | centre (menu) | `OptionsScreen` | the Options screen: Juice / Controls / Audio / Display tabs (below) |
-| bottom right | `InfoPanel` | (docs/HUD_LAYOUT.md H6) the fallback notice and, while the run is playing, the verdict line, each for `HUD_HINTS.verdictSeconds` after it changes, then fading (the info line `Project Kaleb-Vale · <biome> · seed N · <dungeon>` is `RunInfoLine`, in the pause overlay and the run-over panel only); the verdict line (`Run 2 (death): verified by the server (ab12cd34)` / `submitted, checking...` / `rejected (code) reason` / `not submitted (stress)`), and with KV_Debug the debug line (tick, recorded ticks, enemies, bullets, replay check) |
+| bottom right | `InfoPanel` | (docs/HUD_LAYOUT.md H6) the fallback notice and, while the run is playing, the verdict line, each for `HUD_HINTS.verdictSeconds` after it changes, then fading (the info line `Roblox Dungeons · <biome> · seed N · <dungeon>` is `RunInfoLine`, in the pause overlay and the run-over panel only); the verdict line (`Run 2 (death): verified by the server (ab12cd34)` / `submitted, checking...` / `rejected (code) reason` / `not submitted (stress)`), and with KV_Debug the debug line (tick, recorded ticks, enemies, bullets, replay check) |
 
 The snapshot (`shared/play` `GameSnapshot`) gained `bossPhaseMarks`, `kills`, `hitsTaken` and `endTick` (the tick the
 run ended on, for the post-run time), and for M2 progression `comboWindowTicks`, `draftOpen` / `draftOffers` /
@@ -1244,7 +1244,7 @@ With the actors merged the default `game` world has enemies; without them see "f
    centred, a small light diamond on the floor in front of it. No Roblox character, health bar or backpack is
    visible. HUD (pixel font): top left `HP` + three red hearts, `Flask` + three gold dots, `Ember` + two amber
    diamonds; bottom left two weapon slots `1 Sword` (gold ring, opaque) and `2 Bow` (dim), `E swap` under them;
-   bottom right `Project Kaleb-Vale · <biome name> · seed 1337 · <dungeon name>`. Nothing overlaps the top bar or a
+   bottom right `Roblox Dungeons · <biome name> · seed 1337 · <dungeon name>`. Nothing overlaps the top bar or a
    notch.
 2. **Move.** W moves toward the top of the screen, D toward the right, diagonals at the same speed; walls block. The
    camera follows smoothly with a slight lag and the floor does not shimmer. Arrow keys also move.

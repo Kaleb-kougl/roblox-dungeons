@@ -1,6 +1,6 @@
 # shared/sim
 
-The deterministic 60 Hz simulation, ported from the web build's `src/sim` (`project-kaleb-vale` @ `42897e2`). Replaying
+The deterministic 60 Hz simulation, ported from the web build's `src/sim` (@ `42897e2`). Replaying
 a recording must reproduce the web build's `hashState` bit for bit (golden fixtures in `fixtures/`).
 
 Import from `shared/sim` (the `index.ts` barrel). Inside the sim, modules import their siblings directly (a barrel

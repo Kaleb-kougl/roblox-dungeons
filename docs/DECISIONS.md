@@ -34,12 +34,12 @@ Superseded in older entries (kept as written):
   MVP seeds (706, 10186) lay out differently from the web build, because V8's sin is 1 ulp off there. Exact parity
   for every seed would need a port of V8's LGPL glibc sin/cos; not done.
 - `JSON.parse` syntax-error wording in `deserializeRecording` differs from V8's (not covered by fixtures).
-- **Solid pillars on endless floors (docs/DECOR.md D2).** Endless floors set the Kaleb-Vale Forge option
+- **Solid pillars on endless floors (docs/DECOR.md D2).** Endless floors set the game's Forge option
   `solidPillars` (`endlessFloorParams`): after decoration every pillar cell becomes WALL (cover against bullets and
   sight), and the room enemies' walks (`walkToward(..., STEER)`, never the boss) use `SimConfig.actorSteerMover`
   (`actorSteerMover`) to round them; it only differs from `moveCircle` at pillars and clipped wall ends. M1
   (`KALEB_VALE_MVP_PARAMS`) and every fixture leave both off and replay exactly as before; endless replays changed.
-- **Double-size rooms on endless floors.** Endless floors set the Kaleb-Vale Forge option `roomScale` to
+- **Double-size rooms on endless floors.** Endless floors set the game's Forge option `roomScale` to
   `ENDLESS_ROOM_SCALE` = 2 (`endlessFloorParams`): every rolled room width and height, `minCombatRoomSize` and the
   scatter radius are doubled (4x the floor area; corridor lengths stay about the same). No extra rng draws; 1 or
   undefined is the unscaled floor exactly, so M1 and every fixture are unchanged; endless layouts and replays changed.

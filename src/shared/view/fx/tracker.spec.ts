@@ -1,4 +1,4 @@
-// The hit tracker (port of project-kaleb-vale src/fx/tracker.test.ts @ 42897e2): hp diffs -> hits, kills, spawns,
+// The hit tracker (port of the web build's src/fx/tracker.test.ts @ 42897e2): hp diffs -> hits, kills, spawns,
 // revives, resets, boss phases / defeats, elites, damage-cap hits, and the fixed event pool.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {

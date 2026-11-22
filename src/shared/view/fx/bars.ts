@@ -1,5 +1,5 @@
 /**
- * Enemy health bar geometry and per-kind drawn sizes (port of project-kaleb-vale src/fx/bars/barLayout.ts and
+ * Enemy health bar geometry and per-kind drawn sizes (port of the web build's src/fx/bars/barLayout.ts and
  * actorSizes.ts @ 42897e2). Pure pixel layout, no Roblox API (bars.spec.ts).
  *
  * Everything is in RENDER PIXELS relative to the actor's feet anchor, y UP (screen-up). The client draws a bar as a

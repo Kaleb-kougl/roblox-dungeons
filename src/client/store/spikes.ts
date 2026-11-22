@@ -1,5 +1,5 @@
 import { createProducer } from "@rbxts/reflex";
-import { BULLET_SPIKE, CAMERA_SPIKE, INVITE_SPIKE, InviteSpikeAction } from "shared/config";
+import { BULLET_SPIKE, INVITE_SPIKE, InviteSpikeAction } from "shared/config";
 
 /**
  * Client-local Reflex slice for the Task 1 spikes and the invites spike I0 (docs/SPIKES.md): the settings both the
@@ -43,8 +43,8 @@ export interface InviteSpikeRequest {
 }
 
 /**
- * The `spikes` slice's state, one group per spike: the bullet spike's settings and stats, the camera spike's settings
- * and measured distance, and the invites spike's log lines and last button press. The settings are changed from the
+ * The `spikes` slice's state, one group per spike: the bullet spike's settings and stats, and the invites spike's log
+ * lines and last button press. The settings are changed from the
  * keyboard and the spike HUD; each spike's controller sets `active` and reports its numbers.
  */
 export interface SpikeState {
@@ -57,15 +57,6 @@ export interface SpikeState {
 		/** The extra BULLET_SPIKE.players.count "player" bullets (their own pool) are on. */
 		readonly playerBullets: boolean;
 		readonly stats: BulletSpikeStats;
-	};
-	readonly camera: {
-		readonly active: boolean;
-		readonly fovIndex: number;
-		/** Index into CAMERA_SPIKE.snapTexels, or -1 for no snapping. */
-		readonly snapIndex: number;
-		readonly autoWalk: boolean;
-		/** Current camera distance from the focus point, studs. */
-		readonly distance: number;
 	};
 	readonly invites: {
 		readonly active: boolean;
@@ -95,20 +86,12 @@ const initialState: SpikeState = {
 		playerBullets: false,
 		stats: EMPTY_STATS,
 	},
-	camera: {
-		active: false,
-		fovIndex: CAMERA_SPIKE.defaultFovIndex,
-		snapIndex: -1,
-		autoWalk: false,
-		distance: 0,
-	},
 	invites: { active: false, lines: [] },
 };
 
 /**
- * The spikes slice (state: `SpikeState`, see the file comment). The index setters clamp to their config lists,
- * `cycleSnap` steps through `CAMERA_SPIKE.snapTexels` and back to -1 (off), and switching the invites spike on or off
- * empties its log and drops the last request.
+ * The spikes slice (state: `SpikeState`, see the file comment). The index setters clamp to their config lists, and
+ * switching the invites spike on or off empties its log and drops the last request.
  */
 export const spikesSlice = createProducer(initialState, {
 	setBulletsActive: (state, active: boolean) => ({
@@ -135,30 +118,6 @@ export const spikesSlice = createProducer(initialState, {
 		...state,
 		bullets: { ...state.bullets, stats },
 	}),
-	setCameraActive: (state, active: boolean) => ({
-		...state,
-		camera: { ...state.camera, active },
-	}),
-	cycleFov: (state) => ({
-		...state,
-		camera: { ...state.camera, fovIndex: (state.camera.fovIndex + 1) % CAMERA_SPIKE.fovs.size() },
-	}),
-	cycleSnap: (state) => ({
-		...state,
-		// -1 (off) -> 0 -> 1 -> ... -> last -> -1
-		camera: {
-			...state.camera,
-			snapIndex: state.camera.snapIndex + 1 >= CAMERA_SPIKE.snapTexels.size() ? -1 : state.camera.snapIndex + 1,
-		},
-	}),
-	toggleAutoWalk: (state) => ({
-		...state,
-		camera: { ...state.camera, autoWalk: !state.camera.autoWalk },
-	}),
-	reportCameraDistance: (state, distance: number) => ({
-		...state,
-		camera: { ...state.camera, distance },
-	}),
 	setInviteSpikeActive: (state, active: boolean) => ({
 		...state,
 		invites: { active, lines: [] },
@@ -183,11 +142,6 @@ export const spikesSlice = createProducer(initialState, {
  * shows them.
  */
 export const selectBulletSpike = (state: { spikes: SpikeState }) => state.spikes.bullets;
-/**
- * The camera spike's group: whether it is running, the index into `CAMERA_SPIKE.fovs`, the snap index (-1: no
- * snapping), auto-walk, and the camera's current distance from its focus in studs (0 until reported).
- */
-export const selectCameraSpike = (state: { spikes: SpikeState }) => state.spikes.camera;
 /**
  * The invites spike's group: whether it is running, the last `INVITE_SPIKE.hudLines` log lines of both sides (oldest
  * first; empty at first), and the last HUD button press.

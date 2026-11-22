@@ -1,4 +1,4 @@
-// Ported from project-kaleb-vale src/theme/pack.test.ts @ 42897e2: loading, fallbacks (warn once),
+// Ported from the web build's src/theme/pack.test.ts @ 42897e2: loading, fallbacks (warn once),
 // lookups and frame math. Texture/DataTexture cases became asset-ID / placeholder-visual cases, and
 // the frame math adds the web's bottom-left UV -> Roblox's top-left pixel rect flip.
 import { describe, expect, it } from "@rbxts/jest-globals";

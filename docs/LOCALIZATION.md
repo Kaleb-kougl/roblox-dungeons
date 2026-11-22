@@ -155,7 +155,7 @@ interface LocaleDef {
   - optional `example`: placeholder values, used to fill the CSV's Example column.
 
   `test:l10n` fails if a player-facing key has no context entry.
-- `l10n/glossary.json`: game terms with their meaning, and the ones never translated (`Kaleb-Vale`, `Ember` if LD11
+- `l10n/glossary.json`: game terms with their meaning, and the ones never translated (`Roblox Dungeons`, `Ember` if LD11
   says so). They go into Context, because Roblox auto-translate has no glossary, and the review pass (L10) checks
   every locale against them.
 - **Developer keys** (`playtest.*`, the co-op debug line, `DevPanel` text): `DEV_ONLY_STRING_PREFIXES`. Never exported
@@ -416,7 +416,7 @@ Paths under `src/` unless they start with `docs/`, `l10n/` or `scripts/`.
   live: demand before go-live). The server reads `Player.LocaleId`, the stored setting (`SettingsService`) and the
   developer attribute.
 - **Pipeline (L7, L10).** `l10n/context.json` (767 notes, budgets on tight slots, examples for every placeholder),
-  `l10n/glossary.json` (63 terms; `translate: false` for Kaleb-Vale and Roblox), `l10n/README.md`, `l10n/columns.json`
+  `l10n/glossary.json` (63 terms; `translate: false` for Roblox Dungeons and Roblox), `l10n/README.md`, `l10n/columns.json`
   (CSV header -> locale code, guesses until L0 f). `scripts/l10n`: `dump-strings.luau` (the built game's own strings,
   hashes, translatable flags and locales -> `l10n/build/source.json`; needs `npm run build`), `export.js`
   (`l10n/out/kv-strings[-N].csv`, <= 1,000 rows, Key / Source / Context / Example + locale columns with current
@@ -473,7 +473,7 @@ Proposed (defaults to confirm):
   scripts use the cleanest font that renders them. Pixel fonts for CJK / Thai / Arabic are out of scope.
 - **LD9. ASCII digits in every locale**, locale group and decimal separators. Clock and countdown formats unchanged.
 - **LD10. Developer text (`playtest.*`, debug lines, DEV panel) stays English** and is never exported.
-- **LD11. Never translated: the game title "Kaleb-Vale"** (the brand). Class, enemy, boss, boon and affix names **are**
+- **LD11. Never translated: the game title "Roblox Dungeons"** (the brand). Class, enemy, boss, boon and affix names **are**
   translated, through the glossary, so each locale keeps one term per thing.
 - **LD12. Go-live gate per locale:**
   - L0 says the script renders, and for Arabic that right-to-left text works;

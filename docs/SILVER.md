@@ -14,7 +14,7 @@ Numbers marked *(tune)* are starting points for the censuses, not commitments. T
 upgrades, hearts, the Archer) and **SC** (Silver in crates), decisions **SVD**.
 
 Goal: every run pays out **Silver**, a currency that is kept between runs (the model is Megabonk's silver: found and
-earned by playing, spent in a menu shop on permanent upgrades and unlocks). In Kaleb-Vale, gold already means *this
+earned by playing, spent in a menu shop on permanent upgrades and unlocks). In Roblox Dungeons, gold already means *this
 run's score* (Goldling coins, the score panel, `ui.icon.coin` beside the score number); Silver is what you take home.
 Some of it is **in the dungeon**: a few barrels and crates on every floor hold Silver, and breaking them spills it. It
 is spent in a new main-menu screen, the **Armory**, on:

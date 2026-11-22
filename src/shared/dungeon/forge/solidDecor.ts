@@ -1,5 +1,5 @@
 /**
- * Kaleb-Vale (not in the original Dungeon Forge): solid decor and room themes, Diablo-style dressing that is also
+ * Game addition (not in the original Dungeon Forge): solid decor and room themes, Diablo-style dressing that is also
  * gameplay (docs/DECOR.md "Solid decor" and "Room themes"). With ForgeParams.solidDecor, after all decoration and solid
  * pillars, every room draws a theme and its set pieces' cells become WALL: they block movement, bullets and sight like
  * any wall, and the decor plan draws their art on them instead of a wall block.

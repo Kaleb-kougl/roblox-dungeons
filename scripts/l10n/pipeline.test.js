@@ -27,7 +27,7 @@ const LOCALES = [
 ];
 
 const STRINGS = {
-	"game.title": "Project Kaleb-Vale",
+	"game.title": "Roblox Dungeons",
 	"hud.score": "Score {score}",
 	"hud.saved": "Saved",
 	"options.saved": "Saved",
@@ -56,7 +56,7 @@ const CONTEXT = {
 	"playtest.run.over": { note: "Run over panel title" },
 };
 
-const GLOSSARY = { terms: [{ term: "Kaleb-Vale", meaning: "the game's name", translate: false }] };
+const GLOSSARY = { terms: [{ term: "Dungeons", meaning: "the game's name", translate: false }] };
 
 const COLUMNS = { _note: "test", columns: { es: "es", ja: "ja", pt: "pt-BR", ar: "ar" } };
 
@@ -93,7 +93,7 @@ const readCsv = (file) => lib.parseCsv(fs.readFileSync(file, "utf8"));
 /** Translations a translator might type, nasty on purpose. */
 const FILL = {
 	es: {
-		"game.title": "Proyecto Kaleb-Vale",
+		"game.title": "Dungeons de Roblox",
 		"hud.score": "Puntos {score}",
 		"hud.saved": "Guardado",
 		"options.saved": "Guardada",
@@ -156,7 +156,7 @@ describe("l10n:export", () => {
 		]);
 		assert.equal(
 			byKey["game.title"][2],
-			"game.title · Game title on the menu · max 24 chars · do not translate: Kaleb-Vale",
+			"game.title · Game title on the menu · max 24 chars · do not translate: Dungeons",
 		);
 		assert.equal(byKey["tutorial.multi"][3], 'Press "Space",\nthen roll.');
 		assert.equal(byKey["room.perfect"][3], "");
@@ -380,7 +380,7 @@ describe("l10n:check", () => {
 	it("warns on coverage, stale, placeholders, budgets and glossary terms without failing", () => {
 		const paths = makeRoot();
 		writeTable(paths, "es", {
-			"game.title": ["Proyecto Kaleb Vale", h("game.title")],
+			"game.title": ["Mazmorras de Roblox", h("game.title")],
 			"hud.score": ["Puntuación total {score}", h("hud.score")],
 			"hud.combo": ["x{n}!", h("hud.combo")],
 			"hud.saved": ["Guardado", 1],
@@ -391,7 +391,7 @@ describe("l10n:check", () => {
 		assert.equal(es.current, 3);
 		assert.deepEqual(es.stale, ["hud.saved"]);
 		assert.deepEqual(es.overBudget, ["hud.score: 24 > 14 chars"]);
-		assert.deepEqual(es.glossary, ['game.title: "Kaleb-Vale" missing']);
+		assert.deepEqual(es.glossary, ['game.title: "Dungeons" missing']);
 		assert.equal(es.problems.length, 1);
 		assert.match(es.problems[0], /^hud\.combo: placeholders/);
 	});

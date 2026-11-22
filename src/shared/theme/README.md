@@ -4,7 +4,7 @@ The theme layer (PLAN.md task 3). Every sprite, tile, sound, colour and name rea
 **logical IDs** resolved by the active theme pack. Today every visual ID resolves to a **placeholder primitive**
 and every sound is **silent**; replacing art and audio later means editing the pack manifest only.
 
-Ported from project-kaleb-vale `src/theme/` @ `42897e2`. The contract (IDs, sprite cell sizes, frame counts,
+Ported from the web build's `src/theme/` @ `42897e2`. The contract (IDs, sprite cell sizes, frame counts,
 pivots, facings, colour roles, string keys, contrast thresholds, gameplay key words) is unchanged, so art made
 for the web build fits here. Contract v2 only adds to it: the `sprites` kind for actors and `tilesPerImage` for
 tile images (docs/ART.md task S2). The port also adds two slots (docs/DECOR.md): optional room decoration
@@ -51,7 +51,7 @@ import { loadThemePack, setActiveThemePack, getActiveThemePack } from "shared/th
 const pack = loadThemePack("placeholder");           // validates; problems are warned once, kept on pack.problems
 setActiveThemePack(pack);                            // renderers / audio read getActiveThemePack()
 
-pack.str("game.title");                              // "Project Kaleb-Vale"
+pack.str("game.title");                              // "Roblox Dungeons"
 pack.str("hud.gold", { amount: 120 });               // "120 gold"
 pack.color("enemyBullet");                           // Color3 (cached; Color3 is immutable)
 pack.hex("enemyBullet");                             // "#ff3fa4"
@@ -213,7 +213,7 @@ export const MY_MANIFEST: ThemeManifest = {
 		"sfx.ember": { kind: "sound", assetId: "rbxassetid://<n>", volume: 0.8 },
 		"music.boss": { kind: "silent" },
 	},
-	strings: { "game.title": "Project Kaleb-Vale", "hud.level": "Lv {level}" },
+	strings: { "game.title": "Roblox Dungeons", "hud.level": "Lv {level}" },
 	locales: { fr: { "hud.level": "Niv. {level}" } },   // optional, partial
 };
 ```

@@ -1,6 +1,6 @@
 /**
  * Tile-grid collision for the fixed-step simulation. Pure and deterministic: no trig, no allocation beyond the
- * returned point. Roblox port of project-kaleb-vale src/dungeon/collision.ts @ 42897e2, plus `lineOfSight` from
+ * returned point. Roblox port of the web build's src/dungeon/collision.ts @ 42897e2, plus `lineOfSight` from
  * src/sim/actors/helpers.ts @ 42897e2 (it only needs a bullet blocker, so it lives with the tile queries here).
  *
  * Coordinates: dungeon grid cell (gx, gy) is centered on world (gx * TILE_SIZE, 0, gy * TILE_SIZE)
@@ -420,7 +420,7 @@ export function circleOverlapsWall(
 }
 
 /**
- * Line of sight on the tile grid (project-kaleb-vale src/sim/actors/helpers.ts lineOfSight @ 42897e2): false when any
+ * Line of sight on the tile grid (the web build's src/sim/actors/helpers.ts lineOfSight @ 42897e2): false when any
  * tile the segment (x0, z0) -> (x1, z1) passes through stops bullets (`blocked` tested at each tile's center), true
  * otherwise and always true without a blocker. Exact grid traversal (Amanatides-Woo DDA, both neighbours checked when
  * the segment crosses a tile corner exactly), both end tiles included. Pure, no trig, no allocation.

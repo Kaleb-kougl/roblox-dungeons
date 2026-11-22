@@ -1,11 +1,11 @@
 /**
- * Task 1 go/no-go spikes, the preload spike P0 and the invites spike I0 (docs/SPIKES.md). All are OFF unless enabled
- * here or by a Workspace attribute, so a normal play session never runs them.
+ * The open spikes' flags and tunables (docs/SPIKES.md): the bullet spike (Task 1 spike A, hosting PA0), preload P0,
+ * invites I0, touch MB0, UI art UA1, localization L0 and gamepad GM0. All are OFF unless enabled here or by a Workspace
+ * attribute, so a normal play session never runs them.
  *
  * Enable at runtime from the Studio command bar (client context while playing, or on the server
  * so it replicates):
  *   workspace:SetAttribute("KV_SpikeBullets", true)
- *   workspace:SetAttribute("KV_SpikeCamera", true)
  *   workspace:SetAttribute("KV_SpikePreload", true)   (best set before Play: it measures the join)
  *   workspace:SetAttribute("KV_InviteSpike", true)    (client + server; only a published place has the APIs)
  *   workspace:SetAttribute("KV_UiArtSpike", true)     (client; docs/UI_ART.md UA1)
@@ -20,7 +20,6 @@
 /** Compile-time defaults. Flip one to true to run a spike without touching attributes. */
 export const SPIKE_DEFAULTS = {
 	bullets: false,
-	camera: false,
 	preload: false,
 	invites: false,
 	touch: false,
@@ -32,7 +31,6 @@ export const SPIKE_DEFAULTS = {
 /** Workspace attribute names that override SPIKE_DEFAULTS. */
 export const SPIKE_ATTRIBUTES = {
 	bullets: "KV_SpikeBullets",
-	camera: "KV_SpikeCamera",
 	preload: "KV_SpikePreload",
 	invites: "KV_InviteSpike",
 	touch: "KV_TouchSpike",
@@ -179,39 +177,6 @@ export const BULLET_SPIKE = {
 		/** Lift of the player canvas over the enemy canvas, studs (two coplanar surfaces would z-fight). */
 		playerLiftStuds: 0.02,
 	},
-} as const;
-
-/** Spike B: iso camera rig (low FOV from far away, damped follow, optional grid snap). */
-export const CAMERA_SPIKE = {
-	/** FOVs to compare, degrees (key F or the HUD button cycles). 70 is Roblox's default. */
-	fovs: [5, 7, 10, 20, 70],
-	/** Index into `fovs` used on start. */
-	defaultFovIndex: 1,
-	/** Follow damping time constant, seconds (0 = rigid). */
-	followTauSec: 0.12,
-	/** Snap grid sizes to compare, in render texels: 1 = the web build's texel grid. */
-	snapTexels: [1, 4, 16],
-	/** Placeholder character walk speed, studs per second (the web's 6 tiles/s). */
-	walkStuds: 24,
-	/** Placeholder character size, studs (1 x 1.5 x 1 tiles). */
-	characterSize: [3, 6, 3],
-	/** Auto-walk circle radius (studs) and angular speed (rad/s), for touch-only devices. */
-	autoWalkRadiusStuds: 20,
-	autoWalkRadPerSec: 0.5,
-	/** Checker floor: half-extent in tiles, and pillars every N tiles for depth reference. */
-	floorHalfTiles: 16,
-	pillarEveryTiles: 6,
-	pillarHeightTiles: 2,
-	floorColors: [
-		[70, 76, 92],
-		[58, 62, 76],
-	],
-	pillarColor: [150, 120, 90],
-	characterColor: [90, 200, 120],
-	/** Folder name under Workspace (cleaned up on stop). */
-	folderName: "KV_SpikeCamera",
-	/** RenderStep priority: after the default camera (Camera = 200), so ours wins. */
-	renderPriorityOffset: 1,
 } as const;
 
 /**

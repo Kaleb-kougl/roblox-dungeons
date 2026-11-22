@@ -4,7 +4,7 @@
  * no gameplay values, string references, and contrast (enemy bullets on every biome floor and
  * wall, juice colours).
  *
- * Ported from project-kaleb-vale `src/theme/validate.ts` @ 42897e2. Every check and message is kept;
+ * Ported from the web build's `src/theme/validate.ts` @ 42897e2. Every check and message is kept;
  * file checks (`src`, extensions, files shipped with the pack) become Roblox asset-ID checks
  * (`assetId` must be "rbxassetid://<digits>"), and the `generated` kind's shape/colour/facing
  * checks are gone with the kind (`placeholder` carries no data). Keys are visited in sorted order,

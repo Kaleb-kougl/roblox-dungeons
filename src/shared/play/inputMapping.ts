@@ -1,5 +1,5 @@
 /**
- * Keyboard + mouse + gamepad -> quantized InputFrame: the pure half of the client's input (port of project-kaleb-vale
+ * Keyboard + mouse + gamepad -> quantized InputFrame: the pure half of the client's input (port of the web build's
  * src/sim/devices.ts @ 42897e2, "Pure mapping"). The InputController reads Roblox devices into the snapshots below
  * (Enum.KeyCode / Enum.UserInputType NAMES, so this runs headlessly) and calls mapDevicesToInput once per frame.
  *

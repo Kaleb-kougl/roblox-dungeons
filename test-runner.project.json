@@ -1,5 +1,5 @@
 {
-	"name": "KalebValeTestRunner",
+	"name": "RobloxDungeonsTestRunner",
 	"tree": {
 		"$path": "plugin/RunTestsPlugin.server.lua"
 	}

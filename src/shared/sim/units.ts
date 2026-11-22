@@ -1,7 +1,7 @@
 /**
  * Shared units every system agrees on: the fixed tick rate and the tile size.
  *
- * Source: project-kaleb-vale `src/config.ts` (SIM_HZ, SIM_DT, TILE_SIZE) @ 42897e2. The camera / render numbers of that
+ * Source: the web build's `src/config.ts` (SIM_HZ, SIM_DT, TILE_SIZE) @ 42897e2. The camera / render numbers of that
  * file live in `shared/config` (view.ts); these are the ones the deterministic sim reads.
  *
  * @module

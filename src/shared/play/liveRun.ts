@@ -1,5 +1,5 @@
 /**
- * One live run, Roblox-API-free: the client's fixed-step loop (port of the core of project-kaleb-vale
+ * One live run, Roblox-API-free: the client's fixed-step loop (port of the core of the web build's
  * src/sim/SimDriver.tsx @ 42897e2). The SimController owns one and calls `frame(dt, input)` once per rendered frame
  * with the input it sampled ONCE for that frame; every tick of the frame records that same frame and steps the sim
  * with it, so `runReplay(recording, config)` reproduces the live state bit for bit (liveRun.spec.ts).
