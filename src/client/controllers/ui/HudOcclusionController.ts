@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
+import { logWarn } from "client/log";
 import {
 	clientStore,
 	selectDisplay,
@@ -222,7 +223,7 @@ export class HudOcclusionController implements OnStart {
 			const maxH = box.maxH * scale + FOOTPRINT_TOLERANCE_PX;
 			if (size.X > maxW || size.Y > maxH) {
 				this.warned.add(panel);
-				warn(
+				logWarn(
 					string.format(
 						"[HudFootprint] %s panel is %dx%d px, over its %dx%d budget (x%.2f HUD scale; docs/HUD_LAYOUT.md)",
 						panel,

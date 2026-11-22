@@ -11,6 +11,7 @@
  *
  * @module
  */
+import { logInfo, logWarn } from "client/log";
 import { Events } from "client/network";
 import { clientStore, selectDailyStatus, type VerdictView } from "client/store";
 import { DAILY_WORLD_KIND } from "shared/daily";
@@ -111,7 +112,7 @@ export class RunSubmissions {
 		}
 		const [ok, result] = pcall(() => run.submission());
 		if (!ok) {
-			warn(`[Sim] could not build the submission: ${errorMessage(result)}`);
+			logWarn(`[Sim] could not build the submission: ${errorMessage(result)}`);
 			clientStore.setVerdict({ status: "skipped", run: ctx.counter, ending, code: "error" });
 			return;
 		}
@@ -121,7 +122,7 @@ export class RunSubmissions {
 			ctx.character !== undefined ? { ...built, characterId: ctx.character } : built;
 		const kept = oversizeSubmission(submission);
 		if (kept !== undefined) {
-			warn(
+			logWarn(
 				`[Sim] run ${ctx.counter} (${ending}) ${kept.reason}: ${buffer.len(submission.recording)} bytes, ` +
 					`${submission.claimed.ticks} ticks`,
 			);
@@ -138,7 +139,7 @@ export class RunSubmissions {
 		this.awaiting.set(submission.claimedHash, { run: ctx.counter, ending });
 		clientStore.setVerdict({ status: "pending", run: ctx.counter, ending, claimedHash: submission.claimedHash });
 		Events.submitRun.fire(submission);
-		print(
+		logInfo(
 			`[Sim] submitted run ${ctx.counter} (${ending}): ${submission.claimed.ticks} ticks, ` +
 				`${buffer.len(submission.recording)} bytes, hash ${submission.claimedHash}`,
 		);
@@ -197,7 +198,7 @@ export class RunSubmissions {
 		const [ok, result] = pcall(() => live.final());
 		this.uploadSegments(ctx);
 		if (!ok || result === undefined) {
-			warn(`[Sim] could not build the final claim: ${errorMessage(result)}`);
+			logWarn(`[Sim] could not build the final claim: ${errorMessage(result)}`);
 			clientStore.setVerdict({ status: "skipped", run: ctx.counter, ending, code: "error" });
 			return;
 		}
@@ -205,7 +206,7 @@ export class RunSubmissions {
 		clientStore.setVerdict({ status: "pending", run: ctx.counter, ending, claimedHash: final.claimedHash });
 		entry.claim = this.finishedClaim(ctx, live.state);
 		Events.finishRun.fire(final);
-		print(
+		logInfo(
 			`[Sim] finished ranked run ${ctx.counter} (${ending}): ${final.finalTick} ticks in ` +
 				`${live.segmentCount()} segments, hash ${final.claimedHash}`,
 		);
@@ -228,7 +229,7 @@ export class RunSubmissions {
 		const line = `[Sim] verdict for run ${pending.run}: ${v.ok ? "ACCEPTED" : `REJECTED ${v.code ?? ""}`} ${
 			v.reason ?? ""
 		}`;
-		if (v.ok) print(line);
-		else warn(line);
+		if (v.ok) logInfo(line);
+		else logWarn(line);
 	}
 }

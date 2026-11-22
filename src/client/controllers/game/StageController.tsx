@@ -4,6 +4,7 @@ import React, { createBinding } from "@rbxts/react";
 import { ReflexProvider } from "@rbxts/react-reflex";
 import { createPortal, createRoot } from "@rbxts/react-roblox";
 import { GuiService, Players, RunService, Workspace } from "@rbxts/services";
+import { logInfo, logWarn } from "client/log";
 import {
 	clientStore,
 	selectBaselineRun,
@@ -406,7 +407,7 @@ export class StageController implements OnStart, StageDriver {
 			}
 			const tracker = this.trackerFor(ctx);
 			if (ctx.floor > ENDLESS_FIRST_FLOOR && !tracker.wasBuilt(ctx.floor)) {
-				print(`${LOG} floor ${ctx.floor}: built mid-tick (not pre-generated)`);
+				logInfo(`${LOG} floor ${ctx.floor}: built mid-tick (not pre-generated)`);
 			}
 		}
 		this.showCover(load);
@@ -430,7 +431,7 @@ export class StageController implements OnStart, StageDriver {
 	private bannerOf(ctx: RunContext, floor: number): number | undefined {
 		const kind = floorModifierOf(ctx, floor);
 		if (modifierCardRows(kind) === undefined) return undefined;
-		print(`${LOG} floor ${floor}: modifier ${floorModifierKey(kind) ?? kind}`);
+		logInfo(`${LOG} floor ${floor}: modifier ${floorModifierKey(kind) ?? kind}`);
 		return kind;
 	}
 
@@ -562,7 +563,7 @@ export class StageController implements OnStart, StageDriver {
 			const [ok, err] = pcall(() => work?.forge?.());
 			if (this.load !== load) return; // the forge stopped the run (the tutorial could not start): cancelled
 			if (!ok) {
-				warn(`${LOG} the run could not start: ${tostring(err)}`);
+				logWarn(`${LOG} the run could not start: ${tostring(err)}`);
 				this.cancel();
 				return;
 			}
@@ -575,14 +576,14 @@ export class StageController implements OnStart, StageDriver {
 		if (item === "notify") {
 			const [ok, err] = pcall(() => work?.notify());
 			if (this.load !== load) return;
-			if (!ok) warn(`${LOG} a view rebuild failed: ${tostring(err)}`);
+			if (!ok) logWarn(`${LOG} a view rebuild failed: ${tostring(err)}`);
 			this.buildSec = os.clock() - t0;
 			load.built();
 			this.runStartRoster(load);
 			this.runStartModifier(load);
 			const [waitOk, waitErr] = pcall(() => this.waitAssets(load));
 			if (!waitOk) {
-				warn(`${LOG} the assets wait failed: ${tostring(waitErr)}`);
+				logWarn(`${LOG} the assets wait failed: ${tostring(waitErr)}`);
 				load.assetsDone();
 			}
 			return;
@@ -631,7 +632,9 @@ export class StageController implements OnStart, StageDriver {
 				if (this.load === load && load.waitsForAssets()) load.assetsDone();
 				if (this.assetsLateLog) {
 					this.assetsLateLog = false;
-					print(`${LOG} floor ${load.floor()}: ready in ${seconds(this.assetsReadyIn)} s, after the reveal`);
+					logInfo(
+						`${LOG} floor ${load.floor()}: ready in ${seconds(this.assetsReadyIn)} s, after the reveal`,
+					);
 				}
 			},
 			label,
@@ -677,7 +680,7 @@ export class StageController implements OnStart, StageDriver {
 		const [done, total] = handle.progress();
 		if (handle.isDone() || done >= total) {
 			const t = this.assetsReadyIn >= 0 ? this.assetsReadyIn : os.clock() - this.assetsStartedAt;
-			print(`${where}, ready in ${seconds(t)} s`);
+			logInfo(`${where}, ready in ${seconds(t)} s`);
 			return;
 		}
 		const missing = new Array<string>();
@@ -691,7 +694,7 @@ export class StageController implements OnStart, StageDriver {
 		const tail = more > 0 ? ` +${more}` : "";
 		const wait = load.assetWait();
 		const names = missing.join(", ");
-		print(`${where}, ${total - done} of ${total} content ids missing at reveal (${wait}: ${names}${tail})`);
+		logInfo(`${where}, ${total - done} of ${total} content ids missing at reveal (${wait}: ${names}${tail})`);
 		this.assetsLateLog = true;
 	}
 
@@ -721,9 +724,9 @@ export class StageController implements OnStart, StageDriver {
 			this.preload.request(refs.must, "next", label);
 			if (refs.soon.size() > 0) this.preload.request(refs.soon, "next", label);
 			const how = built ? "exact" : "forecast";
-			print(`${LOG} prefetch floor ${target} (${set.must.size() + set.soon.size()} ids, ${how}, next lane)`);
+			logInfo(`${LOG} prefetch floor ${target} (${set.must.size() + set.soon.size()} ids, ${how}, next lane)`);
 		});
-		if (!ok) warn(`${LOG} floor ${target} could not be prefetched: ${tostring(err)}`);
+		if (!ok) logWarn(`${LOG} floor ${target} could not be prefetched: ${tostring(err)}`);
 	}
 
 	/** Once the join screen released: the first-floor prefetch on the menu and on joining a lobby. */
@@ -767,9 +770,9 @@ export class StageController implements OnStart, StageDriver {
 			}
 			if (refs.size() === 0) return;
 			this.preload.request(refs, "next", `prefetch floor 1 (${key})`);
-			if (ids >= 0) print(`${LOG} prefetch floor 1 (${ids} ids, every biome, next lane)`);
+			if (ids >= 0) logInfo(`${LOG} prefetch floor 1 (${ids} ids, every biome, next lane)`);
 		});
-		if (!ok) warn(`${LOG} the first floor could not be prefetched: ${tostring(err)}`);
+		if (!ok) logWarn(`${LOG} the first floor could not be prefetched: ${tostring(err)}`);
 		this.dailyPrefetch(key, seed);
 		this.dyePrefetch();
 	}
@@ -813,9 +816,9 @@ export class StageController implements OnStart, StageDriver {
 			}
 			if (built.refs.size() === 0) return;
 			this.preload.request(built.refs, "next", `prefetch daily floor 1 (${key})`, true);
-			if (ids >= 0) print(`${LOG} prefetch daily floor 1 (${ids} ids, seed ${seed}, head of the next lane)`);
+			if (ids >= 0) logInfo(`${LOG} prefetch daily floor 1 (${ids} ids, seed ${seed}, head of the next lane)`);
 		});
-		if (!ok) warn(`${LOG} the Daily's first floor could not be prefetched: ${tostring(err)}`);
+		if (!ok) logWarn(`${LOG} the Daily's first floor could not be prefetched: ${tostring(err)}`);
 	}
 
 	// --- audit (docs/STAGE_ASSETS.md SA11) ---------------------------------------------------------
@@ -841,12 +844,12 @@ export class StageController implements OnStart, StageDriver {
 		const where = `[StageAudit] floor ${result.floor}`;
 		const misses = result.misses;
 		if (misses.size() === 0) {
-			print(`${where}: ${result.used} ids used, all in its manifest (${result.listed} ids)`);
+			logInfo(`${where}: ${result.used} ids used, all in its manifest (${result.listed} ids)`);
 			return;
 		}
 		const shown = math.min(misses.size(), STAGE_AUDIT.maxMissLines);
-		for (let i = 0; i < shown; i++) print(`${where} used ${misses[i]}, not in its manifest`);
-		if (misses.size() > shown) print(`${where}: ${misses.size() - shown} more not in its manifest`);
+		for (let i = 0; i < shown; i++) logInfo(`${where} used ${misses[i]}, not in its manifest`);
+		if (misses.size() > shown) logInfo(`${where}: ${misses.size() - shown} more not in its manifest`);
 	}
 
 	private logReveal(load: StageLoad): void {
@@ -854,12 +857,12 @@ export class StageController implements OnStart, StageDriver {
 		const capped = load.capped() ? " (cover cap reached)" : "";
 		const built = ms(this.buildSec);
 		if (load.kind === "floorChange") {
-			print(`${LOG} floor ${load.floor()}: built in ${built} ms, revealed at ${at} s${capped}`);
+			logInfo(`${LOG} floor ${load.floor()}: built in ${built} ms, revealed at ${at} s${capped}`);
 			return;
 		}
 		const run = this.sim.getContext()?.counter ?? this.runCounter;
 		const forged = load.kind === "runStart" ? `forged in ${ms(this.forgeSec)} ms, ` : "";
-		print(`${LOG} run ${run}: ${forged}built in ${built} ms, revealed at ${at} s${capped}`);
+		logInfo(`${LOG} run ${run}: ${forged}built in ${built} ms, revealed at ${at} s${capped}`);
 	}
 
 	private finish(load: StageLoad): void {
@@ -903,10 +906,10 @@ export class StageController implements OnStart, StageDriver {
 		const t0 = os.clock();
 		const [ok, err] = pcall(() => build(floor));
 		if (!ok) {
-			warn(`${LOG} floor ${floor} could not be pre-generated: ${tostring(err)}`);
+			logWarn(`${LOG} floor ${floor} could not be pre-generated: ${tostring(err)}`);
 			return;
 		}
-		print(`${LOG} floor ${floor} pre-generated in ${ms(os.clock() - t0)} ms (${why})`);
+		logInfo(`${LOG} floor ${floor} pre-generated in ${ms(os.clock() - t0)} ms (${why})`);
 	}
 
 	private reducedMotion(): boolean {

@@ -42,6 +42,26 @@
 			}
 		},
 		{
+			// One log module per side (docs/PRESENTATION.md SE16): client/log and server/log are the only callers of the
+			// globals. A logger's own `.warn(...)` method is a property, not the global, and is not flagged.
+			"files": ["src/client/**/*.ts", "src/client/**/*.tsx", "src/server/**/*.ts", "src/server/**/*.tsx"],
+			"excludedFiles": [
+				"src/client/log.ts",
+				"src/server/log.ts",
+				// SE16 temporary exemption: ActorRenderController is being split by another track; remove this line
+				// once that split has merged (it has no raw print / warn today).
+				"src/client/controllers/render/ActorRenderController*",
+				"src/client/controllers/render/ActorRenderController*/**"
+			],
+			"rules": {
+				"no-restricted-globals": [
+					"error",
+					{"name": "print", "message": "Log through client/log (logInfo, clientLogger) or server/log (serverLogger): one log module per side."},
+					{"name": "warn", "message": "Log through client/log (logWarn, clientLogger) or server/log (serverLogger): one log module per side."}
+				]
+			}
+		},
+		{
 			"files": ["src/shared/sim/**/*.ts", "src/shared/dungeon/**/*.ts"],
 			"excludedFiles": ["*.spec.ts"],
 			"rules": {

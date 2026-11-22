@@ -1,6 +1,7 @@
 import { Controller, OnInit, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { ContentProvider, RunService, UserInputService, Workspace } from "@rbxts/services";
+import { logInfo, logWarn } from "client/log";
 import { Events } from "client/network";
 import { clientStore } from "client/store";
 import { isTenFootInterface } from "client/ui";
@@ -211,7 +212,7 @@ export class PreloadController implements OnInit, OnStart {
 		this.queue.push(plan.later, "back");
 		const device = readPreloadDevice();
 		this.chunkSize = preloadChunkSize(device);
-		print(
+		logInfo(
 			`${LOG} core ${plan.core.size()} entries, later ${plan.later.size()} (${PRELOAD.entryMode} entries, ` +
 				`chunks of ${this.chunkSize} on ${device})`,
 		);
@@ -231,7 +232,7 @@ export class PreloadController implements OnInit, OnStart {
 		}
 
 		this.spikeHold = isSpikeEnabled("preload");
-		if (this.spikeHold) print(`${LOG} KV_SpikePreload: the queue waits for the spike's batches`);
+		if (this.spikeHold) logInfo(`${LOG} KV_SpikePreload: the queue waits for the spike's batches`);
 		else this.startWorker();
 	}
 
@@ -248,7 +249,7 @@ export class PreloadController implements OnInit, OnStart {
 	request(refs: ReadonlyArray<ContentRef>, lane: PreloadLane = "front", label?: string, first = false): void {
 		const count = this.queue.push(refs, lane, first);
 		if (lane !== "back" && count > 0) {
-			print(`${LOG} ${lane}: ${label ?? "request"} (${count} of ${refs.size()} queued, the rest already seen)`);
+			logInfo(`${LOG} ${lane}: ${label ?? "request"} (${count} of ${refs.size()} queued, the rest already seen)`);
 		}
 		if (count > 0) this.wakeWorker();
 	}
@@ -349,7 +350,7 @@ export class PreloadController implements OnInit, OnStart {
 	releaseSpikeHold(): void {
 		if (!this.spikeHold) return;
 		this.spikeHold = false;
-		print(`${LOG} spike done: the queue starts`);
+		logInfo(`${LOG} spike done: the queue starts`);
 		this.startWorker();
 	}
 
@@ -397,7 +398,7 @@ export class PreloadController implements OnInit, OnStart {
 			const [ok, status] = pcall(() => ContentProvider.GetAssetFetchStatus(ref.contentId));
 			if (!ok) {
 				this.precheck = false;
-				warn(`${LOG} GetAssetFetchStatus failed (${tostring(status)}): the pre-check is off`);
+				logWarn(`${LOG} GetAssetFetchStatus failed (${tostring(status)}): the pre-check is off`);
 				out.push(ref);
 			} else if (status === Enum.AssetFetchStatus.Success) {
 				this.prechecked += 1;
@@ -427,7 +428,7 @@ export class PreloadController implements OnInit, OnStart {
 			if (this.queue.retry(ref, "front")) count += 1;
 		}
 		if (count === 0) return;
-		print(`${LOG} ${RUN_ATTRIBUTES.fakeAssetLatency}: ${label ?? "wait"} re-fetches ${count} resolved ids`);
+		logInfo(`${LOG} ${RUN_ATTRIBUTES.fakeAssetLatency}: ${label ?? "wait"} re-fetches ${count} resolved ids`);
 		this.wakeWorker();
 	}
 
@@ -439,13 +440,13 @@ export class PreloadController implements OnInit, OnStart {
 			ContentProvider.PreloadAsync(entries, (contentId, status) => statuses.set(contentId, status)),
 		);
 		for (const e of entries) if (typeIs(e, "Instance")) e.Destroy();
-		if (!ok) warn(`${LOG} PreloadAsync failed for ${batch.size()} entries: ${tostring(err)}`);
+		if (!ok) logWarn(`${LOG} PreloadAsync failed for ${batch.size()} entries: ${tostring(err)}`);
 		for (const ref of batch) {
 			const status = statuses.get(ref.contentId);
 			const good = ok && (status === undefined || status === Enum.AssetFetchStatus.Success);
 			this.resolved(ref, good);
 			if (!good) {
-				warn(`${LOG} ${ref.media} ${ref.contentId}: ${status?.Name ?? "error"} (${this.failureNote(ref)})`);
+				logWarn(`${LOG} ${ref.media} ${ref.contentId}: ${status?.Name ?? "error"} (${this.failureNote(ref)})`);
 			}
 		}
 	}
@@ -479,7 +480,7 @@ export class PreloadController implements OnInit, OnStart {
 			if (this.core.complete() && !this.coreLogged) {
 				this.coreLogged = true;
 				const t = seconds(os.clock() - this.startedAt);
-				print(
+				logInfo(
 					`${LOG} core ${this.core.done()} / ${this.core.total()} in ${t} s (${this.core.failed()} failed)`,
 				);
 			}
@@ -488,7 +489,7 @@ export class PreloadController implements OnInit, OnStart {
 			this.laterLeft -= 1;
 			if (this.laterLeft <= 0 && !this.laterLogged) {
 				this.laterLogged = true;
-				print(
+				logInfo(
 					`${LOG} later done: ${this.laterTotal} entries in ${seconds(os.clock() - this.startedAt)} s ` +
 						`(${this.failedCount} failed in all so far)`,
 				);
@@ -520,7 +521,7 @@ export class PreloadController implements OnInit, OnStart {
 		this.readiness.setForced(force);
 		if (this.readiness.epoch() === before) return;
 		const what = force === undefined ? "off" : force === "all" ? "every id" : force.join(", ");
-		print(`${READY_LOG} ${RUN_ATTRIBUTES.standInsForce}: stand-ins for ${what}`);
+		logInfo(`${READY_LOG} ${RUN_ATTRIBUTES.standInsForce}: stand-ins for ${what}`);
 	}
 
 	/** Once per Heartbeat: due retries back on the queue, then the change listeners, the flip log and the summary. */
@@ -533,7 +534,7 @@ export class PreloadController implements OnInit, OnStart {
 				if (ref === undefined) continue;
 				if (this.queue.retry(ref, "back")) {
 					queued += 1;
-					print(`${LOG} retry ${ref.media} ${id}`);
+					logInfo(`${LOG} retry ${ref.media} ${id}`);
 				}
 			}
 			if (queued > 0) this.wakeWorker();
@@ -542,8 +543,8 @@ export class PreloadController implements OnInit, OnStart {
 		if (epoch === this.readinessEpoch) return;
 		if (Workspace.GetAttribute(RUN_ATTRIBUTES.debug) === true) {
 			for (const id of r.flippedSince(this.readinessEpoch)) {
-				if (r.isReady(id)) print(`${READY_LOG} ${id} ready (${r.contentCount(id)} content ids)`);
-				else print(`${READY_LOG} ${id} stand-in (forced)`);
+				if (r.isReady(id)) logInfo(`${READY_LOG} ${id} ready (${r.contentCount(id)} content ids)`);
+				else logInfo(`${READY_LOG} ${id} stand-in (forced)`);
 			}
 		}
 		this.readinessEpoch = epoch;
@@ -551,7 +552,7 @@ export class PreloadController implements OnInit, OnStart {
 			const [ready, tracked] = r.trackedCounts();
 			if (ready >= tracked) {
 				this.readySummaryLogged = true;
-				print(
+				logInfo(
 					`${READY_LOG} all ${tracked} ids ready in ${seconds(os.clock() - this.startedAt)} s ` +
 						`(${this.prechecked} already in the engine, ${this.finalFailures} content ids failed for good)`,
 				);
@@ -595,11 +596,11 @@ export class PreloadController implements OnInit, OnStart {
 		const elapsed = seconds(os.clock() - this.startedAt);
 		const counts = `core ${this.core.done()} / ${this.core.total()}`;
 		if (reason === "attribute") {
-			print(`${LOG} ${RUN_ATTRIBUTES.skipLoading}: no loading screen (${counts}; the queue still runs)`);
+			logInfo(`${LOG} ${RUN_ATTRIBUTES.skipLoading}: no loading screen (${counts}; the queue still runs)`);
 		} else if (reason === "core") {
-			print(`${LOG} screen released at ${elapsed} s: core done`);
+			logInfo(`${LOG} screen released at ${elapsed} s: core done`);
 		} else {
-			print(
+			logInfo(
 				`${LOG} screen released by ${reason === "skip" ? "Skip" : "the timeout"} at ${elapsed} s (${counts})`,
 			);
 		}

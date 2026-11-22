@@ -4,6 +4,7 @@
  *
  * @module
  */
+import { logInfo } from "client/log";
 import { formatListenerTimes, listenerLabel, type ListenerTime } from "shared/view";
 import type { RunContext, RunListener } from "./context";
 
@@ -32,5 +33,5 @@ export function callListeners(list: ReadonlyArray<RunListener>, ctx: RunContext,
 		times.push({ label: listenerLabel(source ?? "?"), ms: (os.clock() - t0) * MS_PER_SECOND });
 	}
 	const total = string.format(MS_FORMAT, (os.clock() - start) * MS_PER_SECOND);
-	print(`[Stage] listeners (${what}, ${total} ms): ${formatListenerTimes(times)}`);
+	logInfo(`[Stage] listeners (${what}, ${total} ms): ${formatListenerTimes(times)}`);
 }
