@@ -13,7 +13,8 @@
  *               replaced by each result of a loaded player and never saved.
  *   buy / equip a client request: refused before the load or after a failed one (`notLoaded`) and while another of the
  *               player's requests is in flight (`busy`: one at a time); the price is the catalogue's (the remote carries
- *               an item id only).
+ *               an item id only). An id or slot the catalogue does not know is refused before any store call, and the
+ *               answer never carries the client's string back (walletEchoId; docs/SERVER_FINDINGS.md SFD5).
  *   grant       a run's grant (applyGrant's rules), whatever the load did.
  *   purchase    a developer-product receipt (docs/SILVER_SHOP.md SH2 / SH3), whatever the load did and whether or not the
  *               buyer is still here (SHD4); answers Roblox's decision (receiptDecision).
@@ -35,7 +36,7 @@ import {
 	type WalletDoc,
 	type WalletUpgradeLevels,
 } from "./doc";
-import { armoryItem, itemTier, tierPrice } from "./catalog";
+import { ARMORY_CATALOG, armoryItem, itemTier, tierPrice } from "./catalog";
 import {
 	receiptDecision,
 	type SilverPack,
@@ -52,6 +53,29 @@ import {
 	type WalletRefusal,
 	type WalletTxOutcome,
 } from "./transforms";
+
+/**
+ * The item id a wallet answer or log line may carry for a client's request: `itemId` when it is a catalogue item's id,
+ * otherwise "" (not a string, longer than WALLET.maxIdChars, or unknown). A client's own string is never echoed or
+ * logged at whatever length it sent (docs/SERVER_FINDINGS.md SFD5).
+ */
+export function walletEchoId(itemId: unknown): string {
+	if (!typeIs(itemId, "string") || itemId.size() > WALLET.maxIdChars) return "";
+	return armoryItem(itemId) !== undefined ? itemId : "";
+}
+
+/**
+ * Why a client's request is refused without reading the stored doc, or undefined when it has to be read: a buy of an
+ * id the catalogue does not know (`unknown`); an equip into a slot no item has (`badSlot`) or of an unknown id that is
+ * not WALLET.noItem (`unknown`). The same answers applyBuy / applyEquip would give, without the store transaction.
+ */
+function refusedUnread(op: WalletOp, id: string): WalletRefusal | undefined {
+	if (op.kind === "buy") return id === "" ? "unknown" : undefined;
+	if (op.kind !== "equip") return undefined;
+	const slot: unknown = op.slot;
+	if (!typeIs(slot, "string") || !ARMORY_CATALOG.some((i) => i.slot === slot)) return "badSlot";
+	return op.itemId !== WALLET.noItem && id === "" ? "unknown" : undefined;
+}
 
 /** A store with atomic read-modify-write (DataStore UpdateAsync on the server). Calls may yield and throw. */
 export interface WalletStore {
@@ -325,9 +349,11 @@ export class WalletBook {
 		itemId: string,
 		op: WalletOp,
 	): { readonly result: WalletActionResult; readonly outcome?: WalletTxOutcome } {
-		const id = typeIs(itemId, "string") ? itemId : "";
+		const id = walletEchoId(itemId);
 		if (!this.isLoaded(userId)) return { result: { action, itemId: id, ok: false, reason: "notLoaded" } };
 		if (this.requesting.has(userId)) return { result: { action, itemId: id, ok: false, reason: "busy" } };
+		const unread = refusedUnread(op, id);
+		if (unread !== undefined) return { result: { action, itemId: id, ok: false, reason: unread } };
 		this.requesting.add(userId);
 		const r = this.transact(userId, op);
 		this.requesting.delete(userId);

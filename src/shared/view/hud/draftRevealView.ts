@@ -26,7 +26,7 @@ export const DRAFT_SKIN = {
  * The draft overlay's draw constants, read by `draftCardLook` and the client's DraftOverlay: the card art's scale
  * (reference px per art px), the flip widths (0..1) under which text and strokes are hidden, each card image's opaque
  * body in art px, the legendary skulls' placement, the eyes' red, the glow stroke, the flash, the shine band and the
- * ray ring, plus the Studio debug attribute's name.
+ * ray ring, plus the debug attribute's name.
  */
 export const DRAFT_REVEAL_VIEW = {
 	/** Workspace string attribute (DR6, off by default): `c,l,r` etc., the next reveals' rarities (display only). */

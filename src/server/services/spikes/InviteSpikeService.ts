@@ -11,6 +11,7 @@ import {
 	makeInviteSpikeOptions,
 	parseInviteSpikeLaunchData,
 	pickInviteSpikeRecipient,
+	spikeViewerAllowed,
 } from "shared/spikes";
 import { watchServerSpikeFlag } from "./spikeFlags";
 
@@ -98,15 +99,34 @@ class InviteSpikeSession {
 		this.janitor.Destroy();
 	}
 
-	/** Server output plus every client's spike HUD. */
+	/**
+	 * True for the players this spike sends its lines to and takes requests from (shared/spikes `spikeViewerAllowed`,
+	 * docs/SERVER_FINDINGS.md SFD3): everyone in Studio, developer-mode players in a published test place.
+	 */
+	private viewer(player: Player): boolean {
+		return spikeViewerAllowed({
+			studio: RunService.IsStudio(),
+			userId: player.UserId,
+			creatorId: game.CreatorId,
+			creatorIsUser: game.CreatorType === Enum.CreatorType.User,
+		});
+	}
+
+	/** One line to every viewer's spike HUD: the lines carry other players' join data, so nobody else gets them. */
+	private broadcast(text: string): void {
+		if (this.closed) return;
+		for (const player of Players.GetPlayers()) if (this.viewer(player)) this.remote.FireClient(player, text);
+	}
+
+	/** Server output plus every viewer's spike HUD. */
 	private line(event: string, message: string): void {
 		log.info(event, message);
-		if (!this.closed) this.remote.FireAllClients(`srv ${event}: ${message}`);
+		this.broadcast(`srv ${event}: ${message}`);
 	}
 
 	private warnLine(event: string, message: string): void {
 		log.warn(event, message);
-		if (!this.closed) this.remote.FireAllClients(`srv ${event}: ${message}`);
+		this.broadcast(`srv ${event}: ${message}`);
 	}
 
 	/** A line about one player's arrival: also kept (INVITE_SPIKE.replayLines) for that client's `hello`. */
@@ -304,6 +324,7 @@ class InviteSpikeSession {
 	}
 
 	private request(player: Player, action: unknown): void {
+		if (player.Parent === undefined || !this.viewer(player)) return;
 		if (!isInviteSpikeServerAction(action)) {
 			this.warnLine("BAD_REQUEST", `${who(player)}: ${describeValue(action)}`);
 			return;
@@ -393,7 +414,10 @@ class InviteSpikeSession {
  * - a RemoteEvent (ReplicatedStorage `KV_InviteSpike/Request`, made here at runtime, not in shared/network) takes the
  *   client HUD's requests (INVITE_SPIKE_SERVER_ACTIONS): a server-side PromptGameInvite (ExperienceInviteOptions with
  *   PromptMessage, LaunchData, optional InviteUser / InviteMessageId), CanSendGameInviteAsync without and with a
- *   recipient, a fresh dump. Every line goes to the server output and to every client's spike HUD.
+ *   recipient, a fresh dump. Every line goes to the server output and to the spike HUD of every viewer (developer-mode
+ *   players; everyone in Studio): the lines carry other players' join data, and only a viewer's requests are taken.
+ *
+ * Runs in Studio or a place in SPIKE_TEST_PLACES only (spikeFlags.ts, docs/SERVER_FINDINGS.md SFD2).
  *
  * Turning the flag off destroys the folder, every watch and every options object.
  */

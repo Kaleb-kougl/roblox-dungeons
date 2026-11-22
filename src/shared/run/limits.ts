@@ -109,6 +109,14 @@ export const RUN_PENDING_PER_PLAYER = 2;
  */
 export const RUN_SUBMIT_RATE = table.freeze({ count: 6, windowSeconds: 60 });
 
+/**
+ * `submitRun` calls per player that get any answer (sliding window), taken before the `busy` check and before
+ * RUN_SUBMIT_RATE: a call over it is dropped unanswered. `busy` is answered without charging RUN_SUBMIT_RATE, so
+ * without this a client with RUN_PENDING_PER_PLAYER runs pending could draw a reply per call. Five times
+ * RUN_SUBMIT_RATE: an honest client never reaches it (docs/SERVER_FINDINGS.md SFD4).
+ */
+export const RUN_SUBMIT_GATE_RATE = table.freeze({ count: 30, windowSeconds: 60 });
+
 /** Accepted runs kept in memory per player (RunValidationService; oldest dropped first). */
 export const ACCEPTED_RUNS_KEPT_PER_PLAYER = 20;
 
@@ -193,6 +201,12 @@ export const RUN_START_RATE = table.freeze({ count: 10, windowSeconds: 60 });
 
 /** Segments per player (sliding window). An honest client sends one per floor; going over rejects the run. */
 export const SEGMENT_SUBMIT_RATE = table.freeze({ count: 30, windowSeconds: 60 });
+
+/**
+ * `finishRun` calls per player (sliding window). An honest client sends one per run, so twice RUN_START_RATE leaves
+ * room for a resend; a call over it is dropped before the run is looked up (docs/SERVER_FINDINGS.md SFD4).
+ */
+export const RUN_FINISH_RATE = table.freeze({ count: 20, windowSeconds: 60 });
 
 /** Largest party (co-op) a run session accepts: the sim's (shared/sim partyData.ts). */
 export const MAX_PARTY_SIZE = SIM_MAX_PARTY_SIZE;

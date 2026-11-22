@@ -145,7 +145,7 @@ export class TeamMomentsController implements OnStart {
 		}
 	}
 
-	// --- KV_TeamMomentsDebug (Studio check aid, off by default) --------------------------------------
+	// --- KV_TeamMomentsDebug (check aid, off by default, read anywhere) ------------------------------
 
 	private readDebug(): void {
 		const d = parseTeamMomentsDebug(Workspace.GetAttribute(TEAM_MOMENTS_VIEW.debug.attribute));

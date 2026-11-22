@@ -1,8 +1,10 @@
 // docs/SERVER_CENSUS.md SE4: the wallet's trust boundary, asserted in one place at its edges: the exact price boundary
-// (a balance never goes below 0), what a client-supplied id of any size or type costs (nothing), Roblox's receipt
+// (a balance never goes below 0), what a client-supplied id of any size or type costs (nothing: no store call and no
+// echo, docs/SERVER_FINDINGS.md SFD5), Roblox's receipt
 // dictionary with non-finite numbers, and what the PurchaseId ring's bound means for a very old redelivery.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {
+	ARMORY_CATALOG,
 	MemoryWalletStore,
 	SILVER_SHOP,
 	WALLET,
@@ -16,6 +18,7 @@ import {
 	silverPack,
 	walletBalance,
 	walletDocsEqual,
+	walletEchoId,
 	walletTransaction,
 	type SilverReceipt,
 	type WalletDoc,
@@ -83,9 +86,19 @@ describe("a transaction that would take the balance below 0 is refused", () => {
 	});
 });
 
+/** A MemoryWalletStore that counts its transactions (one `update` is one UpdateAsync on the server). */
+class CountingStore extends MemoryWalletStore {
+	updates = 0;
+
+	update(key: string, transform: (stored: unknown) => unknown): void {
+		this.updates++;
+		super.update(key, transform);
+	}
+}
+
 describe("walletBuy / walletEquip arguments (client-supplied)", () => {
-	function loaded(): { book: WalletBook; store: MemoryWalletStore; before: WalletDoc } {
-		const store = new MemoryWalletStore();
+	function loaded(): { book: WalletBook; store: CountingStore; before: WalletDoc } {
+		const store = new CountingStore();
 		const before = wallet(5000);
 		store.set(keyOf(ME), encodeWalletDoc(before));
 		const book = new WalletBook(store, { keyOf });
@@ -117,6 +130,69 @@ describe("walletBuy / walletEquip arguments (client-supplied)", () => {
 		const { book } = loaded();
 		expect(book.buy(ME, 7 as unknown as string).result.itemId).toBe("");
 		expect(book.equip(ME, "dye", { id: "x" } as unknown as string).result.itemId).toBe("");
+	});
+
+	// docs/SERVER_FINDINGS.md SFD5 (finding 1): a request the catalogue can refuse never reaches the store, and the
+	// answer never carries the client's own string back.
+	it("an id the catalogue does not know is refused `unknown` with the empty id and no store call", () => {
+		const { book, store } = loaded();
+		const slot = ARMORY_CATALOG.find((i) => i.slot !== undefined)!.slot!;
+		const junk: unknown[] = [
+			"VIGOR",
+			"vigor;price=0",
+			string.rep("v", WALLET.maxIdChars + 1),
+			string.rep("vigor", 20000),
+			7,
+			0 / 0,
+			{ id: "vigor" },
+			undefined,
+		];
+		for (const id of junk) {
+			const buy = book.buy(ME, id as string);
+			expect([buy.result.ok, buy.result.reason, buy.result.itemId]).toEqual([false, "unknown", ""]);
+			const equip = book.equip(ME, slot, id as string);
+			expect([equip.result.ok, equip.result.reason, equip.result.itemId]).toEqual([false, "unknown", ""]);
+		}
+		expect(book.buy(ME, "").result.reason).toBe("unknown");
+		expect(store.updates).toBe(0);
+	});
+
+	it("a slot no item has is refused `badSlot` with no store call", () => {
+		const { book, store } = loaded();
+		const slots: unknown[] = ["", "nope", string.rep("s", 100000), 3, 0 / 0, {}, undefined];
+		for (const slot of slots) {
+			expect(book.equip(ME, slot as string, "").result.reason).toBe("badSlot");
+			expect(book.equip(ME, slot as string, "vigor").result.reason).toBe("badSlot");
+		}
+		expect(store.updates).toBe(0);
+	});
+
+	it("walletEchoId keeps a catalogue id and nothing else", () => {
+		for (const item of ARMORY_CATALOG) {
+			expect(item.id.size() <= WALLET.maxIdChars).toBe(true);
+			expect(walletEchoId(item.id)).toBe(item.id);
+		}
+		for (const junk of ["", "VIGOR", string.rep("v", WALLET.maxIdChars + 1), 7, {}, undefined] as unknown[]) {
+			expect(walletEchoId(junk)).toBe("");
+		}
+	});
+
+	it("every catalogue item still reaches the store: one transaction per buy, per equip and per emptied slot", () => {
+		for (const item of ARMORY_CATALOG) {
+			const { book, store } = loaded();
+			const buy = book.buy(ME, item.id);
+			expect(buy.result.itemId).toBe(item.id);
+			expect(buy.result.reason).never.toBe("unknown");
+			expect(store.updates).toBe(1);
+			if (item.slot === undefined) continue;
+			const equip = book.equip(ME, item.slot, item.id);
+			expect(equip.result.itemId).toBe(item.id);
+			expect(equip.result.reason).never.toBe("unknown");
+			expect(equip.result.reason).never.toBe("badSlot");
+			expect(store.updates).toBe(2);
+			expect(book.equip(ME, item.slot, WALLET.noItem).result.ok).toBe(true);
+			expect(store.updates).toBe(3);
+		}
 	});
 
 	it("an unknown, oversized or wrong-typed slot equips nothing", () => {

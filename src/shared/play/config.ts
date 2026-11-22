@@ -32,19 +32,21 @@ export const RUN_ATTRIBUTES = {
 	 */
 	scoring: "KV_Scoring",
 	/**
-	 * Boolean, dev only (task L3): skip the main menu on join and start a solo run at once, as before the menu
-	 * existed. Off by default. Co-op runs start from a lobby (the menu's Lobbies screen).
+	 * Boolean, a development aid (task L3): skip the main menu on join and start a solo run at once, as before the
+	 * menu existed. Off by default. Co-op runs start from a lobby (the menu's Lobbies screen). The client reads it
+	 * wherever it is set, Studio or not: local effect only.
 	 */
 	skipMenu: "KV_SkipMenu",
 	/**
-	 * Boolean (Studio), read once on join: true starts the first-run tutorial whatever the server says (no main menu
-	 * first), false never starts it (the normal flow at once). Unset: the server's `onboardingStatus` decides
-	 * (docs/TUTORIAL.md).
+	 * Boolean, a development aid, read once on join: true starts the first-run tutorial whatever the server says (no
+	 * main menu first), false never starts it (the normal flow at once). Unset: the server's `onboardingStatus`
+	 * decides (docs/TUTORIAL.md). The client reads it wherever it is set, Studio or not: local effect only.
 	 */
 	tutorial: "KV_Tutorial",
 	/**
-	 * Boolean (Studio), read once on join: true releases the join loading screen at once (docs/PRELOAD.md P3), so it
-	 * never shows; the download queue still runs behind the menu. Off by default.
+	 * Boolean, a development aid, read once on join: true releases the join loading screen at once (docs/PRELOAD.md
+	 * P3), so it never shows; the download queue still runs behind the menu. Off by default. The client reads it
+	 * wherever it is set, Studio or not: local effect only.
 	 */
 	skipLoading: "KV_SkipLoading",
 	/**

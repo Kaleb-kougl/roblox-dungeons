@@ -85,7 +85,9 @@ the large UI files are not split.
 
 ## Findings left for the owner
 
-None lets a client gain Silver, a record or a board entry. Each fix changes behaviour, so none was made.
+None lets a client gain Silver, a record or a board entry. Each fix changes behaviour, so none was made in this
+pass. **Closed 2026-11-21 in docs/SERVER_FINDINGS.md**: 1 to 5 and 8 fixed, 6 accepted, 7 stated in the public
+claim, 9 relabelled, 10 moved to the task triage.
 
 1. `walletBuy` / `walletEquip` echo and log a client's item id at any length; a refused request still costs one
    wallet `UpdateAsync` (bounded by 5 per 10 s).
@@ -134,4 +136,4 @@ Not run: Studio, two clients, a device, the art and audio pipelines (the packs w
   result (the live rig's values) stands.
 - [ ] SE15a. [owner] After the history rewrite is settled, grep the history for the machine path and the source
   project's name.
-- [ ] SE20. [owner] The findings above: fix, accept or file each. `npm run verify` on the Mac.
+- [ ] SE20. [owner] `npm run verify` on the Mac. (The findings above are closed: docs/SERVER_FINDINGS.md.)

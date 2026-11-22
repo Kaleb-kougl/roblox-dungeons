@@ -273,11 +273,15 @@ the first other player in the server. The server accepts at most one request per
   with 2 players to see the recipient checks), or from the server command bar
   `workspace:SetAttribute("KV_InviteSpike", true)`. Setting it false removes the remote, the folder, every watch and
   the options objects; the HUD panel goes.
-- **Published test place (the real run):** `npm run build:place`, open `build/roblox-dungeons.rbxl` in Studio, add the
+- **Published test place (the real run):** first add the test place's id to `SPIKE_TEST_PLACES` in
+  `src/shared/config/spikes.ts` (the number in the place's URL): outside Studio the server half runs only in a listed
+  place, and the list ships empty (docs/SERVER_FINDINGS.md SFD2). Server lines reach the spike HUD of developer-mode
+  players only (`DEV_MODE.allowedUserIds`, the place's creator; SFD3): add the test accounts there, or read the
+  server output. Then `npm run build:place`, open `build/roblox-dungeons.rbxl` in Studio, add the
   Workspace attribute `KV_InviteSpike` = true **before publishing** (PlayerAdded must be watched from the first
   join), then File -> Publish to Roblox As -> a **test experience** (never the live one). The test accounts must be
   able to join it (public, or play access for them). Optional: `KV_InviteSpikeMessageId` (String) = a Notification
-  String id made for that experience (I8). The owner can also toggle it in a live server from the Developer Console
+  String id made for that experience (I8). The owner can also toggle it in a running test server from the Developer Console
   (F9) -> Server command line with the same `SetAttribute` call, and read the full server output there.
 - **Code default:** `SPIKE_DEFAULTS.invites = true` in `src/shared/config/spikes.ts` (do not commit it).
 

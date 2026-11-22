@@ -228,7 +228,8 @@ As built (I5 client):
 
 ## Tasks
 
-- [ ] **I0. Verify the API in a published test place.** A spike behind `KV_InviteSpike` (docs/SPIKES.md): server-side
+- [ ] **I0. Verify the API in a published test place.** Needs the test place's id in `SPIKE_TEST_PLACES` first
+  (docs/SERVER_FINDINGS.md SFD2, OC1). A spike behind `KV_InviteSpike` (docs/SPIKES.md): server-side
   `PromptGameInvite` with options; which side `GameInvitePromptClosed` fires on and what `recipientIds` holds (also
   for Roblox's own menu invite); landing server when the inviter is still there / has left; LaunchData delay;
   `PartyId` readable on the server at `PlayerAdded` and with what delay; "join with party" lands everyone in one

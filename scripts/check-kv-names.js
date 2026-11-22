@@ -75,6 +75,7 @@ const GATES = {
 	"studio-or-debug": "Studio, or with `KV_Debug`",
 	"needs-debug": "with `KV_Debug`",
 	"dev-mode": "developer mode (`KV_DevAllowed`)",
+	"studio-or-test-place": "Studio, or a place in `SPIKE_TEST_PLACES`",
 	runner: "headless spec runner",
 	none: "wherever it is set",
 };

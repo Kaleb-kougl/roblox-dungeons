@@ -23,6 +23,7 @@ import {
 	REPLAY_BUDGET_SECONDS,
 	REPLAY_TURN_MAX_TICKS,
 	RUN_SESSION_SWEEP_SECONDS,
+	RUN_FINISH_RATE,
 	RUN_START_RATE,
 	ReplayBudget,
 	RunSessionRegistry,
@@ -89,10 +90,11 @@ export type LobbyRunStartResult = { readonly ok: true } | { readonly ok: false; 
  *
  *   startRun       rate limit (RUN_START_RATE) -> registry.start: the server picks the seed, builds the world,
  *                  replaces the player's open session -> `runStarted { runId, seed }`
- *   submitSegment  owner check -> rate limit (SEGMENT_SUBMIT_RATE; over it rejects the run) -> validator.offer
+ *   submitSegment  rate limit (SEGMENT_SUBMIT_RATE) -> owner check (over the limit: the owner's run is rejected, any
+ *                  other call is dropped unanswered) -> validator.offer
  *                  (cheap checks) -> a pump replays it through RunValidationService's replay queue (one segment per
  *                  queue turn, ReplayBudget yields) -> `segmentVerdict` per segment
- *   finishRun      validator.finish -> decided once the last segment is replayed -> `runFinished` (accepted runs
+ *   finishRun      rate limit (RUN_FINISH_RATE; over it the call is dropped) -> validator.finish -> decided once the last segment is replayed -> `runFinished` (accepted runs
  *                  go to LeaderboardService and RecordsService, and fire RunValidationService's accepted listeners:
  *                  telemetry). The verdict carries each recipient's own personal records result (`records`).
  *                  Paying runs grant Silver through WalletService (docs/SILVER.md SV4: every credited member, the
@@ -148,6 +150,10 @@ export class RunSessionService implements OnStart {
 	private readonly segmentLimiter = new SlidingWindowLimiter<Player>(
 		SEGMENT_SUBMIT_RATE.count,
 		SEGMENT_SUBMIT_RATE.windowSeconds,
+	);
+	private readonly finishLimiter = new SlidingWindowLimiter<Player>(
+		RUN_FINISH_RATE.count,
+		RUN_FINISH_RATE.windowSeconds,
 	);
 	/** Co-op lockstep sessions by runId, with their run session. */
 	private readonly lockstep = new Map<string, { readonly coop: LockstepSession; readonly session: RunSession }>();
@@ -208,6 +214,7 @@ export class RunSessionService implements OnStart {
 		);
 		this.janitor.Add(
 			Events.lockstepInput.connect((player, runId, firstTick, data) => {
+				if (player.Parent === undefined) return; // PlayerRemoving already forgot their limiter entries
 				if (!this.inputLimiter.tryAcquire(player, os.clock())) return;
 				// The session's clock (startedAt is os.clock() too): places the receipt for the input echo.
 				this.lockstep.get(runId)?.coop.submitInput(player.UserId, firstTick, data, os.clock());
@@ -215,6 +222,7 @@ export class RunSessionService implements OnStart {
 		);
 		this.janitor.Add(
 			Events.lockstepHash.connect((player, runId, ticks, hashes) => {
+				if (player.Parent === undefined) return;
 				// Batched (one call per client pump, throttled, resent until acknowledged): a dropped call is recovered.
 				if (!this.hashLimiter.tryAcquire(player, os.clock())) return;
 				this.lockstep.get(runId)?.coop.reportHashes(player.UserId, ticks, hashes);
@@ -222,6 +230,7 @@ export class RunSessionService implements OnStart {
 		);
 		this.janitor.Add(
 			Events.lockstepFinal.connect((player, final) => {
+				if (player.Parent === undefined) return;
 				const runId = typeIs(final, "table") && typeIs(final.runId, "string") ? final.runId : "";
 				// Its own limiter (an honest client sends one per run): never starved by hash traffic, never silent.
 				if (!this.finalLimiter.tryAcquire(player, os.clock())) {
@@ -246,6 +255,7 @@ export class RunSessionService implements OnStart {
 			Players.PlayerRemoving.Connect((player) => {
 				this.startLimiter.forget(player);
 				this.segmentLimiter.forget(player);
+				this.finishLimiter.forget(player);
 				this.inputLimiter.forget(player);
 				this.hashLimiter.forget(player);
 				this.finalLimiter.forget(player);
@@ -644,8 +654,13 @@ export class RunSessionService implements OnStart {
 
 	private submitSegment(player: Player, segment: RunSegment): void {
 		const runId = typeIs(segment, "table") && typeIs(segment.runId, "string") ? segment.runId : "";
+		// The limiter comes before the lookup and any reply (docs/SERVER_FINDINGS.md SFD4): over it, a segment for a
+		// party run or for no run is dropped unanswered; for the player's own solo run it rejects the run (below).
+		const now = os.clock();
+		const allowed = this.segmentLimiter.tryAcquire(player, now);
 		const session = this.registry.get(runId, player.UserId);
 		if (session !== undefined && this.lockstep.has(runId)) {
+			if (!allowed) return;
 			log.warn(
 				"SEGMENT_IGNORED",
 				`${player.UserId} run ${runId}: party runs are validated from the server's log`,
@@ -653,6 +668,7 @@ export class RunSessionService implements OnStart {
 			return;
 		}
 		if (session === undefined) {
+			if (!allowed) return;
 			const index = typeIs(segment, "table") && typeIs(segment.index, "number") ? segment.index : -1;
 			Events.segmentVerdict.fire(player, {
 				runId: runId.sub(1, MAX_RUN_ID_CHARS),
@@ -666,8 +682,7 @@ export class RunSessionService implements OnStart {
 			});
 			return;
 		}
-		const now = os.clock();
-		if (!this.segmentLimiter.tryAcquire(player, now)) {
+		if (!allowed) {
 			const result = this.registry.close(session, "rate_limited", "too many segments");
 			this.conclude(player, session, result);
 			return;
@@ -685,6 +700,11 @@ export class RunSessionService implements OnStart {
 
 	private finish(player: Player, final: RunFinal): void {
 		const runId = typeIs(final, "table") && typeIs(final.runId, "string") ? final.runId : "";
+		// Before the lookup and any reply (docs/SERVER_FINDINGS.md SFD4). A dropped finish leaves the run to expire.
+		if (!this.finishLimiter.tryAcquire(player, os.clock())) {
+			log.warn("FINISH_DROPPED", `${player.UserId} run ${runId.sub(1, MAX_RUN_ID_CHARS)}: over RUN_FINISH_RATE`);
+			return;
+		}
 		const session = this.registry.get(runId, player.UserId);
 		if (session !== undefined && this.lockstep.has(runId)) return; // party runs end through lockstepFinal
 		if (session === undefined) {

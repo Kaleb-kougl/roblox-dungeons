@@ -188,9 +188,10 @@ export class LeaderboardService implements OnStart {
 		this.janitor.Add(
 			Events.getLeaderboard.connect((player, raw) => {
 				if (player.Parent === undefined) return;
+				// The limiter before the parse (docs/SERVER_FINDINGS.md SFD4): a malformed request uses the budget too.
+				if (!this.limiter.tryAcquire(player, os.clock())) return;
 				const request = parseLeaderboardRequest(raw);
 				if (request === undefined) return;
-				if (!this.limiter.tryAcquire(player, os.clock())) return;
 				const ref = resolveBoardRequest(request, this.today());
 				const provider = this.friendsView;
 				let view: LeaderboardView;
