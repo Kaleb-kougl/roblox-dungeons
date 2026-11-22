@@ -24,6 +24,7 @@ import {
 	parseFakeWallet,
 	predictRunGrants,
 	silverShopStatusFields,
+	walletEchoId,
 	walletPurchaseNotice,
 	type FakePasses,
 	type FakeShop,
@@ -175,7 +176,7 @@ export class WalletService implements OnStart {
 			Events.walletBuy.connect((player, itemId) => {
 				if (player.Parent === undefined) return;
 				if (!this.buyLimiter.tryAcquire(player, os.clock())) {
-					this.answer(player, { action: "buy", itemId, ok: false, reason: "busy" });
+					this.answer(player, { action: "buy", itemId: walletEchoId(itemId), ok: false, reason: "busy" });
 					return;
 				}
 				const r = this.book.buy(player.UserId, itemId);
@@ -186,7 +187,7 @@ export class WalletService implements OnStart {
 			Events.walletEquip.connect((player, slot, itemId) => {
 				if (player.Parent === undefined) return;
 				if (!this.equipLimiter.tryAcquire(player, os.clock())) {
-					this.answer(player, { action: "equip", itemId, ok: false, reason: "busy" });
+					this.answer(player, { action: "equip", itemId: walletEchoId(itemId), ok: false, reason: "busy" });
 					return;
 				}
 				const r = this.book.equip(player.UserId, slot, itemId);
