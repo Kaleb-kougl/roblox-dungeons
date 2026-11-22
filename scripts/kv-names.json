@@ -514,16 +514,16 @@
 			],
 			"value": "boolean",
 			"side": "both",
-			"gate": "none",
+			"gate": "studio-or-test-place",
 			"where": "shared/config/spikes.ts",
 			"doc": "docs/SPIKES.md",
-			"description": "Runs the invites spike I0: the server makes a ReplicatedStorage folder with a RemoteEvent while on, the client its checks. Overrides `SPIKE_DEFAULTS.invites`. Also that folder's name."
+			"description": "Runs the invites spike I0: the server makes a ReplicatedStorage folder with a RemoteEvent while on, the client its checks. Overrides `SPIKE_DEFAULTS.invites`. Also that folder's name. The gate is the server's: the client half reads it wherever it is set and finds no server spike."
 		},
 		"KV_InviteSpikeMessageId": {
 			"kind": "switch",
 			"value": "string",
 			"side": "server",
-			"gate": "none",
+			"gate": "studio-or-test-place",
 			"where": "shared/config/spikes.ts",
 			"doc": "docs/SPIKES.md",
 			"description": "Invites spike: a Notification String id for `InviteMessageId`; unset = Roblox's default text."
@@ -532,7 +532,7 @@
 			"kind": "switch",
 			"value": "number",
 			"side": "server",
-			"gate": "none",
+			"gate": "studio-or-test-place",
 			"where": "shared/config/spikes.ts",
 			"doc": "docs/SPIKES.md",
 			"description": "Invites spike: the recipient UserId for the with-recipient checks, else the first other player."
