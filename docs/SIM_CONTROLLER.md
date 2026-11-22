@@ -15,10 +15,10 @@ Line counts are the base commit's.
 | 1-126 | Imports (about 120 names: `check:locals` counts each) and five module constants |
 | 127-306 | Exported contracts: `RunContext`, `RunListener`, `StageWork`, `StageDriver`, `DraftRevealDriver`, `ToastChipSource`, `RunExitListener`; `MadeRun` |
 | 307-365 | Free helpers: `claimsRecords`, `claimsDaily`, `readWorld`, `readSeed`, `floorSecretOf`, `placeKeyFor`, `floorModifierOf`, `memberName` |
-| 366-437 | The class comment (the controller's whole contract) |
-| 438-2433 | `SimController`: 62 fields, 86 methods |
+| 367-427 | The class comment (the controller's whole contract) |
+| 428-2433 | `SimController`: 62 fields, 89 methods (40 private) and the constructor |
 
-73 files import from `SimController` (71 other controllers and UI modules, by path `../game/SimController` or
+73 files import from `SimController` (other controllers and UI modules, by path `../game/SimController` or
 `./SimController`); the shared code only names it in comments.
 
 ## Census
@@ -133,3 +133,102 @@ holds none of that logic; what it holds is their call order.
 file: each changes either the order of operations or the Flamework id / preload order, which cannot be checked without
 Studio. A later step, once a two-client check has passed on this one, is G's ranked start (`awaitingStart`,
 `startReply`, `pollRunStart`, `beginRun`) as a polled object with a spec of its transitions.
+
+## As built (2026-11-21, branch `se-simcontroller`)
+
+Steps 1-5 as proposed, one commit each, typechecked after each. `SimController.ts`: 2,433 -> 1,782 lines, 62 -> 51
+fields, 89 -> 75 methods. Not under 800: what is left is `onStart`, the two frames and the G / H state machine ("What
+stays"), which no pure move takes apart.
+
+| Module | Lines | Holds | Changed beyond the move |
+|---|---|---|---|
+| `client/controllers/game/sim/context.ts` | 189 | `RunContext`, `RunListener`, `RunExitListener`, `StageWork`, `StageDriver`, `DraftRevealDriver`, `ToastChipSource`, `floorSecretOf`, `floorModifierOf` | Nothing. `SimController.ts` re-exports every name; no importer was edited |
+| `shared/view/predict/drawnLocal.ts` (+ `drawnLocal.spec.ts`, 6 tests) | 170 | `DrawnLocalPlayer`: the smoother, the resume blend, the drawn body; `playerOf`, `aheadTicks`, `smoothing`, `update`, `reset`, `aimX` / `aimZ`, `isActive`, `snapCount`; `PredictionSource` (a structural subset of LockstepClient) | `update` takes `index`, `viewingSelf` and `covered` as parameters (they were its first three lines, read from `ctx`, `getViewPlayerIndex()` and the stage driver: the controller now evaluates them at the call, the same instant); the tunables come by constructor |
+| `sim/coop.ts` | 135 | `buildCoopClient` (the four A/B attribute reads, the `LockstepClient`, the four `[Sim]` prints, in that order), `publishLatencyProbe`, `logArrivals`, `memberName` | `publishLatencyProbe` takes `drawnActive` / `snapCount` as parameters |
+| `sim/solo.ts` | 140 | `readWorld`, `readSeed`, `FROZEN_PACER`, `MadeRun`, `makeSoloRun` | `makeSoloRun` takes `SoloBuildInputs` (`devRun`, `wallet`, `rankedUpgrades`, `runCharacter`); the controller's `makeRun` is a wrapper that reads them at each call. The wallet is read just before the build's `pcall`, not inside it (a store read; it cannot throw) |
+| `sim/hud.ts` | 88 | `runInfo`, `soloSnapshot`, `coopSnapshot`, `placeKeyFor` | `debug`, the context, the spectate view and the rumour chip are parameters. `coopSnapshot`'s caller now evaluates `getSpectateView()` and `rumour.chip()` before the call (both pure getters) |
+| `sim/listeners.ts` | 36 | `callListeners`, `MS_PER_SECOND`, `MS_FORMAT` | `debug` is the parameter `timed` (a parameter named `debug` would shadow Luau's `debug.info`) |
+| `sim/submissions.ts` | 234 | `RunSubmissions`: `submitted`, `lastSubmittedDied`, `awaiting`, `rankedRuns`; `submit`, `finishRanked`, `uploadSegments`, `onSegmentVerified`, `onVerdict`, `finishedClaim`, `claimOf`, `pendingRunClaims`; `claimsRecords`, `claimsDaily` | `this.ctx` / `this.debug` are `host.getContext()` / `host.isDebugRun()` (`SubmissionHost`: the controller's own public getters; it passes itself) |
+
+**Unchanged by construction.** `SimController.ts` did not move, so its Flamework id is still
+`client/controllers/game/SimController@SimController` (`flamework.build` after the build: one entry) and every
+controller's `flamework:parameters` still names it. `onStart` is untouched but for the two handlers that now call
+`this.submissions.*`; the order of connections is the same. `frame` and `coopFrame` keep every statement in place:
+the edits there are call-site renames (`this.submit(` -> `this.submissions.submit(`, `this.snapshot(run)` ->
+`soloSnapshot(run, this.rumour.chip())`, `this.updateDrawn(...)` -> `this.drawnLocal.update(...)`, and the like).
+Every `os.clock()` stays where it was (the table above); the only one that moved is `callListeners`' own debug
+timing, with its function.
+
+**out:digest against the base** (`out.before.txt`): changed `client/controllers/game/SimController`,
+`shared/view/predict/init` (the barrel exports `drawnLocal`), and three controllers that `implements` a moved
+interface: `StageController` (`StageDriver`), `DraftRevealController` (`DraftRevealDriver`), `CodexController`
+(`ToastChipSource`). In those three, Flamework's `flamework:implements` metadata names the interface
+`client/controllers/game/sim/context@...` instead of `.../SimController@...` (read in the built Luau; the base's
+output was not kept to diff line by line). Nothing in the project looks objects up by those ids (no
+`Modding.onListenerAdded`; the drivers register themselves through `setStageDriver` / `setDraftRevealDriver` /
+`setToastChipSource`), and `flamework:parameters` is the same in all three. New: the seven `sim/*` modules,
+`shared/view/predict/drawnLocal` and its spec. No other module changed.
+
+**Checks run here**: typecheck, lint (whole tree), build, `check:docs`, `docs:check`, `check:locals` (none over 200,
+none at 185), `test:only -- lockstep` (10 files, 217 tests), `test:only -- view/predict` (6 files, 29 tests, the new
+spec in it). **Not run**: the full spec suite (the only shared module touched is `view/predict`), Studio, two clients.
+
+**Left as is, and why.** `frame`, `coopFrame`, `onStart`, G (`begin*`, `pollRunStart`, `startRun`, `forgeRun`,
+`startCoop`), H (`leaveRun`, `exitRun`, `handleReset`, `stopRun`, `clearExits`), `onRunFinished`, `changeFloor`,
+pause (F), the spectate fields (D), `pushToasts`, the rumour clock and the floor secret cache: each reads or writes
+`ctx`, `submitted`, `hudTimer`, the forfeit flags or the start request in an order that is the behaviour. Comments
+elsewhere that say `SimController.updateDrawn` (docs/LOCAL_PREDICTION.md, `resume.spec.ts`) now mean
+`DrawnLocalPlayer.update`; they were not edited.
+
+## Studio check (owner)
+
+Nothing here was run in Studio. The risk is not logic (the bodies are the same text) but wiring: a wrong argument at
+a call site, or a module that fails to load. Both show at once.
+
+**Any run (first).** The Output has no Flamework error and no "attempt to index nil" from `SimController` or
+`game.sim.*` on join; the menu opens; `Play solo` starts a run.
+
+**Solo, KV_Debug on (Workspace attribute, set before Play).**
+
+1. Start: `[Sim] run 1 started: seed ..., world endless, ranked run ...`; `[Stage] listeners (run 1 start, N ms): ...`
+   with the same controllers listed as before (`callListeners`).
+2. Pause (P), the Roblox menu (Esc) and Options: the run pauses and resumes as before; the pause overlay shows at once
+   (`soloSnapshot`).
+3. Take the stairs: `[Stage] floor step T ms (to floor 2)`, `[Sim] run 1: floor 2 (...)`, `[Stage] listeners (floor
+   2, ...)`; the HUD's place line and floor number change (`runInfo`).
+4. F8: `[Sim] replay check @ tick N: MATCH`.
+5. Die: `[Sim] finished ranked run 1 (death): N ticks in S segments, hash ...`, then `[Sim] ranked verdict for run 1:
+   ACCEPTED ...`; the run-over panel shows the verdict (`RunSubmissions`). Without KV_Debug, once: the next run's
+   points-to-best counts the run just finished while its verdict is pending (`pendingRunClaims`).
+6. R mid-run (ranked): `[Sim] run N: restarting (forfeit; counts as a death)`, the death is submitted, the next run
+   starts. Leave run: the run-over panel reads "You left the run".
+7. KV_Seed set (unranked): die -> `[Sim] submitted run N (death): ... bytes, hash ...` and `[Sim] verdict for run N:
+   ACCEPTED` (the `submitRun` path, `onVerdict`).
+8. The tutorial (main menu > Tutorial) and a dev run (docs/DEV_MODE.md): both start; R in the dev run restarts on the
+   same seed and floor; the tutorial freezes on its outro.
+
+**Two clients (Test > Clients and Servers, 2 players; KV_Debug on; Incoming Replication Lag 100 ms as in LP8).**
+Compare with a build of `d4936547` on the same settings.
+
+1. Start a party run from a lobby: `[Sim] co-op run N started: ... player 1 of 2` on both.
+2. The co-op debug line (docs/FEEL.md J9; docs/FRAME_PACING.md "The debug line" and Design 11; docs/LOCAL_PREDICTION.md
+   LP6) has all its parts, moving: `co-op lead {lead}t {ms}ms (net {net}t, trip p95 {p95}ms)`, `pace {depth}t {ms}ms ·
+   holds {n} · backlog {b} · jitter p95 {ms}ms`, `pred {h}t · err {mean}/{max} · snaps {n} · press->drawn {ms}ms`,
+   `press->step ...`, `late {n} miss {n}`. To read the same as the base: lead and net lead within a tick, the pace
+   depth, `holds` not climbing in steady play, `pred {h}t` following the lead, `press->drawn` about one frame, `snaps`
+   rising only on a floor change, a spectate switch or a death.
+3. The `[Pace]` line every 10 s (FRAME_PACING FP0, Design 11): `batches` / `ticks`, `gap p50 / p95 / max`, `pace ...
+   target ... holds ... discarded`, `trip p50 / p95 / max`, `lead ... target ... fall`, `lates / bumps / falls`, `fps
+   ... worst`: the same ranges as the base (`logArrivals` is handed the same `now` as the pump).
+4. Your knight answers the press at once and glides, never jumps (LP5's check); the teammate's view of you is
+   unchanged; mouse aim and shots leave from the drawn knight (`aimX` / `aimZ`). KV_CollisionDebug: two rings while
+   predicted (drawn and merged).
+5. The A/B switches, one run each (set before the lobby's Start): `KV_PacingOff` -> `[Sim] co-op run ...: frame pacing
+   off (KV_PacingOff)` and `pace off (KV_PacingOff)` on the line; `KV_LeadOff` -> `measured lead off`; `KV_LeadBump`
+   -> `late bump on`; `KV_PredictOff` -> `local prediction off` and the knight drawn merged (late by the lead) again.
+6. Die on one client: the spectate bar shows the teammate's name, Attack / Alt switch, the camera and vitals follow
+   (`coopSnapshot`); at the floor change both revive and the knight snaps, not glides, to the entrance.
+7. Take the stairs together: `[Stage] floor step`, the floor card, the draft; the confirm is held during the reveal.
+8. Wipe: `[Sim] co-op run N over at tick T, hash H` (the same hash on both clients), then `[Sim] ranked verdict for
+   run N: ACCEPTED`; Back to lobby works before and after the verdict. Leave run on one client mid-run: its run-over
+   panel shows, the other plays on.
