@@ -4,6 +4,7 @@ import React from "@rbxts/react";
 import { ReflexProvider } from "@rbxts/react-reflex";
 import { createRoot } from "@rbxts/react-roblox";
 import { GuiService, HapticService, Players, RunService, UserInputService, Workspace } from "@rbxts/services";
+import { logInfo } from "client/log";
 import { clientStore } from "client/store";
 import { DEV_MONO_FONT, MenuButton, createKvScreenGui } from "client/ui";
 import { PAD_SPIKE } from "shared/config";
@@ -101,7 +102,7 @@ export class PadSpikeController implements OnStart {
 	}
 
 	private log(line: string): void {
-		print(`${PAD_SPIKE.logPrefix} ${line}`);
+		logInfo(`${PAD_SPIKE.logPrefix} ${line}`);
 		this.logTail.push(line);
 		while (this.logTail.size() > PAD_SPIKE.logLines) this.logTail.remove(0);
 		if (this.logLabel !== undefined) this.logLabel.Text = this.logTail.join("\n");

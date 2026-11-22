@@ -7,6 +7,7 @@
  * @module
  */
 import { Players, Workspace } from "@rbxts/services";
+import { logInfo } from "client/log";
 import { clientStore } from "client/store";
 import { DEFAULT_LOCKSTEP, LockstepClient, formatArrivalLine } from "shared/lockstep";
 import type { PartyRunStart } from "shared/network";
@@ -66,10 +67,10 @@ export function buildCoopClient(
 				  }
 				: undefined,
 	});
-	if (pacingOff) print(`[Sim] co-op run ${start.runId}: frame pacing off (${RUN_ATTRIBUTES.pacingOff})`);
-	if (leadOff) print(`[Sim] co-op run ${start.runId}: measured lead off (${RUN_ATTRIBUTES.leadOff})`);
-	if (leadBump) print(`[Sim] co-op run ${start.runId}: late bump on (${RUN_ATTRIBUTES.leadBump})`);
-	if (predictOff) print(`[Sim] co-op run ${start.runId}: local prediction off (${RUN_ATTRIBUTES.predictOff})`);
+	if (pacingOff) logInfo(`[Sim] co-op run ${start.runId}: frame pacing off (${RUN_ATTRIBUTES.pacingOff})`);
+	if (leadOff) logInfo(`[Sim] co-op run ${start.runId}: measured lead off (${RUN_ATTRIBUTES.leadOff})`);
+	if (leadBump) logInfo(`[Sim] co-op run ${start.runId}: late bump on (${RUN_ATTRIBUTES.leadBump})`);
+	if (predictOff) logInfo(`[Sim] co-op run ${start.runId}: local prediction off (${RUN_ATTRIBUTES.predictOff})`);
 	return { client, pacingOff, leadOff, predictOff };
 }
 
@@ -112,7 +113,7 @@ export function logArrivals(ctx: RunContext, coop: LockstepClient, now: number, 
 	if (log === undefined) return;
 	log.frame(now, dt);
 	if (!log.due(now)) return;
-	print(
+	logInfo(
 		formatArrivalLine(log.take(now), {
 			pacing: coop.pacingStats(),
 			pacingOff: ctx.pacingOff === true,

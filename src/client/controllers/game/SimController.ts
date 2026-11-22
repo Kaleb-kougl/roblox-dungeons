@@ -1,5 +1,6 @@
 import { Controller, OnStart } from "@flamework/core";
 import { GuiService, Players, RunService, Workspace } from "@rbxts/services";
+import { logInfo, logWarn } from "client/log";
 import { Events } from "client/network";
 import { clientStore, selectSelectedCharacter, type VerdictView } from "client/store";
 import { DEFAULT_CHARACTER, isCharacterId, type CharacterId, type UpgradeLevels } from "shared/characters";
@@ -344,7 +345,7 @@ export class SimController implements OnStart {
 			const now = os.clock();
 			const before = coop.receivedTicks();
 			if (!coop.receive(firstTick, data, now, echo))
-				warn(`[Sim] co-op run ${runId}: ${coop.brokenReason() ?? ""}`);
+				logWarn(`[Sim] co-op run ${runId}: ${coop.brokenReason() ?? ""}`);
 			this.ctx?.arrivalLog?.arrived(now, coop.receivedTicks() - before);
 			coop.acknowledge(hashAck);
 		});
@@ -355,7 +356,7 @@ export class SimController implements OnStart {
 			}
 		});
 		Events.segmentVerdict.connect((v) => {
-			if (!v.ok) warn(`[Sim] segment ${v.index} of run ${v.runId} refused: ${v.code ?? ""} ${v.reason ?? ""}`);
+			if (!v.ok) logWarn(`[Sim] segment ${v.index} of run ${v.runId} refused: ${v.code ?? ""} ${v.reason ?? ""}`);
 			else this.submissions.onSegmentVerified(v);
 		});
 		Events.runFinished.connect((verdict) => this.onRunFinished(verdict));
@@ -636,7 +637,7 @@ export class SimController implements OnStart {
 		this.submissions.submitted = true;
 		this.hitstop.clear(); // a boss-kill freeze / slow motion would otherwise hold the particles still
 		clientStore.setVerdict({ status: "skipped", run: ctx.counter, ending: "abandoned", code: "tutorial" });
-		print(`[Sim] tutorial run ${ctx.counter} finished at tick ${ctx.run.state.tick}`);
+		logInfo(`[Sim] tutorial run ${ctx.counter} finished at tick ${ctx.run.state.tick}`);
 	}
 
 	/**
@@ -840,7 +841,7 @@ export class SimController implements OnStart {
 		if (coop !== undefined) {
 			if (!coop.isOver()) {
 				Events.lockstepLeave.fire(coop.runId);
-				print(`[Sim] left co-op run ${ctx.counter} (${coop.runId}): its run-over panel shows`);
+				logInfo(`[Sim] left co-op run ${ctx.counter} (${coop.runId}): its run-over panel shows`);
 				// The party plays on without this client; here the run ends where it was left, and its run-over panel
 				// shows the stats so far (Back to lobby goes at once: exitRun).
 				coop.end(LEFT_RUN_END_REASON);
@@ -864,7 +865,7 @@ export class SimController implements OnStart {
 		if (live !== undefined && live.requestForfeit()) {
 			this.restartAfterForfeit = false;
 			this.leaveAfterForfeit = true;
-			print(`[Sim] run ${ctx.counter}: leaving (forfeit; counts as a death)`);
+			logInfo(`[Sim] run ${ctx.counter}: leaving (forfeit; counts as a death)`);
 			return;
 		}
 		this.exitRun();
@@ -897,7 +898,7 @@ export class SimController implements OnStart {
 				this.stopRun("exited");
 			} else if (!this.exitAfterVerdict) {
 				this.exitAfterVerdict = true;
-				print("[Sim] the party's verdict is still being decided; back to the lobby once it arrives");
+				logInfo("[Sim] the party's verdict is still being decided; back to the lobby once it arrives");
 			}
 			return;
 		}
@@ -1051,13 +1052,13 @@ export class SimController implements OnStart {
 		// Never pulled out of a running tutorial (the server refuses lobby starts while the player is in it too; this
 		// is a late or stray start). A finished tutorial (frozen on its outro) is over: a lobby run may take over.
 		if (this.inRunningTutorial()) {
-			warn(`[Sim] ignored party run ${start.runId}: in the tutorial`);
+			logWarn(`[Sim] ignored party run ${start.runId}: in the tutorial`);
 			return;
 		}
 		// Consent: only the party run of the lobby this client is in (its Start began it).
 		const myLobby = clientStore.getState().lobby.mine?.lobbyId;
 		if (!lobbyStartAccepted(start.lobbyId, myLobby)) {
-			warn(`[Sim] ignored party run ${start.runId}: lobby ${start.lobbyId} is not this client's lobby`);
+			logWarn(`[Sim] ignored party run ${start.runId}: lobby ${start.lobbyId} is not this client's lobby`);
 			return;
 		}
 		this.clearExits();
@@ -1077,7 +1078,7 @@ export class SimController implements OnStart {
 			}),
 		);
 		if (!ok) {
-			warn(`[Sim] co-op run ${start.runId} could not start: ${errorMessage(result)}`);
+			logWarn(`[Sim] co-op run ${start.runId} could not start: ${errorMessage(result)}`);
 			return;
 		}
 		const setup = result as ReturnType<typeof buildWorldSetup>;
@@ -1133,7 +1134,7 @@ export class SimController implements OnStart {
 			coopSnapshot(client, this.ctx, this.getSpectateView(), this.rumour.chip()),
 		);
 		publishLatencyProbe(ctx, client, this.drawnLocal.isActive(), this.drawnLocal.snapCount());
-		print(
+		logInfo(
 			`[Sim] co-op run ${this.counter} started: ${start.runId} seed ${start.seed}, player ${localIndex + 1} of ` +
 				`${start.members.size()}`,
 		);
@@ -1221,12 +1222,14 @@ export class SimController implements OnStart {
 				claimedHash: res.final.claimedHash,
 			});
 			Events.lockstepFinal.fire(res.final);
-			print(`[Sim] co-op run ${ctx.counter} over at tick ${res.final.finalTick}, hash ${res.final.claimedHash}`);
+			logInfo(
+				`[Sim] co-op run ${ctx.counter} over at tick ${res.final.finalTick}, hash ${res.final.claimedHash}`,
+			);
 		}
 		const floor = coop.state.endless?.floor;
 		const floorChanged = floor !== undefined && floor !== ctx.floor;
 		if (floor !== undefined && floor !== ctx.floor) {
-			if (this.debug) print(`[Stage] floor step ${string.format(MS_FORMAT, stepMs)} ms (to floor ${floor})`);
+			if (this.debug) logInfo(`[Stage] floor step ${string.format(MS_FORMAT, stepMs)} ms (to floor ${floor})`);
 			this.changeFloor(ctx, floor);
 		}
 		// After the step (and the floor change's reset): whose player the views follow this frame.
@@ -1270,7 +1273,7 @@ export class SimController implements OnStart {
 			waiting.busyRetries++;
 			waiting.retryAt = os.clock() + RUN_START_BUSY_RETRY_SECONDS;
 			if (waiting.busyRetries === 1)
-				print(`[Sim] server busy (${reply.reason ?? ""}); retrying the ranked start`);
+				logInfo(`[Sim] server busy (${reply.reason ?? ""}); retrying the ranked start`);
 			return true;
 		}
 		if (waiting.retryAt !== undefined) {
@@ -1297,7 +1300,7 @@ export class SimController implements OnStart {
 				// that character: the pick resets to the Knight and the ranked start is asked again as the Knight.
 				const asked = waiting.request.characterId;
 				const refused: CharacterId = isCharacterId(asked) ? asked : DEFAULT_CHARACTER;
-				warn(`[Sim] ranked run refused (locked_character: ${reply.reason ?? ""}); starting as the Knight`);
+				logWarn(`[Sim] ranked run refused (locked_character: ${reply.reason ?? ""}); starting as the Knight`);
 				this.runCharacter = DEFAULT_CHARACTER;
 				for (const l of this.lockedListeners) l(refused);
 				this.startRequests++;
@@ -1310,14 +1313,14 @@ export class SimController implements OnStart {
 				Events.startRun.fire(request);
 				return true;
 			} else {
-				warn(`[Sim] ranked run refused (${reply.code ?? "?"}: ${reply.reason ?? ""}); playing unranked`);
+				logWarn(`[Sim] ranked run refused (${reply.code ?? "?"}: ${reply.reason ?? ""}); playing unranked`);
 				this.startRun(waiting.seed, waiting.atBossDoor, 0, waiting.world, undefined, "", false);
 			}
 			return false;
 		}
 		if (os.clock() - waiting.sentAt < RUN_START_TIMEOUT_SECONDS) return true;
 		this.awaitingStart = undefined;
-		warn(`[Sim] no answer to startRun after ${RUN_START_TIMEOUT_SECONDS} s; playing unranked`);
+		logWarn(`[Sim] no answer to startRun after ${RUN_START_TIMEOUT_SECONDS} s; playing unranked`);
 		this.startRun(waiting.seed, waiting.atBossDoor, 0, waiting.world, undefined, "", false);
 		return false;
 	}
@@ -1354,7 +1357,7 @@ export class SimController implements OnStart {
 			);
 			if (ok) return;
 			// No run: back to the menu (or the lobby room), as after Leave run, instead of a stranded empty screen.
-			warn(`[Sim] the run could not start (${errorMessage(err)}); back to the menu`);
+			logWarn(`[Sim] the run could not start (${errorMessage(err)}); back to the menu`);
 			this.stopRun("left");
 		};
 		this.stageOrNow("runStart", { forge, notify: () => this.notifyRunStarted(), floor });
@@ -1386,20 +1389,20 @@ export class SimController implements OnStart {
 		let made = this.makeRun(seed, atBossDoor, stress, world, runId, scoring);
 		if (typeIs(made, "string") && runId !== undefined) {
 			// The server built this world; the client could not. Play it unranked (the fallback below may apply).
-			warn(`[Sim] ranked run ${runId} could not start (${made}); playing unranked`);
+			logWarn(`[Sim] ranked run ${runId} could not start (${made}); playing unranked`);
 			runId = undefined;
 			made = this.makeRun(seed, atBossDoor, stress, world, runId, scoring);
 		}
 		if (typeIs(made, "string") && world === "game") {
 			notice = made;
-			warn(`[Sim] enemies unavailable (${made}); playing the floor without enemies`);
+			logWarn(`[Sim] enemies unavailable (${made}); playing the floor without enemies`);
 			world = "dungeonNoEncounter";
 			made = this.makeRun(seed, atBossDoor, stress, world, undefined, scoring);
 			runId = undefined;
 		}
 		if (typeIs(made, "string") && tutorial) {
 			// The menu takes over, as after Leave run (the normal flow: the main menu, or the lobby room in a lobby).
-			warn(`[Sim] the tutorial could not start (${made}); back to the menu`);
+			logWarn(`[Sim] the tutorial could not start (${made}); back to the menu`);
 			this.stopRun("left");
 			return;
 		}
@@ -1446,7 +1449,7 @@ export class SimController implements OnStart {
 
 		const info = runInfo(pack, ctx, notice, this.debug);
 		clientStore.startRun(info, soloSnapshot(run, this.rumour.chip()));
-		print(
+		logInfo(
 			`[Sim] run ${this.counter} started: seed ${seed}, world ${world}${atBossDoor ? ", boss door" : ""}` +
 				(runId !== undefined ? `, ranked run ${runId}` : "") +
 				(tutorial ? " (tutorial: local, not submitted)" : "") +
@@ -1490,7 +1493,7 @@ export class SimController implements OnStart {
 		clientStore.changeFloor(
 			runInfo(this.theme.getPack(), moved, clientStore.getState().game.run.notice, this.debug),
 		);
-		print(`[Sim] run ${moved.counter}: floor ${floor} (${w.dungeon.name}${w.bossFloor ? ", boss floor" : ""})`);
+		logInfo(`[Sim] run ${moved.counter}: floor ${floor} (${w.dungeon.name}${w.bossFloor ? ", boss floor" : ""})`);
 		// The views rebuild under the stage loader's card (a frame later), except the tutorial's ending change.
 		const work: StageWork = { notify: () => this.notifyFloorChanged(), floor };
 		if (floorChangeStaged(floor, moved.tutorial, TUTORIAL.lastFloor)) {
@@ -1585,7 +1588,7 @@ export class SimController implements OnStart {
 		if (floor !== undefined && floor !== ctx.floor) {
 			if (this.debug) {
 				const ms = string.format(MS_FORMAT, (os.clock() - stepStart) * MS_PER_SECOND);
-				print(`[Stage] floor step ${ms} ms (to floor ${floor})`);
+				logInfo(`[Stage] floor step ${ms} ms (to floor ${floor})`);
 			}
 			this.changeFloor(ctx, floor);
 		}
@@ -1669,7 +1672,7 @@ export class SimController implements OnStart {
 		}
 		if (restartForfeits(ctx.runId !== undefined, live.outcome() === "playing") && live.requestForfeit()) {
 			this.restartAfterForfeit = true;
-			print(`[Sim] run ${ctx.counter}: restarting (forfeit; counts as a death)`);
+			logInfo(`[Sim] run ${ctx.counter}: restarting (forfeit; counts as a death)`);
 			return;
 		}
 		this.submissions.submit("abandoned");
@@ -1704,8 +1707,8 @@ export class SimController implements OnStart {
 		const line = `[Sim] replay check @ tick ${run.state.tick}: ${r.match ? "MATCH" : "MISMATCH"} live=${
 			r.liveHash
 		} replay=${r.replayHash}`;
-		if (r.match) print(line);
-		else warn(line);
+		if (r.match) logInfo(line);
+		else logWarn(line);
 	}
 
 	// --- verdicts (submission itself: sim/submissions.ts) ---------------------------------------
@@ -1741,7 +1744,7 @@ export class SimController implements OnStart {
 				entry.ending = "ended";
 				this.hudTimer = HUD_SNAPSHOT_INTERVAL_SEC;
 				clientStore.setSnapshot(coopSnapshot(coop, this.ctx, this.getSpectateView(), this.rumour.chip()));
-				warn(
+				logWarn(
 					`[Sim] co-op run ${entry.run} (${v.runId}) ended by the server: ${v.code ?? ""} ${v.reason ?? ""}`,
 				);
 			}
@@ -1753,7 +1756,7 @@ export class SimController implements OnStart {
 		}
 		// A run this client already left (a restart, or joining a party run) concluded as abandoned: nothing to show.
 		if (v.code === "abandoned" && !current) {
-			print(`[Sim] run ${entry.run} (${v.runId}) closed: ${v.reason ?? "abandoned"}`);
+			logInfo(`[Sim] run ${entry.run} (${v.runId}) closed: ${v.reason ?? "abandoned"}`);
 			return;
 		}
 		const view: VerdictView = {
@@ -1776,7 +1779,7 @@ export class SimController implements OnStart {
 		const line = `[Sim] ranked verdict for run ${entry.run}${current ? "" : " (left)"}: ${
 			v.ok ? "ACCEPTED" : `REJECTED ${v.code ?? ""}`
 		}${where} ${v.reason ?? ""} score ${v.score.score} floor ${v.score.floor} ${v.leaderboard ?? ""}`;
-		if (v.ok) print(line);
-		else warn(line);
+		if (v.ok) logInfo(line);
+		else logWarn(line);
 	}
 }

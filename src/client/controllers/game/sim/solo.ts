@@ -6,6 +6,7 @@
  * @module
  */
 import { Workspace } from "@rbxts/services";
+import { logWarn } from "client/log";
 import type { CharacterId, UpgradeLevels } from "shared/characters";
 import type { Dungeon } from "shared/dungeon";
 import { DEFAULT_RUN_SEED, LiveRun, RUN_ATTRIBUTES, type LiveRunSetup } from "shared/play";
@@ -62,7 +63,9 @@ export function readSeed(): number {
 	const raw = Workspace.GetAttribute(RUN_ATTRIBUTES.seed);
 	if (raw === undefined) return DEFAULT_RUN_SEED;
 	if (isValidRunSeed(raw)) return raw;
-	warn(`[Sim] ${RUN_ATTRIBUTES.seed} = ${tostring(raw)} is not an integer in [0, 2^32); using ${DEFAULT_RUN_SEED}`);
+	logWarn(
+		`[Sim] ${RUN_ATTRIBUTES.seed} = ${tostring(raw)} is not an integer in [0, 2^32); using ${DEFAULT_RUN_SEED}`,
+	);
 	return DEFAULT_RUN_SEED;
 }
 

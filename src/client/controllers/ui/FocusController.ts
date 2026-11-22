@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { GuiService, Players, RunService, UserInputService, Workspace } from "@rbxts/services";
+import { logInfo } from "client/log";
 import {
 	clientStore,
 	selectBindings,
@@ -354,7 +355,7 @@ export class FocusController implements OnStart, FocusScopeRegistry {
 			this.scrollEnds.reset();
 			if (this.debug) {
 				const o = owner?.handle.options();
-				print(`[Focus] owner ${o !== undefined ? `${o.id} (${o.layer} / ${o.surface})` : "none"}`);
+				logInfo(`[Focus] owner ${o !== undefined ? `${o.id} (${o.layer} / ${o.surface})` : "none"}`);
 			}
 		}
 		// The Roblox menu navigates CoreGui; the pad spike drives the selection itself.
@@ -416,7 +417,9 @@ export class FocusController implements OnStart, FocusScopeRegistry {
 		}
 		pcall(() => GuiService.Select(root));
 		if (this.debug && GuiService.SelectedObject !== selected) {
-			print(`[Focus] Select(${root.GetFullName()}) -> ${GuiService.SelectedObject?.GetFullName() ?? "nothing"}`);
+			logInfo(
+				`[Focus] Select(${root.GetFullName()}) -> ${GuiService.SelectedObject?.GetFullName() ?? "nothing"}`,
+			);
 		}
 	}
 
@@ -441,7 +444,7 @@ export class FocusController implements OnStart, FocusScopeRegistry {
 	private select(obj: GuiObject | undefined, why: string): void {
 		if (GuiService.SelectedObject === obj) return;
 		GuiService.SelectedObject = obj;
-		if (this.debug) print(`[Focus] ${why}: ${obj !== undefined ? obj.GetFullName() : "nothing selected"}`);
+		if (this.debug) logInfo(`[Focus] ${why}: ${obj !== undefined ? obj.GetFullName() : "nothing selected"}`);
 	}
 
 	/** A menu pad press (B, or InputController's menu pad input) for the owner, through its surface's table. */
@@ -457,7 +460,7 @@ export class FocusController implements OnStart, FocusScopeRegistry {
 		if (action.kind === "none" || action.kind === "select") return;
 		// Hold B: the press itself does nothing (GMD5); stepHold sends holdExit once the hold completes.
 		if (action.kind === "holdExit") return;
-		if (this.debug) print(`[Focus] ${input.keyName} on ${o.id} (${o.surface}): ${action.kind}`);
+		if (this.debug) logInfo(`[Focus] ${input.keyName} on ${o.id} (${o.surface}): ${action.kind}`);
 		if (action.kind === "scroll") {
 			const list = o.scrollRef?.current;
 			if (list !== undefined) {
@@ -531,7 +534,7 @@ export class FocusController implements OnStart, FocusScopeRegistry {
 		PAD_HOLD_UI.set(this.hold.progress(GAMEPAD_MENU.holdExitSec));
 		if (step !== "complete") return;
 		const o = owner.handle.options();
-		if (this.debug) print(`[Focus] hold B complete on ${o.id} (${o.surface}): holdExit`);
+		if (this.debug) logInfo(`[Focus] hold B complete on ${o.id} (${o.surface}): holdExit`);
 		this.haptics.play("holdComplete");
 		o.onPadAction?.({ kind: "holdExit" }, { keyName: PAD_KEYS.b, x: 0, y: 0 });
 	}

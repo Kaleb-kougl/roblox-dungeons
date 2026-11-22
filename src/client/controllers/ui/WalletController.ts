@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { RunService } from "@rbxts/services";
+import { logInfo, logWarn } from "client/log";
 import { Events } from "client/network";
 import { clientStore, selectRecordsStatus, selectWallet } from "client/store";
 import { DEFAULT_CHARACTER } from "shared/characters";
@@ -41,7 +42,7 @@ export class WalletController implements OnStart {
 		this.janitor.Add(Events.wallet.connect((status) => this.receive(status)));
 		Events.requestWallet.fire();
 		this.sim.onLockedCharacter((refused) => {
-			print(`[Wallet] ${refused} is locked for this account: the pick resets to the Knight`);
+			logInfo(`[Wallet] ${refused} is locked for this account: the pick resets to the Knight`);
 			this.settings.setSelectedCharacter(DEFAULT_CHARACTER);
 		});
 		this.janitor.Add(RunService.Heartbeat.Connect(() => this.expireBuy()));
@@ -71,7 +72,7 @@ export class WalletController implements OnStart {
 		if (st.buying !== undefined || walletShown(st.status) !== "loaded") return false;
 		clientStore.setWalletBuying(itemId);
 		this.buySentAt = os.clock();
-		print(`[Wallet] buy ${itemId}`);
+		logInfo(`[Wallet] buy ${itemId}`);
 		Events.walletBuy.fire(itemId);
 		return true;
 	}
@@ -82,7 +83,7 @@ export class WalletController implements OnStart {
 	 */
 	equip(slot: string, itemId: string): boolean {
 		if (walletShown(clientStore.getState().wallet.status) !== "loaded") return false;
-		print(`[Wallet] equip ${slot}: ${itemId === "" ? "(off)" : itemId}`);
+		logInfo(`[Wallet] equip ${slot}: ${itemId === "" ? "(off)" : itemId}`);
 		Events.walletEquip.fire(slot, itemId);
 		return true;
 	}
@@ -93,16 +94,16 @@ export class WalletController implements OnStart {
 		if (r !== undefined && r.action === "buy") {
 			this.buySentAt = undefined;
 			this.audio.playUi(r.ok ? SFX.shopBuy : SFX.shopDeny);
-			print(
+			logInfo(
 				`[Wallet] buy ${r.itemId}: ${r.ok ? `level ${r.level ?? "?"} for ${r.price ?? "?"}` : r.reason ?? "?"}`,
 			);
 		}
 		if (r !== undefined && r.action === "equip" && !r.ok) {
 			this.audio.playUi(SFX.shopDeny);
-			print(`[Wallet] equip ${r.itemId}: ${r.reason ?? "?"}`);
+			logInfo(`[Wallet] equip ${r.itemId}: ${r.reason ?? "?"}`);
 		}
 		if (status.grant !== undefined) {
-			print(`[Wallet] run ${status.grant.runId}: +${status.grant.total} (balance ${status.grant.balance})`);
+			logInfo(`[Wallet] run ${status.grant.runId}: +${status.grant.total} (balance ${status.grant.balance})`);
 		}
 	}
 
@@ -110,7 +111,7 @@ export class WalletController implements OnStart {
 		const sent = this.buySentAt;
 		if (sent === undefined || os.clock() - sent < SILVER_SHOP.buyTimeoutSec) return;
 		this.buySentAt = undefined;
-		warn("[Wallet] no answer to the purchase; the button works again");
+		logWarn("[Wallet] no answer to the purchase; the button works again");
 		clientStore.setWalletBuying(undefined);
 	}
 }

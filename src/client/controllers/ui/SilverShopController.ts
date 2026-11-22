@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { MarketplaceService, Players, RunService } from "@rbxts/services";
+import { logInfo, logWarn } from "client/log";
 import { Events } from "client/network";
 import { clientStore } from "client/store";
 import { SFX } from "shared/view/audio";
@@ -107,13 +108,13 @@ export class SilverShopController implements OnStart {
 		this.setFlow(prompted);
 		this.report({ step: "prompted", from: flow.from ?? "mainMenu", pack: packId });
 		if (productId === undefined) {
-			print(`[SilverShop] fake buy ${packId} (KV_FakeShop)`);
+			logInfo(`[SilverShop] fake buy ${packId} (KV_FakeShop)`);
 			// Studio's fake shop has no prompt: the press is the purchase, so the pending purchase is bought at once.
 			this.onPromptFinished(undefined, true);
 			Events.silverShopFakeBuy.fire(packId);
 			return;
 		}
-		print(`[SilverShop] prompt ${packId} (product ${productId})`);
+		logInfo(`[SilverShop] prompt ${packId} (product ${productId})`);
 		MarketplaceService.PromptProductPurchase(Players.LocalPlayer, productId);
 	}
 
@@ -138,7 +139,7 @@ export class SilverShopController implements OnStart {
 		this.setFlow(a.flow);
 		this.reportStep(a.report, flow);
 		this.audio.playUi(SFX.silverGain);
-		print(`[SilverShop] +${n.silver} Silver (${n.packId}), balance ${n.balance}`);
+		logInfo(`[SilverShop] +${n.silver} Silver (${n.packId}), balance ${n.balance}`);
 		if (a.toast) {
 			this.toastSerial++;
 			clientStore.pushLobbyNotice(
@@ -189,7 +190,7 @@ export class SilverShopController implements OnStart {
 				else {
 					failed = true;
 					clientStore.setSilverShopPrice(e.pack.id, PRICE_FAILED);
-					warn(
+					logWarn(
 						`[SilverShop] no price for ${e.pack.id} (product ${e.productId}): ${
 							ok ? "no PriceInRobux" : info
 						}`,

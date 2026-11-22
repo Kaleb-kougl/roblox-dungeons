@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { Players, RunService, Workspace } from "@rbxts/services";
+import { logInfo } from "client/log";
 import { currentLocale, onLocaleChanged, themePack } from "client/ui/theme";
 import { FitAuditLog, LOCALE_AUDIT, fitAuditLine, isTextMisfit, localeReportLines } from "shared/l10n";
 
@@ -39,7 +40,7 @@ export class LocaleAuditController implements OnStart {
 		this.audit.Cleanup();
 		this.log.clear();
 		if (!on) return;
-		print(`${LOCALE_AUDIT.tag} on (${LOCALE_AUDIT.attribute})`);
+		logInfo(`${LOCALE_AUDIT.tag} on (${LOCALE_AUDIT.attribute})`);
 		this.report();
 		this.audit.Add(onLocaleChanged(() => this.report()));
 		let wait = 0;
@@ -51,14 +52,14 @@ export class LocaleAuditController implements OnStart {
 				this.walk();
 			}),
 		);
-		this.audit.Add(() => print(`${LOCALE_AUDIT.tag} off`));
+		this.audit.Add(() => logInfo(`${LOCALE_AUDIT.tag} off`));
 	}
 
 	/** The pack's locale report for the locale shown. */
 	private report(): void {
 		const pack = themePack();
 		if (pack === undefined) return;
-		for (const line of localeReportLines(currentLocale().code, pack.localeReport())) print(line);
+		for (const line of localeReportLines(currentLocale().code, pack.localeReport())) logInfo(line);
 	}
 
 	private walk(): void {
@@ -95,6 +96,6 @@ export class LocaleAuditController implements OnStart {
 		});
 		if (!misfit) return;
 		const path = obj.GetFullName();
-		if (this.log.report(locale, path, text)) print(fitAuditLine(path, locale, text));
+		if (this.log.report(locale, path, text)) logInfo(fitAuditLine(path, locale, text));
 	}
 }

@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { Workspace } from "@rbxts/services";
+import { logWarn } from "client/log";
 import { clientStore, selectTutorialEnded } from "client/store";
 import { DRAFT_SLOT_Z_RAISED, DRAFT_SLOT_Z_REST, DRAFT_UI, resetDraftUi } from "client/ui";
 import { draftConfirmHeld, draftNeverRevealed } from "shared/play";
@@ -395,6 +396,6 @@ export class DraftRevealController implements OnStart, DraftRevealDriver {
 		}
 		this.debugBeats = parseDraftRevealDebug(raw);
 		if (this.debugBeats === undefined)
-			warn(`[DraftReveal] ${DRAFT_REVEAL_VIEW.debugAttribute} = "${raw}" is not 1 to 3 of c / r / l; ignored`);
+			logWarn(`[DraftReveal] ${DRAFT_REVEAL_VIEW.debugAttribute} = "${raw}" is not 1 to 3 of c / r / l; ignored`);
 	}
 }

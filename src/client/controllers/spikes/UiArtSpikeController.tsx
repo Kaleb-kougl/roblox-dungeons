@@ -4,6 +4,7 @@ import React from "@rbxts/react";
 import { ReflexProvider } from "@rbxts/react-reflex";
 import { createRoot } from "@rbxts/react-roblox";
 import { Players } from "@rbxts/services";
+import { logInfo } from "client/log";
 import { clientStore } from "client/store";
 import { UiArtSpike, useHudScale, createKvScreenGui } from "client/ui";
 import { UI_ART_SPIKE } from "shared/config";
@@ -64,6 +65,6 @@ export class UiArtSpikeController implements OnStart {
 			root.unmount();
 			gui.Destroy();
 		}, true);
-		print(`[UiArtSpike] on: ${GUI_NAME} (docs/SPIKES.md "Spike UA1")`);
+		logInfo(`[UiArtSpike] on: ${GUI_NAME} (docs/SPIKES.md "Spike UA1")`);
 	}
 }

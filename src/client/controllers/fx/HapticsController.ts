@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { HapticService, UserInputService, Workspace } from "@rbxts/services";
+import { logInfo, logWarn } from "client/log";
 import { clientStore, selectDisplay, selectInputDevice, selectMenuShown } from "client/store";
 import { touchHapticsOn } from "shared/settings";
 import { partySize } from "shared/sim";
@@ -311,15 +312,15 @@ export class HapticsController implements OnStart {
 	private apply(out: PlayHapticsFrame, device: HapticDevice | undefined): void {
 		if (out.stopAll) {
 			this.stopPlay();
-			if (this.debug) print(`${LOG} stopAll`);
+			if (this.debug) logInfo(`${LOG} stopAll`);
 		}
 		if (this.debug) {
-			for (const d of out.drops) print(`${LOG} drop ${d.kind} (${d.reason})`);
+			for (const d of out.drops) logInfo(`${LOG} drop ${d.kind} (${d.reason})`);
 		}
 		const cue = out.cue;
 		if (cue === undefined) return;
 		const backend = this.playCue(cue, device);
-		if (this.debug) print(`${LOG} play ${cue} on ${device ?? "none"} (${backend})`);
+		if (this.debug) logInfo(`${LOG} play ${cue} on ${device ?? "none"} (${backend})`);
 	}
 
 	/** Plays play cue `kind` on `device`'s backend now. */
@@ -520,7 +521,7 @@ export class HapticsController implements OnStart {
 		const reason = this.effectFailure;
 		if (!this.debug || reason === undefined || this.loggedEffectFailure) return;
 		this.loggedEffectFailure = true;
-		warn(`${LOG} HapticEffect backend disabled for this session (${reason})`);
+		logWarn(`${LOG} HapticEffect backend disabled for this session (${reason})`);
 	}
 
 	private destroyEffects(): void {
@@ -543,6 +544,6 @@ export class HapticsController implements OnStart {
 		const display = selectDisplay(state);
 		const device = hapticDeviceOf(selectInputDevice(state), display.padVibration, display.touchVibration);
 		const backend = this.playCue(mode.testCue, device);
-		print(`${LOG} test ${mode.testCue} on ${device ?? "none"} (${backend})`);
+		logInfo(`${LOG} test ${mode.testCue} on ${device ?? "none"} (${backend})`);
 	}
 }
