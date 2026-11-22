@@ -1,5 +1,5 @@
 /**
- * Per-run telemetry derived from the sim's events (Roblox port of project-kaleb-vale src/playtest/telemetry.ts
+ * Per-run telemetry derived from the sim's events (Roblox port of the web build's src/playtest/telemetry.ts
  * `PlaytestTelemetry.observeTick` / `outcome`, src/playtest/taps.ts `DEFAULT_TAPS` / `hitSourceName` /
  * `KNOWN_EVENT_FIELDS`, and src/playtest/aggregate.mjs `aliveTicks` @ 42897e2).
  *

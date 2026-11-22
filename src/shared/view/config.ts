@@ -8,7 +8,7 @@ import type { WallTextureFace, WallTextureUV } from "./wallTexture";
  * timings of the placeholder renderers. Presentation only: nothing here reaches the sim (gameplay numbers live in
  * shared/sim data), so changing a value here can never change a replay.
  *
- * Sources (project-kaleb-vale @ 42897e2) are named per value; values without a source are Roblox-port choices.
+ * Sources (the web build @ 42897e2) are named per value; values without a source are Roblox-port choices.
  */
 
 /** Iso camera rig (spike B, docs/SPIKES.md). Yaw / pitch / view height come from shared/config view.ts. */

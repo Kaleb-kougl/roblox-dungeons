@@ -1,5 +1,5 @@
 /**
- * Death particle bursts: the pure half (port of project-kaleb-vale src/fx/particles/particles.ts @ 42897e2).
+ * Death particle bursts: the pure half (port of the web build's src/fx/particles/particles.ts @ 42897e2).
  *
  *   ParticlePool   fixed SoA pool (capacity 512): spawn (recycles the most-faded particle when the live limit is
  *                  reached), step (exponential drag, hop with gravity + one small bounce, lifetime), no allocation.

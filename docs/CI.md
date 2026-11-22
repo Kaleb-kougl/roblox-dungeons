@@ -3,8 +3,8 @@
 Every push to `main` and every pull request runs the same gate as `npm run verify` on GitHub Actions, with no
 secrets and no art packs. Tooling only; the one source change is a spec helper (CI1).
 
-**Status (2026-11-21): CI1-CI5 and CI9 built on branch `ci`, not yet run on GitHub. CI0 (timing on the Mac) and
-CI6 onward follow the first run.**
+**Status (2026-11-21): running on GitHub. The first run was green on every job except one shard, whose only
+failure was the bench's wall-clock budget (CD10, fixed). Open: CI0, CI7, CI11-CI13.**
 
 ## Findings
 
@@ -30,7 +30,7 @@ fixture's `7ff8000000000000`. An arithmetic NaN's sign bit is the CPU's choice. 
 | the double read from the bits `7ff8000000000000` | `7ff8000000000000` | `7ff8000000000000` |
 
 The sim was never wrong: `seedToState` maps every non-finite seed to 0 on both. The helper now builds the NaN
-from its bits. Passes on arm64 (run here); x86-64 is confirmed by the table and by the first CI run.
+from its bits. Passes on arm64 and, in the first CI run, on x86-64.
 
 **What it means beyond the spec.** `hashState` covers the raw float64 bytes of every field, so a NaN produced by
 arithmetic inside the sim would hash differently on a PC and on a phone and desync a co-op run. Nothing shows
@@ -85,13 +85,14 @@ Studio two-player checks. Client and server code is typechecked and linted, not 
 - [x] **CI3. `--shard i/n`.**
 - [x] **CI4. Pin the toolchain.**
 - [x] **CI5. `ci.yml`.**
-- [ ] **CI6. First run and make it green.** Push the branch, open a pull request, fix whatever only a clean
-  Linux runner shows. Record each job's time here and retune the shard count.
+- [x] **CI6. First run and make it green.** One failure: the bench budget (CD10). One shard of 8 took 1,203 s, so
+  12 shards now. Per-job times are not recorded yet (CI12).
 - [ ] **CI7. Protect `main`** (owner, repository settings): the `static`, `build` and `specs` checks required, no
   force-push. Add a pull request template.
-- [ ] **CI8. Working agreement in `CLAUDE.md`**: a change lands by pull request with CI green.
+- [x] **CI8. Working agreement in `CLAUDE.md`**: a change lands by pull request with CI green.
 - [x] **CI9. `docs.yml`.** Needs Pages enabled with "GitHub Actions" as the source (owner).
-- [ ] **CI10. README follow-ups**: the CI badge, the API reference link, one sentence on the two architectures.
+- [x] **CI10. README follow-ups**: the CI badge and the two architectures. The API reference link waits for Pages
+  to be enabled (CI9).
 - [ ] **CI11. Repository settings** (owner): secret scanning and push protection; Dependabot for GitHub Actions.
 - [ ] **CI12. Close**: job times here, the `docs/DECISIONS.md` entry.
 - [ ] **CI13. No NaN in hashed state.** A spec that replays the golden runs and a long endless run and fails if

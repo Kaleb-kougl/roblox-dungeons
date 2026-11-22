@@ -3,7 +3,7 @@
  * MIT License. Copyright (c) 2026 Majid Manzarpour.
  * Full license text: THIRD_PARTY_NOTICES.md at the repository root.
  *
- * Roblox port of project-kaleb-vale src/dungeon/forge/rng.ts @ 42897e2. Every intermediate is a uint32 in
+ * Roblox port of the web build's src/dungeon/forge/rng.ts @ 42897e2. Every intermediate is a uint32 in
  * [0, 2^32) (bit32 + the split-16-bit imul from shared/jsmath); the bit patterns equal JS's int32 ones.
  */
 import { imul, u32 } from "shared/jsmath";

@@ -1,5 +1,7 @@
 # Roblox Dungeons
 
+[![CI](https://github.com/Kaleb-kougl/roblox-dungeons/actions/workflows/ci.yml/badge.svg)](https://github.com/Kaleb-kougl/roblox-dungeons/actions/workflows/ci.yml)
+
 A co-op bullet-hell roguelike on Roblox for up to 8 players, built on a deterministic simulation with lockstep
 multiplayer. Pick a hero, dodge everything, draft boons between floors, and fight Mother Mayhem and the Demon Lord.
 
@@ -96,7 +98,9 @@ prediction (problem 3) was built instead. The full record, including the harness
 
 ## How it stays correct at this size
 
-`npm run verify` is the gate before every merge. Its 13 steps include:
+`npm run verify` is the gate before every merge, and CI runs the same stages on every pull request. The spec
+suite runs on both x86-64 and arm64, because the simulation has to compute the same run on a PC and on a phone
+([`docs/CI.md`](docs/CI.md)). Its 15 steps include:
 
 - typecheck and lint at zero warnings;
 - the headless spec suite: real Jest modules under [Lune](https://github.com/lune-org/lune), long statistical
@@ -110,6 +114,12 @@ prediction (problem 3) was built instead. The full record, including the harness
 
 `npm run out:digest` hashes the compiled output with comments stripped, which proves a refactor or a
 comment-only change did not move behaviour.
+
+What no automated test covers: the engine wiring in `src/client` and `src/server` (Instances, rendering, input,
+DataStore round trips). Those layers are kept thin on purpose: the rules they apply live in `src/shared` with
+specs, and [`docs/SERVER_CENSUS.md`](docs/SERVER_CENSUS.md) maps every remote and every server write to the
+spec behind it. The wiring itself is checked by hand in Studio; [`docs/STUDIO_PASS.md`](docs/STUDIO_PASS.md) is
+that checklist, and not all of it has been run.
 
 ## Also in here
 
@@ -151,6 +161,8 @@ The build and the spec suite do not need the licensed art packs. Rebuilding atla
 
 ## Where to read next
 
+- [`ARCHITECTURE.md`](ARCHITECTURE.md): the layers, one frame of co-op, the trust boundary and the determinism
+  invariant on one page, with six decision records in [`docs/decisions/`](docs/decisions/README.md).
 - [`docs/DECISIONS.md`](docs/DECISIONS.md): every deviation, retune and feature entry, with what must still
   replay bit for bit.
 - [`docs/SERVER.md`](docs/SERVER.md) and [`docs/CLIENT.md`](docs/CLIENT.md): the two halves as built.

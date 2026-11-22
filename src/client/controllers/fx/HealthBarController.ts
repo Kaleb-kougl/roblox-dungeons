@@ -310,7 +310,7 @@ class BarView {
 }
 
 /**
- * Enemy health bars (port of project-kaleb-vale src/fx/bars/HealthBarsView.tsx @ 42897e2), one pooled BillboardGui
+ * Enemy health bars (port of the web build's src/fx/bars/HealthBarsView.tsx @ 42897e2), one pooled BillboardGui
  * per actor slot over the actor's feet, offset up the screen (camera-space StudsOffset) to the placeholder's top edge:
  *
  *   bar   enemyHealthBack plate (1 px outline), enemyHealthChip trailing chunk, enemyHealth fill: 2 px tall, width

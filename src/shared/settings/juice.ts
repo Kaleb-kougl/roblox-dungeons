@@ -1,5 +1,5 @@
 /**
- * Juice settings schema (Roblox port of project-kaleb-vale src/fx/settings.ts @ 42897e2: types, defaults,
+ * Juice settings schema (Roblox port of the web build's src/fx/settings.ts @ 42897e2: types, defaults,
  * `sanitizeJuiceSettings`). Presentation only: nothing here reaches the sim, replays never depend on it.
  *
  * Port change: the web build stored the full settings in localStorage with `reducedMotion` defaulting to the OS

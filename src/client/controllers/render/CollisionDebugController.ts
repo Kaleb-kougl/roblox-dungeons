@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
+import { logInfo } from "client/log";
 import { STUDS_PER_TILE } from "shared/config";
 import { worldToGrid, type Dungeon } from "shared/dungeon";
 import { RUN_ATTRIBUTES } from "shared/play";
@@ -122,7 +123,7 @@ export class CollisionDebugController implements OnStart {
 		);
 		overlay.Add(() => RunService.UnbindFromRenderStep(COLLISION_DEBUG.renderStep), true);
 		overlay.Add(() => this.clearScene(), true);
-		print(`[collision] ${COLLISION_DEBUG.attribute} on`);
+		logInfo(`[collision] ${COLLISION_DEBUG.attribute} on`);
 	}
 
 	private stop(): void {
@@ -177,7 +178,8 @@ export class CollisionDebugController implements OnStart {
 		const input = this.sim.getFrameInput();
 		const ownInput = localView && p.dead === 0;
 		const magnitude = ownInput ? inputMagnitude(input.moveX, input.moveZ) : 0;
-		if (this.detector.update(state.tick, p.x, p.z, magnitude)) print(stallLine(p.x, p.z, input.moveX, input.moveZ));
+		if (this.detector.update(state.tick, p.x, p.z, magnitude))
+			logInfo(stallLine(p.x, p.z, input.moveX, input.moveZ));
 		const stalled = this.detector.isStalled();
 		if (stalled !== scene.stalled) {
 			scene.stalled = stalled;

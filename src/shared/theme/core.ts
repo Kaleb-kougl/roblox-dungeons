@@ -3,7 +3,7 @@
  * hex colours, sounds, strings and placeholder visuals, with no Roblox types (so it runs
  * headlessly). `ThemePack` (pack.ts) wraps it and converts to Color3 / Vector2.
  *
- * Ported from project-kaleb-vale `src/theme/pack.ts` @ 42897e2 (ThemePack lookups, frameUV,
+ * Ported from the web build's `src/theme/pack.ts` @ 42897e2 (ThemePack lookups, frameUV,
  * frameIndex). Missing IDs never crash: they warn once and fall back exactly as the source does
  * (magenta MISSING_COLOR, the key for strings, silence for sounds; the source's checkerboard
  * texture becomes `assetId: undefined` plus a magenta placeholder visual).

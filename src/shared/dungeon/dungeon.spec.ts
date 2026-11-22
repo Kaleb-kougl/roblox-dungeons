@@ -1,6 +1,6 @@
 /**
  * "Any seed produces a playable floor": the web build's src/dungeon/dungeon.test.ts ported to jest-globals (structural
- * properties over many seeds, for the demo's default params and for the Kaleb-Vale MVP preset), plus the determinism
+ * properties over many seeds, for the demo's default params and for the game's MVP preset), plus the determinism
  * smoke test (seeds 1..50 generated twice, deep-compared). seedFromQuery is not ported (no URL query on Roblox).
  *
  * Seed counts: the MVP preset keeps the web test's 200 seeds; the 42-room demo preset runs DEMO_SEEDS of them, because a
@@ -35,7 +35,7 @@ function firstN<T extends defined>(arr: ReadonlyArray<T>, n: number): T[] {
 
 const PRESETS: ReadonlyArray<[string, Omit<ForgeParams, "seed">, ReadonlyArray<number>]> = [
 	["demo defaults", FORGE_DEMO_DEFAULT_PARAMS, firstN(MVP_SEEDS, DEMO_SEEDS)],
-	["Kaleb-Vale MVP", KALEB_VALE_MVP_PARAMS, MVP_SEEDS],
+	["MVP preset", KALEB_VALE_MVP_PARAMS, MVP_SEEDS],
 ];
 
 /** BFS over walkable tiles (4-neighbour) from a grid cell; returns visited flags. */
@@ -157,7 +157,7 @@ for (const [label, preset, seeds] of PRESETS) {
 	});
 }
 
-describe("Kaleb-Vale MVP options", () => {
+describe("MVP preset options", () => {
 	const mvp = mvpFloors;
 
 	it("caps treasure rooms at 2 and shrines at 1", () => {

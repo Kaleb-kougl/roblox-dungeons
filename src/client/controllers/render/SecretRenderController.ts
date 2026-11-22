@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
+import { logInfo } from "client/log";
 import { DEV_MONO_FONT, createKvBillboardGui, createKvSurfaceGui, currentHudFont, onLocaleChanged } from "client/ui";
 import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG, STUDS_PER_TILE } from "shared/config";
 import { gridToWorld, type ActorSpawn, type Dungeon, type FloorSecret } from "shared/dungeon";
@@ -713,7 +714,7 @@ export class SecretRenderController implements OnStart {
 			this.freeze.requestNudge("stamp");
 			this.combo.requestShout(floorShoutText(pack, shout), pack.color(shout.role), shout.lifeSec, shout.priority);
 		}
-		if (Workspace.GetAttribute(RUN_ATTRIBUTES.debug) === true) print(secretOpenLogLine(ctx.floor, plan, o));
+		if (Workspace.GetAttribute(RUN_ATTRIBUTES.debug) === true) logInfo(secretOpenLogLine(ctx.floor, plan, o));
 	}
 
 	/** The burst's shards while it runs (none under reduced motion: look.bursting is false there). */

@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { MarketplaceService, Players, RunService } from "@rbxts/services";
+import { logInfo, logWarn } from "client/log";
 import { Events } from "client/network";
 import { clientStore } from "client/store";
 import { str } from "client/ui/theme";
@@ -59,7 +60,7 @@ export class CosmeticPassController implements OnStart {
 		clientStore.setCosmeticPassPending(itemId);
 		this.pendingAt = undefined;
 		if (item.fakeRobux !== undefined) {
-			print(`[CosmeticPass] fake buy ${itemId} (KV_FakePasses)`);
+			logInfo(`[CosmeticPass] fake buy ${itemId} (KV_FakePasses)`);
 			this.pendingAt = os.clock();
 			Events.cosmeticPassFakeBuy.fire(itemId);
 			return true;
@@ -68,7 +69,7 @@ export class CosmeticPassController implements OnStart {
 			clientStore.setCosmeticPassPending(undefined);
 			return false;
 		}
-		print(`[CosmeticPass] prompt ${itemId} (pass ${item.passId})`);
+		logInfo(`[CosmeticPass] prompt ${itemId} (pass ${item.passId})`);
 		MarketplaceService.PromptGamePassPurchase(Players.LocalPlayer, item.passId);
 		return true;
 	}
@@ -80,7 +81,7 @@ export class CosmeticPassController implements OnStart {
 		const item = robuxItemOf(st.wallet.status, pending);
 		if (item === undefined || item.passId !== passId) return;
 		if (!purchased) {
-			print(`[CosmeticPass] ${pending}: prompt closed`);
+			logInfo(`[CosmeticPass] ${pending}: prompt closed`);
 			clientStore.setCosmeticPassPending(undefined);
 			return;
 		}
@@ -106,7 +107,7 @@ export class CosmeticPassController implements OnStart {
 		this.pendingAt = undefined;
 		clientStore.cosmeticPassGranted(n.itemId);
 		if (n.bought) this.audio.playUi(SFX.shopBuy);
-		print(`[CosmeticPass] ${n.itemId} granted (${n.bought ? "bought" : "pass already owned"})`);
+		logInfo(`[CosmeticPass] ${n.itemId} granted (${n.bought ? "bought" : "pass already owned"})`);
 		this.toastSerial++;
 		clientStore.pushLobbyNotice(
 			{
@@ -123,7 +124,7 @@ export class CosmeticPassController implements OnStart {
 		const at = this.pendingAt;
 		if (at === undefined || os.clock() - at < COSMETIC_VIEW.robux.pendingTimeoutSec) return;
 		this.pendingAt = undefined;
-		warn("[CosmeticPass] no grant after the purchase; the button works again (the next join grants it)");
+		logWarn("[CosmeticPass] no grant after the purchase; the button works again (the next join grants it)");
 		clientStore.setCosmeticPassPending(undefined);
 	}
 
@@ -149,7 +150,7 @@ export class CosmeticPassController implements OnStart {
 				}
 				this.priced.delete(id);
 				clientStore.setCosmeticPassPrice(id, PRICE_FAILED);
-				warn(`[CosmeticPass] no price for ${id} (pass ${passId}): ${ok ? "no PriceInRobux" : info}`);
+				logWarn(`[CosmeticPass] no price for ${id} (pass ${passId}): ${ok ? "no PriceInRobux" : info}`);
 			});
 		}
 	}

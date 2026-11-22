@@ -3,7 +3,7 @@
  * MIT License. Copyright (c) 2026 Majid Manzarpour.
  * Full license text: THIRD_PARTY_NOTICES.md at the repository root.
  *
- * Roblox port of project-kaleb-vale src/dungeon/forge/delaunay.ts @ 42897e2. Same arithmetic in the same order
+ * Roblox port of the web build's src/dungeon/forge/delaunay.ts @ 42897e2. Same arithmetic in the same order
  * (the circumcircle test decides which edges exist, so it must match bit for bit).
  */
 import { jsRem } from "shared/jsmath";

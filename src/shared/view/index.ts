@@ -44,6 +44,8 @@
  *                 groups, the shared Highlight's look, the KV_EnemyOutline switch (ACTOR_OUTLINE) and when a sprite's
  *                 baked rim draws (spriteOutlineVisible); the player outline (docs/PLAYER_OUTLINE.md): who gets it
  *                 (playerOutlined: the watched player, alive, setting and KV_PlayerOutline on) and its look (PLAYER_OUTLINE)
+ *   actorDraw.ts  the actor renderer's placeholder rules (docs/ACTOR_RENDER.md R5): the scale a placeholder model is
+ *                 built at (placeholderDrawScale: the boss minimum width, Hulking) and the capsule's roll tumble
  *   roomEdges.ts  room edges (docs/ROOM_EDGES.md): the dashed corridor-to-room edge runs of a floor (tunables:
  *                 ROOM_EDGE_VIEW in roomEdgesConfig.ts); roomEdgeState.ts: each room's safe / waiting / live state
  *                 and fightOn (the LIVE rule alone: a fight is on; docs/COMBO.md CB1)
@@ -135,6 +137,7 @@ export * from "./breakables";
 export * from "./breakableLootConfig";
 export * from "./breakableLoot";
 export * from "./outline";
+export * from "./actorDraw";
 export * from "./roomEdgesConfig";
 export * from "./roomEdges";
 export * from "./roomEdgeState";

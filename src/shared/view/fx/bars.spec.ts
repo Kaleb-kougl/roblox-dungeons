@@ -1,4 +1,4 @@
-// Health bar layout and state, and the damage number pool (port of project-kaleb-vale src/fx/bars/barLayout.test.ts,
+// Health bar layout and state, and the damage number pool (port of the web build's src/fx/bars/barLayout.test.ts,
 // barState.test.ts and src/fx/numbers/numberPool.test.ts @ 42897e2), plus the Roblox placeholder screen size.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { SOURCE_LOCALE, setNumberLocale } from "shared/l10n";

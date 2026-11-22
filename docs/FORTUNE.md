@@ -212,13 +212,14 @@ It never attacks and does no contact damage.
   and drops rng identical to a no-golden twin.
 - [x] **GE4. Goldling tuning census** (sword / bow, solo / party, floors 2 / 6 / 12; target catch 50-65 % solo).
 - [x] **FO6. Theme.** **FO7. Pacts view.** **FO8. Goldling view.** **FO9. Audio cue mapper.**
-- [ ] **FO10. [owner] Art and audio** (gold recolour via a pipeline `recolor` option, altar art, nine sounds; eight as
+- [x] **FO10. [owner] Art and audio** (gold recolour via a pipeline `recolor` option, altar art, nine sounds; eight as
   built, no `amb.golden.loop`). The recolour is built (2026-11-04, docs/ART.md "Recolour"): `enemy.golden` = the
   swarmer's skeleton on a gold luminance ramp, bodyTiles 0.95, `golden-move.png` / `golden-death.png` + their two
   outline sheets, uploaded 2026-11-04 5:03 PM (ids in `assetIds.ts`, so the bundled vale pack draws it). The altar
   and the coin burst are built (2026-11-06, presentation only; "Altar and coin art" below): original pixel art,
   `pact-altar.png` / `golden-coin.png`, uploaded 2026-11-06 6:04 PM (ids in `assetIds.ts`, so the bundled vale pack
   draws both); the sounds pending.
+  *Done 2026-11-21 (docs/OPEN_TASKS_TRIAGE.md): the eight sounds as built have layouts and ids in `packs/vale/assetIds.ts` (`sfx.golden.*`, `sfx.horde.*`, `sfx.pact.take`).*
 - [ ] **FO11. Telemetry (optional).** Pending.
 - [x] **FO12. Docs** (this doc as built, CLAUDE.md log, sim README, CLIENT.md, DAILY.md).
 - [ ] **FO13. [owner] Playtest.** Pending.

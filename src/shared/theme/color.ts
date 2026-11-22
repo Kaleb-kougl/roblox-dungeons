@@ -2,7 +2,7 @@
  * Pure color helpers (no Roblox types): hex parsing, WCAG 2.x contrast and (Roblox port, docs/DECOR.md) the CIE76
  * colour difference.
  *
- * Ported from project-kaleb-vale `src/theme/color.ts` @ 42897e2. Lua patterns replace the RegExp;
+ * Ported from the web build's `src/theme/color.ts` @ 42897e2. Lua patterns replace the RegExp;
  * parse failures return `undefined` (the source's `null`); a malformed contrast input gives NaN.
  *
  * @module

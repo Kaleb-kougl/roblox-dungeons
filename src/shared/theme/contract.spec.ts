@@ -1,5 +1,5 @@
 // The sprite contract must port UNCHANGED (art made for the web build fits here). These values are
-// copied from project-kaleb-vale src/theme/contract.ts @ 42897e2; a change here is a contract break.
+// copied from the web build's src/theme/contract.ts @ 42897e2; a change here is a contract break.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {
 	AUDIO_EVENTS,

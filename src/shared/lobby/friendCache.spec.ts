@@ -1,7 +1,7 @@
 // FriendCache: misses answer false and fetch in the background, landed answers fire onChanged, failures retry,
 // refreshes, the concurrency cap and forget.
 import { describe, expect, it } from "@rbxts/jest-globals";
-import { FRIEND_CACHE, FriendCache, type FriendCacheConfig } from "shared/lobby";
+import { FRIEND_CACHE, FriendCache, friendsWithConfirmed, type FriendCacheConfig } from "shared/lobby";
 
 interface Harness {
 	cache: FriendCache;
@@ -143,5 +143,41 @@ describe("FriendCache", () => {
 		const cache = new FriendCache({ fetch: () => true, spawn: (job) => job(), clock: () => 0 });
 		expect(cache.areFriends(1, 2)).toBe(false);
 		expect(cache.areFriends(1, 2)).toBe(true);
+	});
+});
+
+// docs/SERVER_CENSUS.md SE3: LobbyService.areFriends, moved here.
+describe("friendsWithConfirmed", () => {
+	const never = () => false;
+	const always = () => true;
+
+	it("without confirmed friendships it is the cache's answer", () => {
+		expect(friendsWithConfirmed(1, 2, undefined, never)).toBe(false);
+		expect(friendsWithConfirmed(1, 2, undefined, always)).toBe(true);
+	});
+
+	it("a confirmed pair is friends either way round, even on a cache miss", () => {
+		const confirmed = { userId: 1, friends: [2, 3] };
+		expect(friendsWithConfirmed(1, 2, confirmed, never)).toBe(true);
+		expect(friendsWithConfirmed(3, 1, confirmed, never)).toBe(true);
+	});
+
+	it("confirms nothing beyond the listed pairs", () => {
+		const confirmed = { userId: 1, friends: [2] };
+		expect(friendsWithConfirmed(1, 4, confirmed, never)).toBe(false);
+		// 2 and 3 are not friends just because both were asked about with 1.
+		expect(friendsWithConfirmed(2, 3, { userId: 1, friends: [2, 3] }, never)).toBe(false);
+		expect(friendsWithConfirmed(1, 1, { userId: 1, friends: [] }, never)).toBe(false);
+	});
+
+	it("falls back to the cache for every other pair, with the arguments in order", () => {
+		const seen: string[] = [];
+		const cached = (a: number, b: number) => {
+			seen.push(`${a}:${b}`);
+			return a === 5;
+		};
+		expect(friendsWithConfirmed(5, 6, { userId: 1, friends: [2] }, cached)).toBe(true);
+		expect(friendsWithConfirmed(6, 5, { userId: 1, friends: [2] }, cached)).toBe(false);
+		expect(seen).toEqual(["5:6", "6:5"]);
 	});
 });

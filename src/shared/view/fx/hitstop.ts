@@ -1,5 +1,5 @@
 /**
- * Hitstop / freeze frame + slow motion (port of project-kaleb-vale src/fx/hitstop.ts @ 42897e2, the HitstopClock and
+ * Hitstop / freeze frame + slow motion (port of the web build's src/fx/hitstop.ts @ 42897e2, the HitstopClock and
  * its rules; the web build's module singleton and wrappers are not ported: the client's SimController owns one clock).
  *
  * Effects ask for a freeze (request) or a slow-motion ramp (requestSlowMo); the live loop (shared/play LiveRun, as the

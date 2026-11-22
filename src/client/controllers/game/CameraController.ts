@@ -20,7 +20,6 @@ import {
 } from "shared/view";
 import { motionScale } from "shared/view/fx";
 import { FreezeFrameController } from "../fx/FreezeFrameController";
-import { isSpikeEnabled } from "../spikes";
 import { SimController } from "./SimController";
 
 const RENDER_STEP = "KV_GameCamera";
@@ -31,7 +30,7 @@ const RENDER_STEP = "KV_GameCamera";
  * short side (docs/PORTRAIT.md: shared/view cameraFraming, read from the viewport every frame, so a phone turning
  * reframes at once; upright on touch the player is lifted above the thumbs' band),
  * following the player's INTERPOLATED sim position with exponential damping and snapping to the render-texel grid
- * (web IsoCamera). Snaps straight to the player at every run start. Stands down while spike B runs (KV_SpikeCamera).
+ * (web IsoCamera). Snaps straight to the player at every run start.
  * The freeze frame's whole-render-pixel nudge (boss phase / death, player hurt, heavy hits; off when screenShakeOn is
  * false: the Screen shake setting or reduced motion) is added after the snap.
  *
@@ -63,7 +62,6 @@ export class CameraController implements OnStart {
 			RENDER_STEP,
 			Enum.RenderPriority.Camera.Value + RENDER_ORDER.cameraAfterCamera,
 			(rawDt) => {
-				if (isSpikeEnabled("camera")) return;
 				const camera = Workspace.CurrentCamera;
 				const state = this.sim.getState();
 				if (camera === undefined || state === undefined) return;

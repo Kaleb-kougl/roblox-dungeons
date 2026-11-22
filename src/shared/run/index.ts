@@ -30,6 +30,7 @@ export * from "./worlds";
 export * from "./score";
 export * from "./segments";
 export * from "./runSessions";
+export * from "./serviceRules";
 export * from "./tutorialLayout";
 export * from "./tutorial";
 export * from "./dev";

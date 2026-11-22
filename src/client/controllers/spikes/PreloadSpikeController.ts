@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { ContentProvider, Players, RunService, Workspace } from "@rbxts/services";
+import { logInfo, logWarn } from "client/log";
 import { createKvScreenGui } from "client/ui";
 import { PRELOAD_SPIKE, SPIKE_ATTRIBUTES } from "shared/config";
 import type { ContentRef, PreloadMedia } from "shared/theme";
@@ -84,11 +85,11 @@ export class PreloadSpikeController implements OnStart {
 		const sounds = this.soundRefs();
 		const instancesFirst = Workspace.GetAttribute(PRELOAD_SPIKE.instancesFirstAttribute) === true;
 		const order: ReadonlyArray<EntryKind> = instancesFirst ? ["instances", "strings"] : ["strings", "instances"];
-		print(
+		logInfo(
 			`${LOG} ${images.size()} ${PRELOAD_SPIKE.imageAssetId} sheets, ${sounds.size()} sfx; order ${order[0]} ` +
 				`then ${order[1]} (${PRELOAD_SPIKE.instancesFirstAttribute} = ${tostring(instancesFirst)})`,
 		);
-		print(
+		logInfo(
 			`${LOG} CAVEAT: the engine caches each id, so the second batch of each pair is usually a cache hit of the ` +
 				`first; flip ${PRELOAD_SPIKE.instancesFirstAttribute} and play again to compare. Studio's local cache ` +
 				`hides download time: take the real numbers on a fresh device.`,
@@ -97,7 +98,7 @@ export class PreloadSpikeController implements OnStart {
 		for (const kind of order) this.batch(`sounds/${kind}`, sounds, kind, "sound");
 		this.preload.releaseSpikeHold();
 		if (images.size() > 0) this.probe(session, images[0]);
-		else print(`${LOG} no ${PRELOAD_SPIKE.imageAssetId} sheet uploaded: no first-draw probe`);
+		else logInfo(`${LOG} no ${PRELOAD_SPIKE.imageAssetId} sheet uploaded: no first-draw probe`);
 	}
 
 	/** Up to PRELOAD_SPIKE.soundCount sound content ids of PRELOAD_SPIKE.soundPrefix ids, in logical-id order. */
@@ -117,20 +118,20 @@ export class PreloadSpikeController implements OnStart {
 
 	private batch(label: string, refs: ReadonlyArray<ContentRef>, kind: EntryKind, media: PreloadMedia): void {
 		if (refs.size() === 0) {
-			print(`${LOG} ${label}: nothing uploaded (${media})`);
+			logInfo(`${LOG} ${label}: nothing uploaded (${media})`);
 			return;
 		}
 		const entries = refs.map((ref) => entryFor(ref, kind));
 		const t0 = os.clock();
 		const [ok, err] = pcall(() =>
 			ContentProvider.PreloadAsync(entries, (contentId, status) =>
-				print(`${LOG} ${label} ${contentId} ${status.Name} +${ms(os.clock() - t0)} ms`),
+				logInfo(`${LOG} ${label} ${contentId} ${status.Name} +${ms(os.clock() - t0)} ms`),
 			),
 		);
 		const wall = os.clock() - t0;
 		for (const e of entries) if (typeIs(e, "Instance")) e.Destroy();
-		if (!ok) warn(`${LOG} ${label}: PreloadAsync raised ${tostring(err)}`);
-		print(`${LOG} ${label}: ${refs.size()} entries in ${ms(wall)} ms`);
+		if (!ok) logWarn(`${LOG} ${label}: PreloadAsync raised ${tostring(err)}`);
+		logInfo(`${LOG} ${label}: ${refs.size()} entries in ${ms(wall)} ms`);
 	}
 
 	/** The first-draw probe: baseline frame times, then the sheet on screen for holdFrames frames. */
@@ -161,7 +162,7 @@ export class PreloadSpikeController implements OnStart {
 							sum += d;
 							worst = math.max(worst, d);
 						}
-						print(
+						logInfo(
 							`${LOG} baseline ${baseline.size()} frames: mean ${ms(sum / baseline.size())} ms, ` +
 								`worst ${ms(worst)} ms; showing ${sheet.contentId}`,
 						);
@@ -171,10 +172,10 @@ export class PreloadSpikeController implements OnStart {
 				}
 				if (held >= PRELOAD_SPIKE.holdFrames) return;
 				held += 1;
-				print(`${LOG} probe frame ${held}: ${ms(dt)} ms`);
+				logInfo(`${LOG} probe frame ${held}: ${ms(dt)} ms`);
 				if (held === PRELOAD_SPIKE.holdFrames) {
 					label.Destroy();
-					print(`${LOG} done (set ${SPIKE_ATTRIBUTES.preload} false to clean up)`);
+					logInfo(`${LOG} done (set ${SPIKE_ATTRIBUTES.preload} false to clean up)`);
 				}
 			}),
 		);

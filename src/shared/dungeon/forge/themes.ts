@@ -3,7 +3,7 @@
  * MIT License. Copyright (c) 2026 Majid Manzarpour.
  * Full license text: THIRD_PARTY_NOTICES.md at the repository root.
  *
- * Roblox port of project-kaleb-vale src/dungeon/forge/themes.ts @ 42897e2 (data unchanged).
+ * Roblox port of the web build's src/dungeon/forge/themes.ts @ 42897e2 (data unchanged).
  */
 import { imul, u32 } from "shared/jsmath";
 import type { RoomType, ThemeKey } from "./types";
@@ -12,7 +12,7 @@ import type { RoomType, ThemeKey } from "./types";
  * Theme specs, pure data. The generator reads only the "generation flags" (pools, lakes,
  * graveyards, icicles, roots, bones) and the name pools: they change the layout and the RNG
  * stream, so they are part of seed parity. The colors and lighting are the demo's look,
- * kept as reference data; Kaleb-Vale's art comes from theme packs (shared/theme), not from here.
+ * kept as reference data; the game's art comes from theme packs (shared/theme), not from here.
  */
 
 /**

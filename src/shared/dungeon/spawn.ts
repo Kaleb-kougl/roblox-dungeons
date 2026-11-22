@@ -1,5 +1,5 @@
 /**
- * Player spawn points (Roblox port of project-kaleb-vale src/boss/spawn.ts @ 42897e2). The web build's
+ * Player spawn points (Roblox port of the web build's src/boss/spawn.ts @ 42897e2). The web build's
  * `?spawn=boss` URL switch becomes a plain boolean here (a debug attribute decides it on Roblox). Pure functions of
  * the dungeon: the spawn goes into the recording (seed + spawn + inputs), so replays rebuild the same run.
  *
