@@ -16,6 +16,8 @@ import {
 	ReplayBudget,
 	SlidingWindowLimiter,
 	WorkQueue,
+	gateVerdict,
+	studioRunLimits,
 	truncateReason,
 	validateRun,
 	type RunLimits,
@@ -24,7 +26,6 @@ import {
 	type RunSummary,
 	type RunTelemetryRecord,
 	type RunValidation,
-	type RunWorld,
 	type SegmentRejectCode,
 } from "shared/run";
 import type { RunVerdict } from "shared/network";
@@ -46,8 +47,6 @@ export const ALLOW_DEBUG_RUNS_ATTRIBUTE = "KV_AllowDebugRuns";
  * actors exist (task 7). Ignored on live servers, which always use LIVE_RUN_WORLD (shared/config PLAY_MODE).
  */
 export const RUN_WORLD_ATTRIBUTE = "KV_RunValidationWorld";
-
-const STUDIO_WORLDS: ReadonlyArray<RunWorld> = ["game", "endless", "dungeonNoEncounter", "greybox"];
 
 /** One run the server accepted. */
 export interface AcceptedRun {
@@ -220,15 +219,10 @@ export class RunValidationService implements OnStart {
 	/** The limits in force: LIVE_RUN_LIMITS; in Studio, the debug / world attributes may relax them. */
 	limits(): RunLimits {
 		if (!RunService.IsStudio()) return LIVE_RUN_LIMITS;
-		let limits: RunLimits = LIVE_RUN_LIMITS;
-		if (Workspace.GetAttribute(ALLOW_DEBUG_RUNS_ATTRIBUTE) === true) {
-			limits = { ...limits, allowDebugInput: true, allowBossDoorSpawn: true };
-		}
-		const world = Workspace.GetAttribute(RUN_WORLD_ATTRIBUTE);
-		if (typeIs(world, "string") && STUDIO_WORLDS.includes(world as RunWorld)) {
-			limits = { ...limits, world: world as RunWorld };
-		}
-		return limits;
+		return studioRunLimits(
+			Workspace.GetAttribute(ALLOW_DEBUG_RUNS_ATTRIBUTE),
+			Workspace.GetAttribute(RUN_WORLD_ATTRIBUTE),
+		);
 	}
 
 	/**
@@ -239,14 +233,14 @@ export class RunValidationService implements OnStart {
 		const claimedHash = typeIs(submission.claimedHash, "string") ? submission.claimedHash.sub(1, 8) : "";
 		// Busy first, so a submission that cannot run does not use up the rate budget.
 		if (this.pendingCount(player) >= RUN_PENDING_PER_PLAYER) {
-			return this.gateVerdict(claimedHash, "busy", "previous runs are still being checked");
+			return gateVerdict(claimedHash, "busy", "previous runs are still being checked");
 		}
 		if (!this.limiter.tryAcquire(player, this.now())) {
 			log.warn(
 				"RATE_LIMITED",
 				`${player.UserId}: submission over ${RUN_SUBMIT_RATE.count} per ${RUN_SUBMIT_RATE.windowSeconds} s dropped`,
 			);
-			return this.gateVerdict(claimedHash, "rate_limited", "too many submissions; try again later");
+			return gateVerdict(claimedHash, "rate_limited", "too many submissions; try again later");
 		}
 		this.pending.set(player, this.pendingCount(player) + 1);
 		const limits = this.limits();
@@ -345,17 +339,6 @@ export class RunValidationService implements OnStart {
 		log.warn("REJECTED", `${player.UserId} ${code}: ${reason} (${timing})`);
 		for (const listener of this.rejectedListeners) task.spawn(listener, player, code, reason);
 		return { ok: false, claimedHash, code, reason, serverHash: result.serverHash, summary: result.summary };
-	}
-
-	private gateVerdict(claimedHash: string, code: "rate_limited" | "busy", reason: string): RunVerdict {
-		return {
-			ok: false,
-			claimedHash,
-			code,
-			reason,
-			serverHash: "",
-			summary: { ticks: 0, kills: 0, bossDefeated: false, died: false },
-		};
 	}
 
 	private reply(player: Player, verdict: RunVerdict): void {
