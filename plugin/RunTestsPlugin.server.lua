@@ -1,5 +1,5 @@
 --[[
-	Studio test runner for Kaleb-Vale (Roblox port).
+	Studio test runner for Roblox Dungeons.
 
 	Runs every *.spec module under ReplicatedStorage.TS (src/shared) with @rbxts/jest, inside
 	Studio. Use it for specs that need real engine behavior; pure specs run headlessly with
@@ -9,7 +9,7 @@
 	needs the PluginOrOpenCloud capability (a normal Script or LocalScript cannot run it).
 
 	Install: npm run test:plugin
-	  (rojo build test-runner.project.json -o "$HOME/Documents/Roblox/Plugins/KalebValeTestRunner.rbxm")
+	  (rojo build test-runner.project.json -o "$HOME/Documents/Roblox/Plugins/RobloxDungeonsTestRunner.rbxm")
 	Then restart Studio, sync the place with `rojo serve`, and click "Run Tests".
 	Under roblox-cli (`--load.model`, no `plugin` global) it starts by itself and prints one
 	`[Jest] KV_JEST_RESULT=PASS|FAIL` line.
@@ -29,7 +29,7 @@ local isHeadless = plugin == nil
 
 local runButton = nil
 if not isHeadless then
-	local toolbar = plugin:CreateToolbar("Kaleb-Vale Tests")
+	local toolbar = plugin:CreateToolbar("Roblox Dungeons Tests")
 	runButton = toolbar:CreateButton("Run Tests", "Run the @rbxts/jest suite (src/shared specs)", "rbxassetid://4458901886")
 end
 
@@ -110,5 +110,5 @@ if isHeadless then
 	runTests()
 else
 	runButton.Click:Connect(runTests)
-	print("[Jest Plugin] Kaleb-Vale test runner loaded. Click 'Run Tests' in the toolbar.")
+	print("[Jest Plugin] Roblox Dungeons test runner loaded. Click 'Run Tests' in the toolbar.")
 end

@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { Players, RunService, TextChatService, UserInputService, Workspace } from "@rbxts/services";
+import { logInfo } from "client/log";
 import {
 	clientStore,
 	selectAnyPanelOpen,
@@ -112,7 +113,7 @@ export class MenuController implements OnStart {
 		this.sim.onRunExited((how) => {
 			this.closeOverlays();
 			clientStore.menuNav({ kind: "reset", path: afterRunPath(this.inLobby()) });
-			print(
+			logInfo(
 				`[Menu] run ${how === "left" ? "left" : "over"}: back to the ${this.inLobby() ? "lobby" : "main menu"}`,
 			);
 		});
@@ -150,7 +151,7 @@ export class MenuController implements OnStart {
 		clientStore.setAwaitingFirstRun(false);
 		if (choice === "tutorial") return; // straight into the tutorial: no main menu first
 		if (Workspace.GetAttribute(RUN_ATTRIBUTES.skipMenu) === true) {
-			print(`[Menu] ${RUN_ATTRIBUTES.skipMenu}: no main menu, starting a solo run`);
+			logInfo(`[Menu] ${RUN_ATTRIBUTES.skipMenu}: no main menu, starting a solo run`);
 			const daily = Workspace.GetAttribute(RUN_ATTRIBUTES.daily) === true;
 			this.sim.startSolo(undefined, daily ? DAILY_WORLD_KIND : undefined);
 		} else {
@@ -251,7 +252,7 @@ export class MenuController implements OnStart {
 		this.audio.playUi(SFX.uiConfirm);
 		this.settings.setSelectedCharacter(pick);
 		clientStore.setCharacterFocus(pick);
-		print(`[Menu] character ${pick} (${cs.origin})`);
+		logInfo(`[Menu] character ${pick} (${cs.origin})`);
 		// The lobby room opening again must not send this pick with an un-ready after the Ready (syncLobbyPick).
 		const mine = st.lobby.mine;
 		if (plan.start === "ready" && mine !== undefined) this.pickSent = `${mine.lobbyId}|${pick}`;
@@ -399,7 +400,7 @@ export class MenuController implements OnStart {
 
 	private soloOrigin(): CharacterScreenOrigin {
 		if (!this.dailyAttribute()) return "solo";
-		print(`[Menu] ${RUN_ATTRIBUTES.daily}: Play solo starts the Daily`);
+		logInfo(`[Menu] ${RUN_ATTRIBUTES.daily}: Play solo starts the Daily`);
 		return "daily";
 	}
 
@@ -450,7 +451,7 @@ export class MenuController implements OnStart {
 		const nav = clientStore.getState().menu.nav;
 		const path = lobbyChangePath(nav.screen, id, prev, nav.stack);
 		if (path === undefined) return;
-		if (id !== undefined) print(`[Menu] in lobby ${id}: its room`);
+		if (id !== undefined) logInfo(`[Menu] in lobby ${id}: its room`);
 		clientStore.menuNav({ kind: "reset", path });
 	}
 

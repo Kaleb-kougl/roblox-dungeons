@@ -1,11 +1,11 @@
 /**
- * Seed parity beyond the three dungeon fixtures: every Kaleb-Vale option OFF (the Dungeon Forge demo path, 42 rooms,
+ * Seed parity beyond the three dungeon fixtures: every game option OFF (the Dungeon Forge demo path, 42 rooms,
  * the leaf guard, the 1- / 2-wide corridor draws), every theme (ancient and grim are in no fixture: graveyards, bones,
  * candles, sarcophagi), decor 0 / 1, and more MVP seeds. Stands in for the web build's forge.parity.test.ts, which
  * compares against a verbatim copy of the original generator that is not ported.
  *
  * The REFERENCE digests were computed by running the web build's own src/dungeon/forge, src/dungeon/collision.ts,
- * src/bullets/encounter.ts + enemyRooms.ts and src/boss/spawn.ts (project-kaleb-vale @ 42897e2, transpiled as-is
+ * src/bullets/encounter.ts + enemyRooms.ts and src/boss/spawn.ts (the web build @ 42897e2, transpiled as-is
  * under Node 25) through the same digest as below: 32-bit FNV-1a over a word stream, integers as (1, value >>> 0),
  * other numbers as (2, float64 high word, low word), booleans (4, 0 / 1), strings (3, UTF-8 length, bytes), absent
  * optional fields 0. One digest per section so a failure points at the stage.

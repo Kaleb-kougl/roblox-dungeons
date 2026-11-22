@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { ContextActionService, UserInputService, Workspace } from "@rbxts/services";
+import { logInfo } from "client/log";
 import { Events } from "client/network";
 import {
 	clientStore,
@@ -528,7 +529,9 @@ export class RecapController implements OnStart {
 		if (t === undefined || st.game.run.run === t.run || st.game.snapshot.outcome !== "playing") return;
 		if (this.sim.isInputCovered() || this.sim.isHeldByLoader()) return;
 		this.retryTiming = undefined;
-		print(`[Recap] retry: press -> control ${string.format("%.2f", os.clock() - t.at)} s (run ${st.game.run.run})`);
+		logInfo(
+			`[Recap] retry: press -> control ${string.format("%.2f", os.clock() - t.at)} s (run ${st.game.run.run})`,
+		);
 	}
 
 	/** Enter / Space on a keyboard press the focused Again while the panel is up and nothing is over it (RR7). */

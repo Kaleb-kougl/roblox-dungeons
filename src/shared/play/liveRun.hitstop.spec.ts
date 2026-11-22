@@ -1,6 +1,6 @@
 // Freeze frames and slow motion never change what the sim does, only when ticks run (wall-time pacing).
 //
-// Port of project-kaleb-vale src/fx/freeze/freeze.determinism.test.ts @ 42897e2, driven through the client's own loop
+// Port of the web build's src/fx/freeze/freeze.determinism.test.ts @ 42897e2, driven through the client's own loop
 // (LiveRun) the way SimController + FxTrackerController + FreezeFrameController drive it: a scripted boss fight on the
 // real seed-1337 floor (buildRunConfig, boss door start): walk in, swap to the bow, circle the boss shooting it, press
 // J (DEBUG_BOSS, an input bit) on a cadence through phases 2 and 3 to its death. Input is sampled ONCE per frame from

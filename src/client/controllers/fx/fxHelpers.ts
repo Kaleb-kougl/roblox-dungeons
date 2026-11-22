@@ -3,7 +3,7 @@ import { createKvSurfaceGui, currentHudFont } from "client/ui";
 import { CAMERA_PITCH_DEG, STUDS_PER_TILE } from "shared/config";
 import { archetypeAt } from "shared/sim";
 import type { ThemePack } from "shared/theme";
-import { ACTOR_VIEW, degToRad, floorStudsY, studsX, studsZ } from "shared/view";
+import { ACTOR_VIEW, degToRad, floorStudsY, placeholderDrawScale, studsX, studsZ } from "shared/view";
 import { ActorSizeCache, FX_SPRITE_VIEW, FX_VIEW, placeholderScreenSize, type DrawnSize } from "shared/view/fx";
 import { COMBO_SHOUT, COMBO_SHOUT_DRAW, shoutCanvasSize } from "shared/view/hud";
 import { floorCanvasPartSize } from "../render/floorCanvas";
@@ -13,17 +13,15 @@ const PITCH = degToRad(CAMERA_PITCH_DEG);
 
 /**
  * Per archetype kind: the drawn size of its placeholder model in render px (width across the view, top edge above the
- * feet), scaled exactly as ActorRenderController builds it (spriteScale, bosses at least ACTOR_VIEW.bossMinDrawPx
- * wide). Health bars sit on that top edge, damage numbers above it.
+ * feet), scaled exactly as ActorRenderController builds it (shared/view placeholderDrawScale: spriteScale, bosses at
+ * least ACTOR_VIEW.bossMinDrawPx wide). Health bars sit on that top edge, damage numbers above it.
  */
 export function placeholderSizeCache(pack: ThemePack): ActorSizeCache {
 	return new ActorSizeCache((kind) => {
 		const data = archetypeAt(kind).data;
 		const visual = pack.placeholder(data.spriteId);
 		const boss = data.boss === true;
-		let scale = data.spriteScale ?? 1;
-		if (boss && visual.cellPx.w * scale < ACTOR_VIEW.bossMinDrawPx)
-			scale = ACTOR_VIEW.bossMinDrawPx / visual.cellPx.w;
+		const scale = placeholderDrawScale(data.spriteScale, boss, visual.cellPx.w);
 		const out: DrawnSize = { w: 0, h: 0 };
 		placeholderScreenSize(visual.size, scale, PITCH, FX_VIEW.pxStuds, out);
 		return { w: out.w, h: out.h, boss };

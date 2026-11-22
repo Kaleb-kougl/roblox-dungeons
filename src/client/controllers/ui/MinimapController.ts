@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { AssetService, RunService } from "@rbxts/services";
+import { logInfo, logWarn } from "client/log";
 import {
 	clientStore,
 	selectDisplay,
@@ -608,7 +609,7 @@ export class MinimapController implements OnStart {
 			ctx.endlessFloor !== undefined && ctx.floor > 0 ? ctx.endlessFloor(ctx.floor).layout.stairwell : undefined;
 		const tiles = minimapTiles(d, stair);
 		if (tiles.W > MINIMAP_VIEW.maxImageSide || tiles.H > MINIMAP_VIEW.maxImageSide) {
-			warn(
+			logWarn(
 				`[Minimap] ${tiles.W} x ${tiles.H} floor is over the ${MINIMAP_VIEW.maxImageSide} px image limit; no map`,
 			);
 			return;
@@ -653,7 +654,7 @@ export class MinimapController implements OnStart {
 		if (!ok || made === undefined) {
 			if (!this.warnedCreate) {
 				this.warnedCreate = true;
-				warn(`[Minimap] CreateEditableImage failed (${tostring(made)}); the minimap is off`);
+				logWarn(`[Minimap] CreateEditableImage failed (${tostring(made)}); the minimap is off`);
 			}
 			return;
 		}
@@ -693,7 +694,7 @@ export class MinimapController implements OnStart {
 		this.upload(floor, os.clock(), true);
 		if (this.floor !== floor) return; // the first upload failed
 		this.setMap(true, false);
-		print(`[Minimap] ${tiles.W} x ${tiles.H} map, ${tiles.roomCells.size()} rooms (${d.name})`);
+		logInfo(`[Minimap] ${tiles.W} x ${tiles.H} map, ${tiles.roomCells.size()} rooms (${d.name})`);
 	}
 
 	// --- full map toggle ----------------------------------------------------------------------------
@@ -829,7 +830,7 @@ export class MinimapController implements OnStart {
 		if (ok) return;
 		if (!this.warnedWrite) {
 			this.warnedWrite = true;
-			warn(`[Minimap] WritePixelsBuffer failed (${tostring(err)}); the minimap is off`);
+			logWarn(`[Minimap] WritePixelsBuffer failed (${tostring(err)}); the minimap is off`);
 		}
 		this.clear();
 		this.setMap(false, false);

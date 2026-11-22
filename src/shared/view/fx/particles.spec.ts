@@ -1,4 +1,4 @@
-// Death particles and the shared juice rules (port of project-kaleb-vale src/fx/particles/particles.test.ts and the
+// Death particles and the shared juice rules (port of the web build's src/fx/particles/particles.test.ts and the
 // rule half of src/fx/settings.test.ts @ 42897e2).
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { defaultJuiceSettings, type JuiceSettings, type ParticlesLevel } from "shared/settings";

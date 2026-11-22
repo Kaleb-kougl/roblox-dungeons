@@ -1,5 +1,6 @@
 import { Controller, OnStart } from "@flamework/core";
 import { RunService, Workspace } from "@rbxts/services";
+import { logInfo } from "client/log";
 import { Events } from "client/network";
 import { clientStore, selectAnyPanelOpen, selectMapView, type ClientState } from "client/store";
 import {
@@ -141,7 +142,7 @@ export class TutorialController implements OnStart {
 		this.forced = tutorialAttribute(Workspace.GetAttribute(RUN_ATTRIBUTES.tutorial));
 		Events.onboardingStatus.connect((status) => this.gate?.receive(status));
 		if (this.forced === undefined) Events.requestOnboarding.fire();
-		else print(`[Tutorial] ${RUN_ATTRIBUTES.tutorial} = ${tostring(this.forced)}: the server is not asked`);
+		else logInfo(`[Tutorial] ${RUN_ATTRIBUTES.tutorial} = ${tostring(this.forced)}: the server is not asked`);
 		this.preload.whenReleased(() => this.dispatch(this.join.release(), true));
 		this.sim.onRunStarted((ctx) => this.onRunStarted(ctx));
 		this.sim.onRunExited(() => this.onRunExited());
@@ -204,7 +205,7 @@ export class TutorialController implements OnStart {
 		this.flushOpenAttempt();
 		const stepId = finishStepId(director?.getView());
 		Events.tutorialFinished.fire({ outcome: "skipped", stepId });
-		print(`[Tutorial] skipped at ${stepId}`);
+		logInfo(`[Tutorial] skipped at ${stepId}`);
 		this.director = undefined;
 		clientStore.endTutorial();
 		this.sim.leaveRun();
@@ -243,7 +244,7 @@ export class TutorialController implements OnStart {
 		const device = tutorialDeviceFor(clientStore.getState().game.inputDevice);
 		Events.tutorialStarted.fire({ entry, device });
 		clientStore.beginTutorial(tutorialHudFrom(director.getView()));
-		print(`[Tutorial] run ${ctx.counter}: practice descent started (${entry}, ${device})`);
+		logInfo(`[Tutorial] run ${ctx.counter}: practice descent started (${entry}, ${device})`);
 	}
 
 	/** The run was left for the menu (Skip tutorial, or any Leave run / exit): no tutorial on screen any more. */
@@ -272,10 +273,12 @@ export class TutorialController implements OnStart {
 			intent: lobby.joinIntent,
 		});
 		if (choice !== latched) {
-			print(`[Tutorial] first run: ${latched} -> ${choice} (placed in a lobby, join intent ${lobby.joinIntent})`);
+			logInfo(
+				`[Tutorial] first run: ${latched} -> ${choice} (placed in a lobby, join intent ${lobby.joinIntent})`,
+			);
 		}
 		this.decided = choice;
-		if (onRelease) print(`[Tutorial] first run: ${choice} (dispatched as the loading screen released)`);
+		if (onRelease) logInfo(`[Tutorial] first run: ${choice} (dispatched as the loading screen released)`);
 		if (!this.gateReported) {
 			this.gateReported = true;
 			const reason = firstJoinGateReason(choice, {
@@ -285,7 +288,7 @@ export class TutorialController implements OnStart {
 				status: this.gateStatus,
 			});
 			Events.onboardingReport.fire({ kind: "gate", reason });
-			print(`[Tutorial] first run gate: ${reason}`);
+			logInfo(`[Tutorial] first run gate: ${reason}`);
 		}
 		if (choice === "tutorial") this.startTutorial("firstJoin");
 		for (const listener of this.decidedListeners) listener(choice);
@@ -301,13 +304,13 @@ export class TutorialController implements OnStart {
 			if (choice === "wait") return;
 			this.gate = undefined;
 			this.gateStatus = gate.seenStatus();
-			print(
+			logInfo(
 				`[Tutorial] first run: ${choice} (after ${string.format("%.1f", gate.waitedSeconds())} s, join intent ${
 					gate.seenIntent() ?? "not received"
 				})`,
 			);
 			const fire = this.join.decide(choice);
-			if (fire === undefined) print(`[Tutorial] first run: ${choice} waits for the loading screen`);
+			if (fire === undefined) logInfo(`[Tutorial] first run: ${choice} waits for the loading screen`);
 			this.dispatch(fire, false);
 			return;
 		}
@@ -379,7 +382,7 @@ export class TutorialController implements OnStart {
 		Events.tutorialFinished.fire({ outcome: "completed", stepId });
 		clientStore.endTutorial();
 		this.beat = new TutorialOutroBeat();
-		print(`[Tutorial] run ${ctx.counter}: completed at ${stepId}; the outro follows`);
+		logInfo(`[Tutorial] run ${ctx.counter}: completed at ${stepId}; the outro follows`);
 	}
 
 	private showOutro(): void {
@@ -397,7 +400,7 @@ export class TutorialController implements OnStart {
 		this.outroOpenedAt = undefined;
 		const seconds = math.max(0, os.clock() - openedAt);
 		Events.onboardingReport.fire({ kind: "outro", choice, seconds });
-		print(`[Tutorial] outro closed: ${choice} after ${string.format("%.1f", seconds)} s`);
+		logInfo(`[Tutorial] outro closed: ${choice} after ${string.format("%.1f", seconds)} s`);
 	}
 
 	/**

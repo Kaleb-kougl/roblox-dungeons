@@ -1,5 +1,5 @@
 /*
- * Kaleb-Vale addition to the Dungeon Forge port (no Dungeon Forge or web source): the `chain` option's room graph.
+ * Game addition to the Dungeon Forge port (no Dungeon Forge or web source): the `chain` option's room graph.
  * Dungeon Forge: MIT License. Copyright (c) 2026 Majid Manzarpour.
  * Full license text: THIRD_PARTY_NOTICES.md at the repository root.
  *

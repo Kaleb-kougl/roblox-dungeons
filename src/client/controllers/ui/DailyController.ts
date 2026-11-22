@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
+import { logInfo } from "client/log";
 import { Events } from "client/network";
 import { clientStore, selectDailyStatus } from "client/store";
 import { nextDailyRequestAt } from "shared/daily";
@@ -25,7 +26,7 @@ export class DailyController implements OnStart {
 			Events.dailyStatus.connect((status) => {
 				const before = selectDailyStatus(clientStore.getState());
 				if (before === undefined || before.day !== status.day) {
-					print(`[Daily] Daily #${status.label} (day ${status.day}, seed ${status.seed})`);
+					logInfo(`[Daily] Daily #${status.label} (day ${status.day}, seed ${status.seed})`);
 				}
 				clientStore.setDailyStatus(status);
 				this.nextAt = nextDailyRequestAt(status, this.askedAt);

@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { Workspace } from "@rbxts/services";
+import { logInfo } from "client/log";
 import { STUDS_PER_TILE } from "shared/config";
 import type { Dungeon } from "shared/dungeon";
 import { DEFAULT_BIOME_MATERIAL, hexToColor3 } from "shared/theme";
@@ -118,7 +119,7 @@ export class VoidController implements OnStart {
 		if (d === undefined || input === undefined || off) return; // greybox, or KV_VoidOff
 		const biomeId = voidBiomeOf(d.params.themeKey);
 		if (biomeId === undefined) {
-			print(`[Void] no biome for theme ${d.params.themeKey}: no void drawn`);
+			logInfo(`[Void] no biome for theme ${d.params.themeKey}: no void drawn`);
 			return;
 		}
 		const started = os.clock();
@@ -159,7 +160,7 @@ export class VoidController implements OnStart {
 		}
 		this.partCount = shoulder + ledge + outcrop;
 		folder.Parent = Workspace;
-		print(
+		logInfo(
 			`[Void] built ${this.partCount} parts (floor ${input.floor ?? 1}, ${VOID_DEPTH.bands[plan.band].name}, ` +
 				`${biomeId}: shoulder ${shoulder} / ledge ${ledge} / outcrop ${outcrop}${
 					debug ? ", debug tints" : ""

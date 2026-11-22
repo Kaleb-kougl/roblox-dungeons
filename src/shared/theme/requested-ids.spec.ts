@@ -1,7 +1,7 @@
 // Every ID the web build's gameplay/presentation code asks the theme for must exist in the placeholder
 // pack, so porting that code never hits a fallback.
 //
-// How this list was produced (project-kaleb-vale @ 42897e2, outside src/theme and tests):
+// How this list was produced (the web build @ 42897e2, outside src/theme and tests):
 //   grep -rnE "useTexture\(|useSpriteSheet\(|useColor\(|useString\(|\.sound\(|\.texture\(|\.spriteSheet\(|\.color\(|\.hex\(|\.str\(|\.biome\(|hasString\(" src --include='*.ts' --include='*.tsx'
 // plus the logical IDs those calls receive indirectly: archetype / weapon `spriteId`s
 // (swarmer, sniper, bruiser, turret sniper/sprayer/caster, boss.act1, item.weapon.sword/bow/item.weapon),

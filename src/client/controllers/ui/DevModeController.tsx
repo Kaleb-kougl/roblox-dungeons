@@ -3,6 +3,7 @@ import { Janitor } from "@rbxts/janitor";
 import React from "@rbxts/react";
 import { createRoot, type Root } from "@rbxts/react-roblox";
 import { Players, RunService, UserInputService, Workspace } from "@rbxts/services";
+import { logInfo } from "client/log";
 import { DevPanel, type DevPanelProps, createKvScreenGui } from "client/ui";
 import { DEV_MODE, DEV_PANEL_VIEW } from "shared/config";
 import { isBossFloor } from "shared/dungeon";
@@ -118,7 +119,7 @@ export class DevModeController implements OnStart {
 				this.render();
 			}),
 		);
-		print(`[DevMode] allowed: ${DEV_MODE.panelKey} opens the dev panel`);
+		logInfo(`[DevMode] allowed: ${DEV_MODE.panelKey} opens the dev panel`);
 		this.render(true);
 	}
 

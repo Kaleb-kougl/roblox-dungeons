@@ -1,6 +1,6 @@
 # Mobile play: plan
 
-Kaleb-Vale has no touch controls today. On a phone the HUD shrinks toward unreadable, the corner panels sit where the
+Roblox Dungeons has no touch controls today. On a phone the HUD shrinks toward unreadable, the corner panels sit where the
 thumbs go, Roblox's stock thumbstick and jump button probably show over the game, and every phone budget in the other
 plans has only been checked in Studio's emulator. This plan makes phones and tablets a supported platform: two-stick
 touch controls, a HUD and menus sized for touch, a tutorial written for touch, and performance measured on real

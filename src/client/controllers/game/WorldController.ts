@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { Workspace } from "@rbxts/services";
+import { logInfo } from "client/log";
 import { STUDS_PER_TILE } from "shared/config";
 import { THEMES, TileType, type Dungeon } from "shared/dungeon";
 import { DEFAULT_BOUNDS, type SimConfig } from "shared/sim";
@@ -75,7 +76,7 @@ export class WorldController implements OnStart {
 				? this.buildDungeon(pack, ctx.dungeon, folder, ctx)
 				: this.buildGreybox(pack, ctx.config, folder);
 		folder.Parent = Workspace;
-		print(`[World] built ${this.partCount} parts (${ctx.dungeon !== undefined ? ctx.dungeon.name : "greybox"})`);
+		logInfo(`[World] built ${this.partCount} parts (${ctx.dungeon !== undefined ? ctx.dungeon.name : "greybox"})`);
 	}
 
 	private buildDungeon(pack: ThemePack, d: Dungeon, folder: Folder, ctx: RunContext): number {

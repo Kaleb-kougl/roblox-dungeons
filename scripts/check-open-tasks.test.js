@@ -3,6 +3,8 @@
 
 const assert = require("node:assert/strict");
 const { describe, it } = require("node:test");
+const fs = require("node:fs");
+const path = require("node:path");
 const { openTasks, pendingNotes, render } = require("./open-tasks.js");
 
 const DOC = [
@@ -76,5 +78,20 @@ describe("pendingNotes", () => {
 		const text = render([], pendingNotes(LOG));
 		assert.match(text, /## Marked pending in the decision log \(2 entries\)/);
 		assert.ok(text.includes("- **Graves**\n  - The five PNGs uploaded; the Studio check pending."));
+	});
+});
+
+describe("the Studio pass and the triage (docs/STUDIO_PASS.md, docs/OPEN_TASKS_TRIAGE.md)", () => {
+	// Both quote and regroup tasks that live in other docs: their boxes are table cells (`| [ ] |`), so neither file
+	// may add an open task of its own to the list.
+	for (const name of ["STUDIO_PASS.md", "OPEN_TASKS_TRIAGE.md"]) {
+		it(`${name} adds no open task`, () => {
+			const text = fs.readFileSync(path.join(__dirname, "..", "docs", name), "utf8");
+			assert.deepEqual(openTasks(text), []);
+		});
+	}
+
+	it("a boxed table row is not a task", () => {
+		assert.deepEqual(openTasks("| [ ] | 1A-1 | Run the spike. | none | CURSOR C0 |"), []);
 	});
 });

@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
+import { logInfo } from "client/log";
 import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG, STUDS_PER_TILE } from "shared/config";
 import type { Dungeon } from "shared/dungeon";
 import { isDraftOpen, type SimState } from "shared/sim";
@@ -358,7 +359,7 @@ export class DecorController implements OnStart {
 		this.buildDebug();
 		const c = plan.counts;
 		const v = plan.voidCounts;
-		print(
+		logInfo(
 			`[Decor] floor ${plan.floor} (${profile.bandName}, ${profile.biome}): plan ${plan.entries.size()} ` +
 				`(flat ${c.flat}, low ${c.low}, tall ${c.tall}, wall ${c.wall}; void ${
 					voidPlan !== undefined ? `tall ${v.tall}, low ${v.low}, flat ${v.flat}` : "off"
@@ -733,7 +734,7 @@ export class DecorController implements OnStart {
 			parts++;
 		}
 		folder.Parent = Workspace;
-		print(`[Decor] debug overlay: ${parts} parts`);
+		logInfo(`[Decor] debug overlay: ${parts} parts`);
 	}
 
 	private destroyPools(): void {

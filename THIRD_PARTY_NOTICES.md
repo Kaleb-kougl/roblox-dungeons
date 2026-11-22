@@ -3,7 +3,7 @@
 ## Dungeon Forge
 
 - Source: https://github.com/majidmanzarpour/threejs-procedural-dungeon
-- Used in: `src/shared/dungeon/forge/` (roblox-ts port of the generator, via project-kaleb-vale's TypeScript port)
+- Used in: `src/shared/dungeon/forge/` (roblox-ts port of the generator, via the web build's TypeScript port)
 - License: MIT
 
 MIT License

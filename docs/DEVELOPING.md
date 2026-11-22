@@ -26,13 +26,13 @@ atlases or audio (`art:build`, `audio:build`) needs the licensed packs under `ar
 
 | Script | What it does |
 |---|---|
-| `npm run verify` | The pre-merge gate, 13 steps in order: `typecheck`, `lint`, `check:docs`, `docs:check`, `check:assets`, `check:autolocalize`, `test:art`, `test:checks`, `test:l10n`, `build`, `check:locals`, `facts:check`, `test:only` |
+| `npm run verify` | The pre-merge gate, 15 steps in order: `typecheck`, `lint`, `format:check`, `check:docs`, `docs:check`, `check:assets`, `check:autolocalize`, `check:kvnames`, `test:art`, `test:checks`, `test:l10n`, `build`, `check:locals`, `facts:check`, `test:only` |
 | `npm test` | Build, then run every `src/shared/**/*.spec.ts` headlessly (Lune + real Jest modules) |
 | `npm run test:only -- sim/rng` | Rerun specs without rebuilding; arguments filter by source path. `--census <path>` runs an opt-in census spec's full sample |
 | `npm run build` | Generate the fixture modules, compile `src/` to `out/` with rbxtsc |
 | `npm run dev` | `rbxtsc -w` and `rojo serve` together |
 | `npm run typecheck` / `lint` / `format` | tsc, ESLint at zero warnings, Prettier |
-| `npm run build:place` | A publishable place, `build/kaleb-vale.rbxl`, without specs, fixtures or Jest |
+| `npm run build:place` | A publishable place, `build/roblox-dungeons.rbxl`, without specs, fixtures or Jest |
 | `npm run test:plugin` | Install the Studio test-runner plugin (the same specs under `@rbxts/jest` in Studio) |
 
 ### Checks (all part of `verify`)
@@ -43,6 +43,7 @@ atlases or audio (`art:build`, `audio:build`) needs the licensed packs under `ar
 | `docs:check` | TypeDoc without output: broken `{@link}`, unknown tags, a `@param` naming no parameter |
 | `check:assets` | No hard-coded asset id outside `src/shared/theme` |
 | `check:autolocalize` | AutoLocalize is off on every GUI (docs/LOCALIZATION.md) |
+| `check:kvnames` | every `KV_*` string in `src/` is in `scripts/kv-names.json` and still used; `docs/DEBUG_SWITCHES.md` is its table (`-- --write` regenerates it) |
 | `check:locals` | (after build) top-level locals per compiled module: fails past Luau's 200, warns from 185 |
 | `facts:check` | `docs/FACTS.md` matches the build |
 | `test:art` / `test:checks` / `test:l10n` | node:test specs of the atlas pipeline, the check scripts and the localization pipeline |
@@ -68,6 +69,19 @@ atlases or audio (`art:build`, `audio:build`) needs the licensed packs under `ar
 | `npm run l10n:import -- <table.csv>` | The downloaded cloud table to `shared/theme/locales/*.ts` and `l10n/report.md` |
 | `npm run l10n:check` | (after build) translation coverage, stale and context report |
 
+## Commit and pull request conventions
+
+- **Subject**: under 72 characters, imperative ("Add", "Fix", "Move"), naming the area first where it helps
+  (`Wallet: refuse a stale transaction`).
+- **Cite the plan**: the plan doc and task id go in the subject or the body (`docs/SILVER.md SV7`), so a commit can be
+  traced to the task it closes and the task to its commits.
+- **One task per commit.** A pure move, a behaviour change and a re-recorded pin are three commits, in that order.
+- **Body**: what changed and why, then what was verified and how (`npm run verify`, the specs run, an `out:digest`
+  comparison for a move or a comment-only change). Say plainly what was not verified: anything that needs Roblox
+  Studio, two clients or a device goes to its plan's Studio check, and docs/STUDIO_PASS.md collects those.
+- **Pull requests** carry the same three things: the plan and tasks, what changed, what was verified and what is still
+  owed in Studio. Tick a task in its plan doc in the commit that finishes it and run `npm run tasks:open`.
+
 ## Layout
 
 ```
@@ -87,6 +101,8 @@ art/                   atlas and audio manifests and lock files; the packs thems
 l10n/                  localization context and pipeline inputs
 plugin/                the Studio test-runner plugin
 docs/                  one plan per feature, the decision log, the generated FACTS and OPEN_TASKS
+docs/decisions/        six decision records extracted from the log (docs/decisions/README.md)
+ARCHITECTURE.md        the layers, one frame of co-op, the trust boundary, the determinism invariant
 ```
 
 `client/` and `server/` never import each other; shared contracts live in `shared/`. Each directory has a barrel
@@ -98,3 +114,7 @@ Specs are `*.spec.ts` next to the code, written against `@rbxts/jest-globals`. O
 run headlessly (client and server code need the engine). Modules under `shared/sim` and `shared/dungeon` load in
 a restricted environment where clocks, RNG and Roblox globals throw `[determinism]`. `CLAUDE.md` has the full
 rules: what is unavailable headlessly, how fixtures are imported, how a long census is sharded.
+
+Not covered by any automated test: the Flamework controllers and services themselves (Instances, rendering, input,
+DataStore calls). Keep them as wiring and put the rule in `src/shared` with a spec; `docs/SERVER_CENSUS.md` lists
+what each service trusts and which spec covers it, and `docs/STUDIO_PASS.md` is the hand check for the rest.

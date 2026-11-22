@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { Players, RunService, SocialService, Workspace } from "@rbxts/services";
+import { logInfo, logWarn } from "client/log";
 import { Events } from "client/network";
 import { clientStore, selectPlayableCharacter } from "client/store";
 import { isCharacterId, type CharacterId } from "shared/characters";
@@ -66,7 +67,8 @@ export class LobbyController implements OnStart {
 				// Sent after the first resolve, again with every inviteEligibility answer, and once more when the
 				// server placed this player later (none -> lobby / party).
 				const before = clientStore.getState().lobby.joinIntent;
-				if (before !== intent.kind) print(`[Invite] join intent: ${before ?? "(none yet)"} -> ${intent.kind}`);
+				if (before !== intent.kind)
+					logInfo(`[Invite] join intent: ${before ?? "(none yet)"} -> ${intent.kind}`);
 				clientStore.setJoinIntent(intent.kind);
 			}),
 		);
@@ -81,23 +83,23 @@ export class LobbyController implements OnStart {
 				}),
 			),
 		);
-		if (!okClosed) warn(`[Invite] GameInvitePromptClosed is not available here: ${tostring(closedErr)}`);
+		if (!okClosed) logWarn(`[Invite] GameInvitePromptClosed is not available here: ${tostring(closedErr)}`);
 		this.refreshEligibility();
 		this.janitor.Add(
 			Events.lobbyRunStart.connect((start) => {
 				if (start.kind !== "solo") return;
 				const mine = clientStore.getState().lobby.mine?.lobbyId;
 				if (!lobbyStartAccepted(start.lobbyId, mine)) {
-					warn(`[Lobby] ignored the solo start of lobby ${start.lobbyId}: not this client's lobby`);
+					logWarn(`[Lobby] ignored the solo start of lobby ${start.lobbyId}: not this client's lobby`);
 					return;
 				}
 				if (this.sim.inRunningTutorial()) {
 					// The server refuses lobby starts while this player is in the tutorial; a late one never takes it over
 					// (the lobby goes back to forming when no ranked start comes).
-					warn(`[Lobby] ignored the solo start of lobby ${start.lobbyId}: in the tutorial`);
+					logWarn(`[Lobby] ignored the solo start of lobby ${start.lobbyId}: in the tutorial`);
 					return;
 				}
-				print(`[Lobby] lobby ${start.lobbyId}: starting a ranked solo run (world ${start.worldKind})`);
+				logInfo(`[Lobby] lobby ${start.lobbyId}: starting a ranked solo run (world ${start.worldKind})`);
 				// docs/ARCHER.md AR5: as the character this member readied with (the selected one if the pick is odd).
 				const character = isCharacterId(start.characterId) ? start.characterId : undefined;
 				this.sim.startSolo(start.lobbyId, start.worldKind, character);
@@ -136,7 +138,9 @@ export class LobbyController implements OnStart {
 		);
 		if (notice.kind === "refused" && notice.requestKind === "invitePrompt") this.focus.invitePromptClosed();
 		if (notice.kind === "refused") {
-			warn(`[Lobby] ${notice.requestKind ?? "request"} refused (${notice.code ?? "?"}): ${notice.reason ?? ""}`);
+			logWarn(
+				`[Lobby] ${notice.requestKind ?? "request"} refused (${notice.code ?? "?"}): ${notice.reason ?? ""}`,
+			);
 		}
 	}
 
@@ -166,7 +170,7 @@ export class LobbyController implements OnStart {
 			const [ok, result] = pcall(() => SocialService.CanSendGameInviteAsync(Players.LocalPlayer));
 			this.eligibilityPending = false;
 			if (!ok) {
-				warn(`[Invite] CanSendGameInviteAsync failed: ${tostring(result)}`);
+				logWarn(`[Invite] CanSendGameInviteAsync failed: ${tostring(result)}`);
 				return;
 			}
 			clientStore.setInviteEligible(result === true);
@@ -196,7 +200,7 @@ export class LobbyController implements OnStart {
 		this.focus.invitePromptOpened();
 		const [ok, err] = pcall(() => SocialService.PromptGameInvite(Players.LocalPlayer, opts));
 		if (!ok) {
-			warn(`[Invite] PromptGameInvite failed: ${tostring(err)}`);
+			logWarn(`[Invite] PromptGameInvite failed: ${tostring(err)}`);
 			this.focus.invitePromptClosed();
 			this.dropPromptOptions();
 		}
@@ -216,7 +220,7 @@ export class LobbyController implements OnStart {
 			if (typeIs(id, "number") && id % 1 === 0 && !ids.includes(id)) ids.push(id);
 		}
 		if (ids.size() === 0) return;
-		print(`[Invite] prompt closed: ${ids.size()} recipient(s)`);
+		logInfo(`[Invite] prompt closed: ${ids.size()} recipient(s)`);
 		Events.inviteRecipients.fire(ids);
 	}
 

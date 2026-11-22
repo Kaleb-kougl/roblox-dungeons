@@ -152,3 +152,30 @@ export class FriendCache {
 		this.pump();
 	}
 }
+
+/**
+ * Friendships of `userId` a caller has just confirmed with Roblox (LobbyService.fetchFriendship), which answer true
+ * even while the FriendCache does not know the pair yet.
+ */
+export interface ConfirmedFriends {
+	readonly userId: number;
+	readonly friends: ReadonlyArray<number>;
+}
+
+/**
+ * Whether `a` and `b` are friends for a lobby rule: true when the pair is `confirmed` (either way round), otherwise
+ * what `cached` (FriendCache.areFriends) answers. A cache miss answers false, which would refuse a joining friend of a
+ * `friends` lobby's host; `confirmed` covers exactly the pairs the caller asked Roblox about. Pure.
+ */
+export function friendsWithConfirmed(
+	a: number,
+	b: number,
+	confirmed: ConfirmedFriends | undefined,
+	cached: (a: number, b: number) => boolean,
+): boolean {
+	if (confirmed !== undefined) {
+		if (a === confirmed.userId && confirmed.friends.includes(b)) return true;
+		if (b === confirmed.userId && confirmed.friends.includes(a)) return true;
+	}
+	return cached(a, b);
+}

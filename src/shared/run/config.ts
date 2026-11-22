@@ -1,6 +1,6 @@
 /**
- * The run's SimConfig from its seed, exactly as the web build's App.tsx builds the M1 run (project-kaleb-vale
- * src/App.tsx @ 42897e2, the `run` memo):
+ * The run's SimConfig from its seed, exactly as the web build's App.tsx builds the M1 run
+ * (src/App.tsx @ 42897e2, the `run` memo):
  *
  *   dungeon  = generateDungeon({ ...KALEB_VALE_MVP_PARAMS, seed })
  *   spawn    = runSpawn(dungeon, atBossDoor)              (entrance; boss door only behind the debug flag)

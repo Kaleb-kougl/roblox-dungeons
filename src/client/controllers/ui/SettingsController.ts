@@ -24,7 +24,7 @@ import { SETTINGS_KEY, openingControlsDevice } from "shared/view/hud";
 import { SimController } from "../game/SimController";
 
 /**
- * The player's settings (port of the store + O key of project-kaleb-vale src/fx/settings.ts and
+ * The player's settings (port of the store + O key of the web build's src/fx/settings.ts and
  * JuiceSettingsPanel.tsx @ 42897e2, persisted by the server instead of localStorage: docs/SERVER.md; since task L4
  * every group of the settings document v2: juice, controls, audio, display):
  *

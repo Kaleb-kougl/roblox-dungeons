@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { Players, Workspace } from "@rbxts/services";
+import { logInfo } from "client/log";
 import { clientStore, selectDailyStatus, selectMyLobby, selectScopedLeaderboard, type ClientState } from "client/store";
 import { fetchHeadshot, onLocaleChanged } from "client/ui";
 import { DAILY_WORLD_KIND } from "shared/daily";
@@ -166,7 +167,7 @@ export class DailyRankController implements OnStart, NewBestRankLayer {
 		const ahead = tracker.friendsAhead();
 		for (let i = 0; i < ahead.size() && i < DAILY_RANK.headshotPrefetch; i++) fetchHeadshot(ahead[i].userId);
 		this.requestBoard(board);
-		print(
+		logInfo(
 			rank.kind === "known"
 				? `[DailyRank] run ${ctx.counter} on ${board}: best ${rank.best}, ` +
 						`${rank.rows?.size() ?? "no"} rows, ${rank.friends?.size() ?? "no"} friends`

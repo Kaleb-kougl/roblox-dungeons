@@ -1,9 +1,9 @@
 /*
- * Kaleb-Vale presets for the Dungeon Forge port.
+ * The game's presets for the Dungeon Forge port.
  * Dungeon Forge: MIT License. Copyright (c) 2026 Majid Manzarpour.
  * Full license text: THIRD_PARTY_NOTICES.md at the repository root.
  *
- * Roblox port of project-kaleb-vale src/dungeon/forge/presets.ts @ 42897e2.
+ * Roblox port of the web build's src/dungeon/forge/presets.ts @ 42897e2.
  */
 import type { ForgeParams } from "./types";
 
@@ -16,7 +16,7 @@ export const FORGE_DEMO_DEFAULT_PARAMS = {
 } as const satisfies Omit<ForgeParams, "seed">;
 
 /**
- * M1 floor: 12 rooms, 15% loopiness, 40% decor, plus all four Kaleb-Vale options ON.
+ * M1 floor: 12 rooms, 15% loopiness, 40% decor, plus all four game options ON.
  * The options change the layout, so a seed under this preset does NOT match the demo's floor
  * for that seed. Use as `generateDungeon({ seed, ...KALEB_VALE_MVP_PARAMS })`.
  */

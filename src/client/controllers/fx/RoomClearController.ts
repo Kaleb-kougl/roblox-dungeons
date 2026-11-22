@@ -32,7 +32,7 @@ import { PACTS_VIEW } from "shared/view/pacts";
 import { AudioController } from "../audio/AudioController";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
-import { ActorRenderController } from "../render/ActorRenderController";
+import { ActorRenderController } from "../render/actors";
 import { FreezeFrameController } from "./FreezeFrameController";
 import { FX_FRAME_PHASE, FxTrackerController } from "./FxTrackerController";
 import { ParticleController } from "./ParticleController";

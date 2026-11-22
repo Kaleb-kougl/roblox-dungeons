@@ -1,5 +1,5 @@
 /**
- * The M1 "first fight" room populations (Roblox port of project-kaleb-vale src/bullets/enemyRooms.ts @ 42897e2):
+ * The M1 "first fight" room populations (Roblox port of the web build's src/bullets/enemyRooms.ts @ 42897e2):
  * DEFAULT_ENCOUNTER.populate. A pure RoomPopulator: the same dungeon always gets the same enemies on the same tiles
  * (per-room rng from placeEncounter, no math.random, no clock).
  *
@@ -286,7 +286,7 @@ export const populateEnemies: RoomPopulator = (room: EncounterRoom, tools: RoomT
 export const TEST_TURRET_KINDS: ReadonlyArray<string> = ["turret.sprayer", "turret.sniper", "turret.caster"];
 
 /**
- * The game's encounter (project-kaleb-vale src/bullets/defaultEncounter.ts @ 42897e2):
+ * The game's encounter (the web build's src/bullets/defaultEncounter.ts @ 42897e2):
  * no sandbox turrets, swarmer / sniper / bruiser groups in the critical-path rooms, the Act I boss in the boss room.
  */
 export const DEFAULT_ENCOUNTER: EncounterOptions = {

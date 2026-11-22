@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { LocalizationService, Players } from "@rbxts/services";
+import { logInfo, logWarn } from "client/log";
 import { createKvScreenGui, DEV_MONO_FONT } from "client/ui";
 import { L10N_SPIKE } from "shared/config";
 import {
@@ -187,7 +188,7 @@ export class L10nSpikeController implements OnStart {
 		const refreshInfo = (why: string) => {
 			const lines = localeLines();
 			info.Text = lines.join("\n");
-			print(`${LOG} ${why}:\n  ${lines.join("\n  ")}`);
+			logInfo(`${LOG} ${why}:\n  ${lines.join("\n  ")}`);
 		};
 		refreshInfo("locale ids");
 		janitor.Add(
@@ -233,7 +234,7 @@ export class L10nSpikeController implements OnStart {
 			);
 			if (!font) {
 				name.TextColor3 = MISSING;
-				warn(`${LOG} Enum.Font.${fontName} does not exist`);
+				logWarn(`${LOG} Enum.Font.${fontName} does not exist`);
 				continue;
 			}
 			const rowCells: GlyphCell[] = [];
@@ -420,10 +421,10 @@ export class L10nSpikeController implements OnStart {
 				const row = cells.get(fontName);
 				if (!row) continue;
 				const parts = row.map((c) => `${c.sample.id} ${metrics(c.label)}`);
-				print(`${LOG} ${fontName}: ${parts.join(" | ")}`);
+				logInfo(`${LOG} ${fontName}: ${parts.join(" | ")}`);
 			}
-			print(`${LOG} probe texts (3, 1, 2): ${probeLabels.map((l) => `"${l.Text}"`).join(", ")}`);
+			logInfo(`${LOG} probe texts (3, 1, 2): ${probeLabels.map((l) => `"${l.Text}"`).join(", ")}`);
 		});
-		print(`${LOG} on: ${GUI_NAME} + ${PROBE_GUI_NAME} (docs/SPIKES.md "Spike L0")`);
+		logInfo(`${LOG} on: ${GUI_NAME} + ${PROBE_GUI_NAME} (docs/SPIKES.md "Spike L0")`);
 	}
 }

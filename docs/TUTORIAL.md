@@ -159,7 +159,7 @@ registerRunWorld("tutorial", (_seed, o) => buildTutorialRunConfig(o.partySize));
   spec checks the params (all but seed / room count / chain) and the world's SimConfig fields against an endless
   floor's, and its layout digests (and the chain check) fail when a Forge or endless change moves the layout.
 - **Floor 1** (rebuilt on `tutorial-linear`; before it was the seed-searched Forge seed 7513: a 277-tile tour, one
-  loop corridor, legs through branching corridors): a **Forge chain floor**. The Kaleb-Vale Forge option `chain`
+  loop corridor, legs through branching corridors): a **Forge chain floor**. The game's Forge option `chain`
   (`ForgeParams.chain`, `shared/dungeon/forge/chain.ts`; opt-in, off on every other floor) takes the rooms in walk
   order and replaces the rolled stages 1-4.2 (scatter, separation, Delaunay, MST + loops, room-type draws): room i + 1
   is placed on the given side of room i, centres on one row (column), `gap` tiles of corridor between their floors,
@@ -572,7 +572,7 @@ Critical path: T1 -> T2 -> T4 -> T6. T5 can run alongside T2-T4.
    menu at any time** (not hidden until the first room is done).
 6. **Floor 1 is linear** (owner, 2026-10-26: "each room is contiguous and has the next step in the tutorial").
    Decision log (deviation from the plan's seed-searched Forge floor; recorded here, not in CLAUDE.md): the Forge gained
-   the opt-in Kaleb-Vale option `chain` (§2 "Floor 1"), chosen over a constrained seed search because a rolled Forge
+   the opt-in game option `chain` (§2 "Floor 1"), chosen over a constrained seed search because a rolled Forge
    floor cannot be a chain that still has a treasure room and a shrine (treasure rooms are leaves off the critical
    path and shrines are non-critical rooms, so a path-shaped graph has neither), and over a hand-built `Dungeon`
    because the option reuses every later Forge stage, so the floor keeps the real look and every consumer works

@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
+import { logWarn } from "client/log";
 import { STUDS_PER_TILE } from "shared/config";
 import { playerAt } from "shared/sim";
 import type { ImageRef, ThemePack } from "shared/theme";
@@ -120,7 +121,7 @@ export class TutorialArrowController implements OnStart {
 		});
 		if (view.unreachable && !this.warned && target !== undefined) {
 			this.warned = true;
-			warn(
+			logWarn(
 				`[TutorialArrow] no path to the ${target.kind} marker at (${target.x}, ${target.z}) from ` +
 					`(${px}, ${pz}); pointing straight at it`,
 			);

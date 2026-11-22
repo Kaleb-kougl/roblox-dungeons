@@ -1,5 +1,5 @@
 /**
- * Hit tracker (port of project-kaleb-vale src/fx/tracker.ts @ 42897e2): the pure diff core. Once per rendered frame,
+ * Hit tracker (port of the web build's src/fx/tracker.ts @ 42897e2): the pure diff core. Once per rendered frame,
  * AFTER the sim advanced, it compares every actor slot with a render-side snapshot keyed by (slot, ActorState.id) and
  * emits FX events (events.ts): hits with the hp lost this frame (aggregated over every tick the frame stepped), kills,
  * runtime spawns, boss phases and defeats, best-effort damage-cap hits, and a reset when a new run starts.

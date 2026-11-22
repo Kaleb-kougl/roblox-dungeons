@@ -1,7 +1,7 @@
 /**
  * Iso camera math in plain numbers (no Vector3 / CFrame), so it runs under the headless runner.
  *
- * Mirrors project-kaleb-vale `src/render/iso.ts` @ 42897e2 (isoBasis, snapToTexelGrid), adapted
+ * Mirrors the web build's `src/render/iso.ts` @ 42897e2 (isoBasis, snapToTexelGrid), adapted
  * from an orthographic to a narrow-FOV perspective camera: Roblox has no orthographic projection,
  * so the "zoom" is a distance chosen to show the same world height at the focus point.
  *

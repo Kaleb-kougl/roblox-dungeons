@@ -3,7 +3,7 @@
  * Color3 / Vector2 lives here; the logic (lookups, fallbacks, frame math) lives in the core and is
  * tested headlessly.
  *
- * Ported from project-kaleb-vale `src/theme/pack.ts` @ 42897e2 (ThemePack, loadThemePack, the active
+ * Ported from the web build's `src/theme/pack.ts` @ 42897e2 (ThemePack, loadThemePack, the active
  * pack). Packs are TS modules registered in `packs/index.ts` (no file loading, no async): switching
  * packs is still a restart.
  *

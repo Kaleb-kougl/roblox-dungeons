@@ -3,7 +3,7 @@
  * MIT License. Copyright (c) 2026 Majid Manzarpour.
  * Full license text: THIRD_PARTY_NOTICES.md at the repository root.
  *
- * Roblox port of project-kaleb-vale src/dungeon/forge/types.ts @ 42897e2. Typed arrays became plain number arrays
+ * Roblox port of the web build's src/dungeon/forge/types.ts @ 42897e2. Typed arrays became plain number arrays
  * (0-based in TypeScript, same indexing: y * W + x).
  */
 import type { DecorCarpet, RoomTheme, SolidDecorPiece } from "./solidDecor";
@@ -199,7 +199,7 @@ export interface DungeonStats {
  * Generator input. seed, roomCount, loopChance, decorDensity, themeKey are the original's
  * params (the demo's sliders: rooms 12..80, loopiness 0..0.40, decor 0..1, theme).
  *
- * The Kaleb-Vale options below are OFF when undefined. Off, output is identical to the
+ * The game's options below are OFF when undefined. Off, output is identical to the
  * Dungeon Forge web demo for the same seed. Turning ANY of them on changes the layout (the first
  * four also shift the RNG stream from that point on), so such floors no longer match the demo.
  */
@@ -215,23 +215,23 @@ export interface ForgeParams {
 	/** Theme; 'auto' (default) picks from the seed exactly like the demo's AUTO chip. */
 	themeKey?: ThemeKey | "auto";
 
-	/** Kaleb-Vale: grow combat and elite rooms to at least this many tiles on each side (x `roomScale`). */
+	/** Game option: grow combat and elite rooms to at least this many tiles on each side (x `roomScale`). */
 	minCombatRoomSize?: number;
 	/**
-	 * Kaleb-Vale: room size multiplier (integer >= 1). Every room's rolled width and height, `minCombatRoomSize` and
+	 * Game option: room size multiplier (integer >= 1). Every room's rolled width and height, `minCombatRoomSize` and
 	 * the scatter radius are multiplied by it, so a floor keeps the same draws and roughly the same shape, just with
 	 * rooms `roomScale` times as wide and tall. Draws nothing extra; 1 or undefined is the unscaled floor exactly.
 	 * Endless floors only (`endlessFloorParams`, ENDLESS_ROOM_SCALE); M1 and the fixtures leave it off.
 	 */
 	roomScale?: number;
-	/** Kaleb-Vale: every corridor this many tiles wide (1..7), instead of 3 critical / 2 or 1 other. Also keeps interior liquid pits 3+ tiles from corridor cells so they cannot pinch a corridor mouth. */
+	/** Game option: every corridor this many tiles wide (1..7), instead of 3 critical / 2 or 1 other. Also keeps interior liquid pits 3+ tiles from corridor cells so they cannot pinch a corridor mouth. */
 	corridorWidth?: number;
-	/** Kaleb-Vale: at most this many treasure rooms (original: 4). */
+	/** Game option: at most this many treasure rooms (original: 4). */
 	treasureCap?: number;
-	/** Kaleb-Vale: at most this many shrine rooms (original: 2). */
+	/** Game option: at most this many shrine rooms (original: 2). */
 	shrineCap?: number;
 	/**
-	 * Kaleb-Vale: pillars are solid. After all decoration (the last rng draw), every `pillar` prop's cell becomes WALL:
+	 * Game option: pillars are solid. After all decoration (the last rng draw), every `pillar` prop's cell becomes WALL:
 	 * it blocks movement, bullets and line of sight like any wall. Draws nothing, so every other prop, spawn, torch,
 	 * arch, pool and the name are exactly the option-off floor's; the pillar props stay in `props` (where the decor
 	 * goes). The cell keeps its `roomId` (like an interior pit: walkability is the grid's job, so code that wants
@@ -240,7 +240,7 @@ export interface ForgeParams {
 	 */
 	solidPillars?: boolean;
 	/**
-	 * Kaleb-Vale: solid decor (./solidDecor.ts, docs/DECOR.md "Solid decor"). After solid pillars, combat and elite rooms
+	 * Game option: solid decor (./solidDecor.ts, docs/DECOR.md "Solid decor"). After solid pillars, combat and elite rooms
 	 * get tombs and candle stands whose cells become WALL (Dungeon.solidDecor lists them), from their own stream: every
 	 * other prop, spawn, torch, arch, pool and the name are the option-off floor's. `bfs`, `maxBfs`, the floor stats and
 	 * `valid` describe the walled grid. Endless floors only (`endlessFloorParams`); M1, the fixtures and the tutorial
@@ -248,7 +248,7 @@ export interface ForgeParams {
 	 */
 	solidDecor?: boolean;
 	/**
-	 * Kaleb-Vale: a fixed linear floor (the tutorial's floor 1, docs/TUTORIAL.md). The rooms are these, in walk order
+	 * Game option: a fixed linear floor (the tutorial's floor 1, docs/TUTORIAL.md). The rooms are these, in walk order
 	 * (room id = index; the first is the entrance, the last the boss room), laid out by ./chain.ts with exactly one
 	 * straight corridor between each room and the next and nothing else: no scatter, separation, Delaunay graph, MST,
 	 * loops or room-type draws. Everything after the graph (theme mutations, carving, pits, arches, BFS, decoration,

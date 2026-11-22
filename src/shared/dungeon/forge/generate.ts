@@ -3,10 +3,10 @@
  * MIT License. Copyright (c) 2026 Majid Manzarpour.
  * Full license text: THIRD_PARTY_NOTICES.md at the repository root.
  *
- * Roblox port of project-kaleb-vale src/dungeon/forge/generate.ts @ 42897e2.
+ * Roblox port of the web build's src/dungeon/forge/generate.ts @ 42897e2.
  *
  * Pipeline: scatter -> separate -> Delaunay -> MST + loops -> semantics -> carve ->
- * rasterize + BFS -> decorate. One mulberry32 stream drives every stage. (Kaleb-Vale `chain`: ./chain.ts gives the
+ * rasterize + BFS -> decorate. One mulberry32 stream drives every stage. (Game option `chain`: ./chain.ts gives the
  * room graph instead of the first five stages, drawing nothing; carve onwards is the same code.)
  *
  * SEED PARITY: every RNG draw happens in the same order with the same arithmetic as the web build. JS-isms ported
@@ -45,7 +45,7 @@ const TYPE = RoomType;
 
 /** The demo gives up after this many seeds of the reroll chain and shows "unresolved". */
 export const FORGE_DEMO_MAX_ATTEMPTS = 5;
-/** Kaleb-Vale keeps walking the same chain past the demo's limit so every seed is playable. */
+/** The game keeps walking the same chain past the demo's limit so every seed is playable. */
 const MAX_ATTEMPTS = 1000;
 /** Reroll chain: seed = (seed * REROLL_MUL + REROLL_ADD) >>> 0. */
 const REROLL_MUL = 9301;
@@ -55,7 +55,7 @@ const TAU = math.pi * 2;
 /** Highest roomCount the Delaunay edge key supports. */
 const MAX_ROOM_COUNT = 4095;
 const MAX_CORRIDOR_WIDTH = 7;
-/** Original caps when the Kaleb-Vale options are off. */
+/** Original caps when the game's options are off. */
 const DEFAULT_TREASURE_CAP = 4;
 const DEFAULT_SHRINE_CAP = 2;
 
@@ -207,7 +207,7 @@ function separate(rooms: Room[], PAD: number): void {
 	}
 }
 
-/** Corridor cross-section offsets. Widths 1..3 are the original's; wider is Kaleb-Vale only. */
+/** Corridor cross-section offsets. Widths 1..3 are the original's; wider is the game's addition. */
 function corridorOffsets(w: number): number[] {
 	if (w === 1) return [0];
 	if (w === 2) return [0, 1];
@@ -309,13 +309,13 @@ function floodFloor(grid: number[], W: number, ei: number, bfs: number[]): Flood
 }
 
 /**
- * Stages 1-4.2 of a rolled floor (every floor but a Kaleb-Vale chain): scatter, separate, Delaunay -> MST + loops,
+ * Stages 1-4.2 of a rolled floor (every floor but a game `chain` floor): scatter, separate, Delaunay -> MST + loops,
  * semantics, minCombatRoomSize. Moved out of tryGenerate unchanged (same draws, same order). Undefined where the
  * original gave up (the Delaunay graph was disconnected).
  */
 function rolledGraph(rng: Rng, p: ResolvedForgeParams): ForgeGraph | undefined {
 	const N = p.roomCount;
-	/* -- 1. scatter -- (Kaleb-Vale roomScale S multiplies every rolled size and the radius; S = 1 is the original) */
+	/* -- 1. scatter -- (game option roomScale S multiplies every rolled size and the radius; S = 1 is the original) */
 	const S = p.roomScale ?? 1;
 	const R = math.sqrt(N) * 4.6 * S;
 	const rooms: Room[] = [];
@@ -547,7 +547,7 @@ function rolledGraph(rng: Rng, p: ResolvedForgeParams): ForgeGraph | undefined {
 	const leaves: number[] = [];
 	for (let i = 0; i < N; i++) if (i !== entrance && i !== boss && rooms[i].degree === 1) leaves.push(i);
 	stableSort(leaves, (a, b) => rooms[b].depth - rooms[a].depth);
-	// Kaleb-Vale treasureCap (original: 4). Fewer treasure rooms leaves more combat rooms,
+	// Game option treasureCap (original: 4). Fewer treasure rooms leaves more combat rooms,
 	// which changes the shrine draw below: the RNG stream diverges from the demo.
 	const treasureN = math.min(p.treasureCap ?? DEFAULT_TREASURE_CAP, leaves.size());
 	for (let k = 0; k < treasureN; k++) rooms[leaves[k]].type = TYPE.TREASURE;
@@ -558,7 +558,7 @@ function rolledGraph(rng: Rng, p: ResolvedForgeParams): ForgeGraph | undefined {
 		if (r.type === TYPE.COMBAT && !isCrit[i] && r.depth > maxDepth * 0.3 && r.depth < maxDepth * 0.85)
 			shrineC.push(i);
 	}
-	// Kaleb-Vale shrineCap (original: 2). Fewer draws here shifts every later RNG call.
+	// Game option shrineCap (original: 2). Fewer draws here shifts every later RNG call.
 	const shrineMax = p.shrineCap ?? DEFAULT_SHRINE_CAP;
 	for (let k = 0; k < shrineMax && shrineC.size() > 0; k++) {
 		const j = shrineC.remove(rng.i(0, shrineC.size() - 1))!;
@@ -572,7 +572,7 @@ function rolledGraph(rng: Rng, p: ResolvedForgeParams): ForgeGraph | undefined {
 	stableSort(eliteC, (a, b) => rooms[a].depth - rooms[b].depth);
 	for (let k = 0; k < math.min(2, eliteC.size()); k++) rooms[eliteC[eliteC.size() - 1 - k]].type = TYPE.ELITE;
 
-	/* -- 4.2 Kaleb-Vale minCombatRoomSize (not in the original) --
+	/* -- 4.2 Game option minCombatRoomSize (not in the original) --
 	   Grow undersized combat/elite rooms to the minimum, then re-run the (RNG-free) separation
 	   so grown rooms do not swallow their neighbours. */
 	if (p.minCombatRoomSize !== undefined) {
@@ -600,7 +600,7 @@ export function tryGenerate(seed: number, params: ForgeParams): Dungeon | undefi
 	const N = p.roomCount;
 	const TH = THEMES[p.themeKey];
 
-	/* -- 1-4.2: the room graph. Rolled (scatter ... minCombatRoomSize), or a Kaleb-Vale chain laid out as given. -- */
+	/* -- 1-4.2: the room graph. Rolled (scatter ... minCombatRoomSize), or a game `chain` floor laid out as given. -- */
 	const S = p.roomScale ?? 1;
 	const graph =
 		p.chain !== undefined ? chainGraph(p.chain, S, p.minCombatRoomSize, p.corridorWidth) : rolledGraph(rng, p);
@@ -708,7 +708,7 @@ export function tryGenerate(seed: number, params: ForgeParams): Dungeon | undefi
 			B = rooms[e.b];
 		let w: number;
 		if (p.corridorWidth !== undefined) {
-			// Kaleb-Vale corridorWidth: fixed width, and the original's 40% treasure-corridor
+			// Game option corridorWidth: fixed width, and the original's 40% treasure-corridor
 			// narrowing draw is skipped, so the RNG stream diverges from the demo here.
 			w = p.corridorWidth;
 		} else {
@@ -849,7 +849,7 @@ export function tryGenerate(seed: number, params: ForgeParams): Dungeon | undefi
 				if (!inB(x, y)) continue;
 				const c = idx(x, y);
 				if (roomId[c] !== r.id || grid[c] !== FLOOR || doorway[c] !== 0) continue;
-				// Kaleb-Vale corridorWidth also promises that clearance at corridor mouths: no pit
+				// Game option corridorWidth also promises that clearance at corridor mouths: no pit
 				// within 2 tiles of a corridor cell. Off by default; rejected tries cost a guard step as usual.
 				if (p.corridorWidth !== undefined && nearCorridor(x, y, 2)) continue;
 				let ok = true;
@@ -1237,7 +1237,7 @@ export function tryGenerate(seed: number, params: ForgeParams): Dungeon | undefi
 	for (const e of edges) if (e.isLoop) loops++;
 	const name = dungeonName(rng, TH);
 
-	/* -- 8. Kaleb-Vale solidPillars (not in the original) --
+	/* -- 8. Game option solidPillars (not in the original) --
 	   After the last rng draw, so the stream and every other piece (props, spawns, torches, arches, pools, the name)
 	   are exactly what the option-off floor has. Each pillar cell becomes WALL; the pillar props stay in `props`.
 	   Kept per cell: roomId (like an interior liquid pit, the cell stays in its room's footprint; walkability is the
@@ -1258,7 +1258,7 @@ export function tryGenerate(seed: number, params: ForgeParams): Dungeon | undefi
 		}
 	}
 
-	/* -- 9. Kaleb-Vale solidDecor (not in the original; ./solidDecor.ts) --
+	/* -- 9. Game option solidDecor (not in the original; ./solidDecor.ts) --
 	   After solid pillars, from its own stream: room themes, and their set pieces (thrones, statues, tombs, candle
 	   stands, door braziers) become WALL. They stand flush with walls or keep a clearance ring, so the floor stays in
 	   one piece; if a re-flood ever finds otherwise, the pieces are taken back (the floor is then exactly the

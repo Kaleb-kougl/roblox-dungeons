@@ -1,0 +1,631 @@
+import { Controller, OnStart } from "@flamework/core";
+import { Janitor } from "@rbxts/janitor";
+import { RunService, Workspace } from "@rbxts/services";
+import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG } from "shared/config";
+import { AffixKind, affixThemeIndex } from "shared/dungeon";
+import { CORPSE_TICKS, MAX_ACTORS, NO_KIND, SIM_HZ, archetypeAt, type ActorState, type SimState } from "shared/sim";
+import { AFFIX_IDS, ENEMY_AURA_ROLE, ENEMY_SHIELD_ROLE, affixRole, type SpriteSet, type ThemePack } from "shared/theme";
+import {
+	ACTOR_OUTLINE,
+	ACTOR_SPRITE_INPUTS,
+	ACTOR_VIEW,
+	AFFIX_VIEW,
+	AURA_VIEW,
+	AuraView,
+	NEW_ENEMY_SPRITE_VIEW,
+	RENDER_ORDER,
+	SPRITE_VIEW,
+	actorGroup,
+	actorLook,
+	actorOutlined,
+	actorSpriteScale,
+	affixDrawScale,
+	animDtSec,
+	bomberDetonated,
+	bomberFuseFlashOn,
+	bomberFusing,
+	bossSpriteLayout,
+	chooseActorAnim,
+	corpseTransparency,
+	degToRad,
+	detonationCorpseView,
+	floorStudsY,
+	isoBasis,
+	lerp,
+	newEnemyKinds,
+	placeholderDrawScale,
+	outlineSwitchOn,
+	scaledSpriteLayout,
+	studsX,
+	studsZ,
+	variantLook,
+	vengefulArmed,
+	vengefulCorpseView,
+	vengefulPulseOn,
+	viewAffix,
+	FlipTracker,
+	ShieldFlashWatch,
+	type ActorGroup,
+	type CorpseView,
+	type IsoBasis,
+	type VariantLook,
+} from "shared/view";
+import { VIEW_HIT_CLIP_SEC } from "shared/view/dummy";
+import { goldenFlickerTransparency, goldenTicksLeft, isGoldenKind } from "shared/view/golden";
+import { FxTrackerController } from "../../fx/FxTrackerController";
+import { PreloadController } from "../../game/PreloadController";
+import { SimController } from "../../game/SimController";
+import { ThemeController } from "../../game/ThemeController";
+import {
+	buildPlaceholder,
+	destroyModel,
+	setModelColor,
+	setModelParent,
+	setModelTransparency,
+	type PlaceholderModel,
+} from "../placeholders";
+import { SPRITE_TINT_NONE, SpriteView } from "../SpriteView";
+import { MotionFx } from "../motionFx";
+import { ActorHitReact } from "./ActorHitReact";
+import { buildOutline, placeModel, pushFree } from "./actorParts";
+import { PlayerViews } from "./PlayerViews";
+import { PARKED, type ActorView } from "./actorViews";
+
+const RENDER_STEP = "KV_Actors";
+/** Free-list key prefix of pooled sprite views (placeholder models use `${visualId}@${scale}`). */
+const SPRITE_KEY = "sprite:";
+
+/**
+ * Every actor and the player, drawn from sim state (web ActorsView + PlayerView). Per ID, one of two paths:
+ *
+ * Sprites (docs/ART.md S4): when the pack has a `sprites` set for the ID (`pack.sprites(id)`) and, for actors, the
+ * archetype has a sprite input builder (shared/view ACTOR_SPRITE_INPUTS: the swarmer, the sniper, the tutorial's
+ * turret.sniper, M1's turret.sprayer / turret.caster, the bruiser, Mother Mayhem and the Demon Lord), a pooled
+ * SpriteView (BillboardGui on a feet anchor) shows the animation chosen from sim state (shared/view sprites.ts) in the
+ * facing nearest the sim's facing on screen;
+ * juice through the label: hit flash / telegraph pulse / i-frame tints (ImageColor3), corpse fade (ImageTransparency),
+ * the post-hit blink (Visible). A boss sprite (data.boss: Mother Mayhem, the Demon Lord) is drawn at least
+ * ACTOR_VIEW.bossMinDrawPx wide (shared/view bossSpriteLayout, the placeholder bosses' rule; both sets already are, so
+ * neither changes), and a sprite's corpse fade starts at its input's `corpseFadeFrom` (the Demon Lord's
+ * SPRITE_VIEW.bossCorpseFadeFrom: his death plays first; everyone else fades over the whole corpse time); its baked
+ * rim follows the placeholder's outline role like every enemy's. The player's ring (`ui.ring.player`, tinted uiAccent
+ * for the local player, uiTextDim for teammates) replaces the facing pip when the pack has it.
+ *
+ * Placeholders (every other ID; every ID with the placeholder pack): one model per occupied pool slot, by archetype
+ * (registry index -> ArchetypeDef -> data.spriteId -> PLACEHOLDER_VISUALS: swarmer ball, sniper wedge facing its aim,
+ * bruiser block, turret drums, the boss's large block), at data.spriteScale (bosses at least ACTOR_VIEW.bossMinDrawPx
+ * wide). Interpolated by the sim's alpha, turned to the actor's facing, tinted while the hit flash runs or while
+ * winding up a telegraphed attack (pulsing), fading out as a corpse, removed when the slot is freed (models go back
+ * to a per-visual pool). The player: their visual's capsule (docs/ARCHER.md AR9: their character's, shared/view
+ * playerVisualIdOf) with a facing pip on the floor (`ui.cursor`), a tumble while rolling, the i-frame tint, the
+ * post-hit blink and lying down greyed when dead.
+ *
+ * Looks and fades come from the same pure rules on both paths (shared/view actorLook, playerLook, playerBlinkVisible,
+ * corpseTransparency; roles in ACTOR_VIEW.lookRoles). Every part moves in ONE workspace:BulkMoveTo per frame.
+ * Co-op (M4): every party member is drawn the same way (one view each, index order); unused ones are parked.
+ *
+ * Enemy outlines (enemy outline plan O2, shared/view outline.ts): the folder has three children (ACTOR_OUTLINE.groups).
+ * `Enemies` is a Model with ONE Highlight (rim only, `enemyOutline`, Occluded) holding the pieces of every living
+ * placeholder enemy / boss whose visual has an outline role; `Corpses` takes them the first frame the actor is dead
+ * (shared/view actorGroup; once, tracked in ActorView.outlined) and holds every released, pooled model; `Players` holds
+ * the party's views. Enemy sprite anchors stay in the folder itself: their rim is baked (plan O4), the outline sheet in
+ * the SpriteView's "Outline" label, tinted the same role, shown while shared/view actorOutlined. Workspace
+ * KV_EnemyOutline = false turns the Highlight and the sprite rims off (read on change, never per frame).
+ *
+ * Player outline (docs/PLAYER_OUTLINE.md, shared/view PLAYER_OUTLINE): the watched player only (getViewPlayerIndex, so a
+ * spectator sees it on the teammate they watch), alive, while Options > Display > Player outline and Workspace
+ * KV_PlayerOutline are on (shared/view playerOutlined). Every player's SpriteView is built with the `playerOutline`
+ * rim (its set's baked 1 px outline sheets: the knight's, the Archer's) and shows it while playerOutlined. A
+ * placeholder capsule moves into `Players/Outlined`, a Model with ONE Highlight (rim only, Occluded), while
+ * playerOutlined (reparented only on a change); the Highlight is Enabled while that player is also visible, so the
+ * post-hit blink blinks the rim too.
+ *
+ * Enemy variants (docs/ENEMY_VARIANTS.md EV9; rules in shared/view variants.ts): the imp / Ooze / summoner draw through
+ * the same two paths (Cone / Dome placeholders; ACTOR_SPRITE_INPUTS once their sets land; `slime.small` wears the
+ * Ooze's set at its spriteScale). Elite affixes, never through a Highlight (EVD12): a Hulking actor is drawn at radius /
+ * data radius (affixDrawScale, in both pool keys); an affixed sprite's baked rim is tinted `affix.<id>`; a shield hit
+ * (ShieldFlashWatch) tints the body / flashes the rim in enemyShield; a Vengeful corpse (EVD16) is drawn as long as the
+ * sim holds it (vengefulCorpseView: opaque, then a short fade) and pulses in the telegraph look while its ring is
+ * pending. The floor ring is AffixRingController's.
+ *
+ * The second endless set (docs/NEW_ENEMIES.md NE8; rules in shared/view newEnemies.ts): the five draw through the same
+ * two paths (their placeholder visuals; ACTOR_SPRITE_INPUTS once their sets land in NE9). A fusing Bomber flashes
+ * between the flash and telegraph looks, ever faster (bomberFuseFlashOn); a detonated Bomber corpse plays `death.2`
+ * when its set has it, else it is gone fast (detonationCorpseView; ParticleController adds the burst). Actors inside a
+ * Warbanner's aura (AuraView: shared/sim warbannerAuraMask on the view's state, once per frame): a sprite's rim is
+ * tinted `enemyAura` (over the affix colour), a placeholder's body is lerped AURA_VIEW.placeholderTint toward it
+ * while no other look shows (the "aura" look). Never a Highlight (EVD12). The aura ring and the stun stars are
+ * NewEnemyMarksController's.
+ *
+ * The Goldling (docs/FORTUNE.md FO8): through the same two paths (its placeholder gold block; ACTOR_SPRITE_INPUTS'
+ * `golden` once the pack has an `enemy.golden` set: idle / move / hit / death), flickering in its last seconds
+ * (goldenFlicker; never under reduced motion). Its timer ring is GoldenRenderController's.
+ *
+ * Stand-ins (docs/STAGE_ASSETS.md "Revision 2", SA17): a set is drawn only once its art is READY on this device
+ * (PreloadController.isArtReady: every sheet of the set, rims included, downloaded; no optional sheet joins on its
+ * own, so a set never draws a blank frame); until then the actor takes the placeholder path above (the stand-in:
+ * under the one Enemies Highlight like any placeholder enemy, never a Highlight per actor). The sprite-set cache
+ * keeps the pack's answer; readiness is asked at acquire. Each frame polls the readiness (shared/view FlipTracker):
+ * when the epoch moved, every LIVE actor whose visual id flipped and is drawn the wrong way is released and
+ * re-acquired (the pools' keys already keep sprites and placeholders apart), so a pack turns into its art mid-fight,
+ * and back under KV_StandInsForce. A corpse keeps the view it died with until its slot frees (no swap mid-death).
+ * Players: the capsule until the players' set is ready, then the sprite (usePlayerBody: each body built on first draw,
+ * the other parked, the capsule out of the player-outline Model); the ring replaces the pip only once its image is
+ * ready too.
+ */
+@Controller({})
+export class ActorRenderController implements OnStart {
+	private folder: Folder | undefined;
+	/** The folder's children: the outlined enemies Model, corpses and players (ACTOR_OUTLINE.groups). */
+	private groups: Readonly<Record<ActorGroup, Instance>> | undefined;
+	private readonly janitor = new Janitor();
+	private pack: ThemePack | undefined;
+	private readonly views = new Array<ActorView | undefined>();
+	private readonly free = new Map<string, PlaceholderModel[]>();
+	private readonly freeSprites = new Map<string, SpriteView[]>();
+	/** spriteId -> its sprite set, or false (placeholder path). */
+	private readonly spriteSets = new Map<string, SpriteSet | false>();
+	/** One past the highest slot ever given a view (`views` has holes, so its size() is unreliable). */
+	private viewSlots = 0;
+	/**
+	 * Views released this frame, parked after the actor loop unless re-acquired in the same frame: a part must not be
+	 * listed twice in one BulkMoveTo.
+	 */
+	private readonly parking = new Set<PlaceholderModel>();
+	private readonly spriteParking = new Set<SpriteView>();
+	private readonly moveParts = new Array<BasePart>();
+	private readonly moveCFrames = new Array<CFrame>();
+	private readonly basis: IsoBasis = isoBasis(degToRad(CAMERA_YAW_DEG), degToRad(CAMERA_PITCH_DEG));
+	/** Animation clock: sim seconds of the last frame, and the state it was read from (a new run restarts it). */
+	private lastSimSec: number | undefined;
+	private lastState: SimState | undefined;
+	private dtSec = 0;
+	/** The KV_EnemyOutline debug switch (outlineSwitchOn), read on change: the Highlight's Enabled and sprite rims. */
+	private outlineOn = true;
+	/** Squash & stretch and afterimages (docs/FEEL.md J6 / J7; ../motionFx.ts), built in onStart. */
+	private motion: MotionFx | undefined;
+
+	/** The hit reaction (docs/FEEL.md J4 / J5; ./ActorHitReact.ts): its clock, the flashing Model, the pin holds. */
+	private readonly hit: ActorHitReact;
+	/** Every player's view (./PlayerViews.ts): bodies, ring / pip, the player outline, cosmetics. */
+	private readonly playerViews: PlayerViews;
+
+	// --- elite affixes (docs/ENEMY_VARIANTS.md EV9) ----------------------------------------------
+	/** Shield hits from a per-frame diff of state.affixes (the body flashes in enemyShield). */
+	private readonly shieldWatch = new ShieldFlashWatch(MAX_ACTORS);
+	/** `affix.<id>` per AFFIX_IDS index (the sprite rim's tint), enemyShield, and the plain rim (enemyOutline). */
+	private affixColors = new Array<Color3>();
+	private shieldColor = SPRITE_TINT_NONE;
+	private outlineColor = SPRITE_TINT_NONE;
+
+	// --- the second endless set (docs/NEW_ENEMIES.md NE8) -----------------------------------------
+	/** Who stands in a Warbanner's aura this frame (rebuilt once per frame from the view's state). */
+	private readonly aura = new AuraView();
+	private auraColor = SPRITE_TINT_NONE;
+
+	// --- stand-ins (docs/STAGE_ASSETS.md SA17) ---------------------------------------------------
+	/** This frame's readiness flips (polled once per frame). */
+	private readonly flips = new FlipTracker();
+
+	constructor(
+		private readonly sim: SimController,
+		private readonly theme: ThemeController,
+		private readonly fx: FxTrackerController,
+		private readonly preload: PreloadController,
+	) {
+		this.hit = new ActorHitReact(sim, fx, this.basis, this.janitor);
+		this.playerViews = new PlayerViews(
+			sim,
+			fx,
+			preload,
+			this.basis,
+			this.janitor,
+			this.moveParts,
+			this.moveCFrames,
+			{
+				spriteSet: (id) => this.spriteSet(id),
+				lookColor: (pack, look) => this.lookColor(pack, look),
+			},
+		);
+	}
+
+	onStart(): void {
+		const pack = this.theme.getPack();
+		this.pack = pack;
+		this.affixColors = AFFIX_IDS.map((id) => pack.color(affixRole(id)));
+		this.shieldColor = pack.color(ENEMY_SHIELD_ROLE);
+		this.outlineColor = pack.color(ACTOR_OUTLINE.role);
+		this.auraColor = pack.color(ENEMY_AURA_ROLE);
+		const folder = new Instance("Folder");
+		folder.Name = ACTOR_VIEW.folderName;
+		folder.Parent = Workspace;
+		this.folder = folder;
+		const enemies = new Instance("Model");
+		enemies.Name = ACTOR_OUTLINE.groups.enemies;
+		enemies.Parent = folder;
+		const corpses = new Instance("Folder");
+		corpses.Name = ACTOR_OUTLINE.groups.corpses;
+		corpses.Parent = folder;
+		const players = new Instance("Folder");
+		players.Name = ACTOR_OUTLINE.groups.players;
+		players.Parent = folder;
+		this.groups = { enemies, corpses, players };
+		const highlight = buildOutline(pack, enemies);
+		const syncSwitch = () => {
+			this.outlineOn = outlineSwitchOn(Workspace.GetAttribute(ACTOR_OUTLINE.enabledAttribute));
+			highlight.Enabled = this.outlineOn;
+		};
+		syncSwitch();
+		this.janitor.Add(Workspace.GetAttributeChangedSignal(ACTOR_OUTLINE.enabledAttribute).Connect(syncSwitch));
+		this.playerViews.start(pack, players);
+		this.hit.start(pack, folder, this.groups, this.shieldColor);
+		this.startMotion(folder);
+
+		RunService.BindToRenderStep(RENDER_STEP, Enum.RenderPriority.Camera.Value + RENDER_ORDER.viewsAfterCamera, () =>
+			this.frame(),
+		);
+	}
+
+	private frame(): void {
+		const state = this.sim.getState();
+		if (state === undefined) return;
+		const alpha = this.sim.getAlpha();
+		const simSec = (state.tick + alpha) / SIM_HZ;
+		this.dtSec = animDtSec(state === this.lastState ? this.lastSimSec : undefined, simSec);
+		this.lastSimSec = simSec;
+		this.lastState = state;
+		this.moveParts.clear();
+		this.moveCFrames.clear();
+		// Stand-ins (SA17): which ids flipped since last frame; the players' art and ring, read once per frame.
+		const readiness = this.preload.getReadiness();
+		const flipped = this.flips.poll(readiness);
+		this.playerViews.beginFrame(this.dtSec, readiness);
+		this.motion?.beginFrame(state, this.dtSec, this.fx.settings());
+		this.playerViews.drawPlayers(state, alpha);
+		this.shieldWatch.update(state);
+		this.aura.update(state);
+
+		const actors = state.combat.actors;
+		const n = actors.size();
+		for (let slot = 0; slot < n; slot++) {
+			const a = actors[slot];
+			let view = this.views[slot];
+			if (a.kind === NO_KIND) {
+				if (view !== undefined) this.release(slot, view);
+				continue;
+			}
+			if (view === undefined || view.kind !== a.kind || view.id !== a.id || (flipped && this.swapDue(view, a))) {
+				if (view !== undefined) this.release(slot, view);
+				view = this.acquire(slot, a, state);
+			}
+			const shieldFlash = this.shieldWatch.flashing(slot, a.id, state.tick);
+			this.hit.applyHitReact(slot, view, shieldFlash);
+			this.drawActor(view, a, slot, state, shieldFlash, alpha);
+			this.motionActor(slot, view, a, alpha);
+		}
+		for (let slot = n; slot < this.viewSlots; slot++) {
+			const view = this.views[slot];
+			if (view !== undefined) this.release(slot, view);
+		}
+		for (const model of this.parking) this.place(model, PARKED);
+		this.parking.clear();
+		for (const sprite of this.spriteParking) {
+			sprite.park();
+			this.moveParts.push(sprite.anchor);
+			this.moveCFrames.push(PARKED);
+		}
+		this.spriteParking.clear();
+		this.motion?.endFrame(this.moveParts, this.moveCFrames);
+		if (this.moveParts.size() > 0) {
+			Workspace.BulkMoveTo(this.moveParts, this.moveCFrames, Enum.BulkMoveMode.FireCFrameChanged);
+		}
+	}
+
+	private place(model: PlaceholderModel, origin: CFrame): void {
+		placeModel(this.moveParts, this.moveCFrames, model, origin);
+	}
+
+	/**
+	 * A live view whose visual id flipped this frame and is now drawn the wrong way (art while not ready, a stand-in
+	 * while ready): released and re-acquired. Corpses keep the view they died with until the slot frees (SA17).
+	 */
+	private swapDue(view: ActorView, a: Readonly<ActorState>): boolean {
+		if (a.alive === 0 || !view.artCapable || !this.flips.has(view.visualId)) return false;
+		return this.preload.isArtReady(view.visualId) !== (view.sprite !== undefined);
+	}
+
+	/** The pack's sprite set for a visual ID (cached), undefined for the placeholder path. */
+	private spriteSet(id: string): SpriteSet | undefined {
+		let set = this.spriteSets.get(id);
+		if (set === undefined) {
+			set = this.pack!.sprites(id) ?? false;
+			this.spriteSets.set(id, set);
+		}
+		return set === false ? undefined : set;
+	}
+
+	/** A look's body colour (undefined: the base colour / no tint). "aura" tints no sprite body (its rim carries it). */
+	private lookColor(pack: ThemePack, look: VariantLook): Color3 | undefined {
+		if (look === "shield") return this.shieldColor;
+		if (look === "aura") return undefined;
+		return look === "normal" ? undefined : pack.color(ACTOR_VIEW.lookRoles[look]);
+	}
+
+	private acquire(slot: number, a: Readonly<ActorState>, state: SimState): ActorView {
+		const pack = this.pack!;
+		const def = archetypeAt(a.kind);
+		const id = def.data.spriteId;
+		const corpseTicks = def.data.corpseTicks ?? CORPSE_TICKS;
+		const spriteInput = ACTOR_SPRITE_INPUTS.get(def.id);
+		const artSet = spriteInput !== undefined ? this.spriteSet(id) : undefined;
+		// SA17: the set's art only once its content is ready on this device; until then the placeholder (stand-in)
+		const set = artSet !== undefined && this.preload.isArtReady(id) ? artSet : undefined;
+		// Hulking (docs/ENEMY_VARIANTS.md EV9): drawn radius / data radius; it is stamped before init, so final here.
+		const affixScale =
+			viewAffix(state, slot, a.id) === AffixKind.HULKING ? affixDrawScale(a.radius, def.data.radius) : 1;
+		let view: ActorView;
+		if (set !== undefined) {
+			// The baked rim (plan O4) follows the placeholder visual's outline role, like the Highlight (O2). It depends
+			// on the ID alone; the draw scale (slime.small's spriteScale, Hulking) is in the pool key.
+			const hasOutline = pack.placeholder(id).outline !== undefined;
+			const boss = def.data.boss === true;
+			const scale = actorSpriteScale(def.id, def.data.spriteScale, affixScale);
+			const key = `${SPRITE_KEY}${id}@${scale}`;
+			const sprite =
+				this.freeSprites.get(key)?.pop() ??
+				new SpriteView(
+					set,
+					this.folder!,
+					scaledSpriteLayout(boss ? bossSpriteLayout(set, ACTOR_VIEW.bossMinDrawPx) : set, scale),
+					0,
+					hasOutline ? this.outlineColor : undefined,
+				);
+			this.spriteParking.delete(sprite);
+			sprite.reset();
+			view = {
+				kind: a.kind,
+				id: a.id,
+				visualId: id,
+				artCapable: true,
+				model: undefined,
+				sprite,
+				spriteInput,
+				hitClipSec: VIEW_HIT_CLIP_SEC.get(def.id),
+				poolKey: key,
+				look: "normal",
+				transparency: 0,
+				corpseTicks,
+				hasOutline,
+				outlined: false,
+				flashing: false,
+				pushX: 0,
+				pushY: 0,
+				push: Vector3.zero,
+			};
+		} else {
+			const visual = pack.placeholder(id);
+			const scale = placeholderDrawScale(
+				def.data.spriteScale,
+				def.data.boss === true,
+				visual.cellPx.w,
+				affixScale,
+			);
+			const key = `${id}@${scale}`;
+			const hasOutline = visual.outline !== undefined;
+			const group = actorGroup(hasOutline, a.alive !== 0);
+			const parent = this.groups![group];
+			const model = this.free.get(key)?.pop() ?? buildPlaceholder(pack, key, visual, scale, parent, true);
+			// Pooled models wait under corpses; an outlined actor's go under the shared Highlight.
+			setModelParent(model, parent);
+			this.parking.delete(model);
+			setModelColor(model, model.baseColor);
+			setModelTransparency(model, 0);
+			view = {
+				kind: a.kind,
+				id: a.id,
+				visualId: id,
+				artCapable: artSet !== undefined,
+				model,
+				sprite: undefined,
+				spriteInput: undefined,
+				hitClipSec: undefined,
+				poolKey: key,
+				look: "normal",
+				transparency: 0,
+				corpseTicks,
+				hasOutline,
+				outlined: group === "enemies",
+				flashing: false,
+				pushX: 0,
+				pushY: 0,
+				push: Vector3.zero,
+			};
+		}
+		this.views[slot] = view;
+		this.viewSlots = math.max(this.viewSlots, slot + 1);
+		return view;
+	}
+
+	private release(slot: number, view: ActorView): void {
+		this.views[slot] = undefined;
+		const sprite = view.sprite;
+		if (sprite !== undefined) {
+			this.spriteParking.add(sprite);
+			pushFree(this.freeSprites, view.poolKey, sprite);
+			return;
+		}
+		const model = view.model!;
+		// Off the Highlight while pooled (a slot freed alive, e.g. on a floor change): the next acquire puts it back.
+		if (view.outlined || view.flashing) setModelParent(model, this.groups!.corpses);
+		this.parking.add(model);
+		pushFree(this.free, model.visualId, model);
+	}
+
+	private drawActor(
+		view: ActorView,
+		a: Readonly<ActorState>,
+		slot: number,
+		state: SimState,
+		shieldFlash: boolean,
+		alpha: number,
+	): void {
+		const pack = this.pack!;
+		const tick = state.tick;
+		const x = studsX(lerp(a.prevX, a.x, alpha));
+		const z = studsZ(lerp(a.prevZ, a.z, alpha));
+		const at = new Vector3(x, floorStudsY() + ACTOR_VIEW.liftStuds, z);
+		// Elite affixes (docs/ENEMY_VARIANTS.md EV9): the rim's tint, the shield-hit flash, a Vengeful corpse's length
+		// (EVD16: held while its ring is pending, then a short fade) and its telegraph pulse.
+		const affix = viewAffix(state, slot, a.id);
+		const bomber = a.kind === newEnemyKinds().bomber;
+		// A detonated Bomber (NE8): its own corpse length (a quick fade without `death.2`); it never arms Vengeful.
+		const detonated = bomber && bomberDetonated(a);
+		const vengefulCorpse =
+			!detonated && a.alive === 0 && affix === AffixKind.VENGEFUL && state.affixes !== undefined;
+		let corpse: CorpseView | undefined;
+		if (detonated) {
+			const set = view.sprite?.set;
+			const hasAnim = set !== undefined && set.animation(NEW_ENEMY_SPRITE_VIEW.anims.detonation) !== undefined;
+			corpse = detonationCorpseView(view.corpseTicks, hasAnim);
+		} else if (vengefulCorpse) {
+			corpse = vengefulCorpseView(
+				view.corpseTicks,
+				state.affixes!.config.vengefulTelegraphTicks,
+				AFFIX_VIEW.vengefulFadeTicks,
+			);
+		}
+		const pulse = vengefulCorpse && vengefulArmed(state, slot, a.id) && vengefulPulseOn(tick);
+		let base = actorLook(a.alive, a.flashTicks, a.aiState, tick);
+		// The fuse flash (NE8): flash / telegraph, quickening over the fuse (a real hit flash still wins).
+		if (bomber && base !== "flash" && bomberFusing(a)) {
+			base = bomberFuseFlashOn(a.aiTicks, alpha) ? "flash" : "telegraph";
+		}
+		const buffed = this.aura.buffed(a);
+		const look = variantLook(base, a.alive, pulse, shieldFlash, buffed);
+
+		const sprite = view.sprite;
+		if (sprite !== undefined) {
+			this.moveParts.push(sprite.anchor);
+			this.moveCFrames.push(new CFrame(at));
+			let input = view.spriteInput!(a, alpha);
+			const hitClipSec = view.hitClipSec;
+			if (hitClipSec !== undefined) {
+				// DD1: the hit plays over the seconds since the last hit (hitReact's clock), not the 0.1 s sim flash.
+				const elapsed = this.hit.hitAge(slot, a.id);
+				input = { ...input, hitClip: { elapsed, total: hitClipSec } };
+			}
+			if (corpse !== undefined) {
+				// The death keeps its own span; only the fade follows the held corpse.
+				const deathTicks = input.deathTicks ?? input.corpseTicks * SPRITE_VIEW.deathCorpseFraction;
+				input = { ...input, corpseTicks: corpse.corpseTicks, corpseFadeFrom: corpse.fadeFrom, deathTicks };
+			}
+			const choice = chooseActorAnim(input, sprite.set);
+			const transparency =
+				corpse !== undefined
+					? corpseTransparency(a.alive, a.deadTicks, corpse.corpseTicks, corpse.fadeFrom)
+					: corpseTransparency(a.alive, a.deadTicks, view.corpseTicks, input.corpseFadeFrom);
+			sprite.update(choice, a.faceX, a.faceZ, this.basis, this.dtSec);
+			if (look !== view.look) {
+				view.look = look;
+				sprite.setTint(this.lookColor(pack, look) ?? SPRITE_TINT_NONE);
+			}
+			sprite.setTransparency(math.max(transparency, this.goldenFlicker(a, slot, state, alpha)));
+			if (view.hasOutline) {
+				// The aura's tint wins on the rim (the affix keeps its floor ring and name chip).
+				const k = affixThemeIndex(affix);
+				const rim = k >= 0 ? this.affixColors[k] ?? this.outlineColor : this.outlineColor;
+				sprite.setRimColor(buffed ? this.auraColor : rim);
+			}
+			// The rim goes the frame the actor dies (the corpse fades without it) and with KV_EnemyOutline = false.
+			sprite.setOutlineShown(actorOutlined(view.hasOutline, a.alive !== 0, this.outlineOn));
+			return;
+		}
+
+		const transparency = math.max(
+			corpse !== undefined
+				? corpseTransparency(a.alive, a.deadTicks, corpse.corpseTicks, corpse.fadeFrom)
+				: corpseTransparency(a.alive, a.deadTicks, view.corpseTicks),
+			this.goldenFlicker(a, slot, state, alpha),
+		);
+		const model = view.model!;
+		// A corpse drops the outline the first frame it is dead (once: only a change of group reparents).
+		const outlined = actorGroup(view.hasOutline, a.alive !== 0) === "enemies";
+		if (outlined !== view.outlined) {
+			view.outlined = outlined;
+			this.hit.syncModelGroup(view, model);
+		}
+		const origin =
+			model.faces && (a.faceX !== 0 || a.faceZ !== 0)
+				? CFrame.lookAlong(at, new Vector3(a.faceX, 0, a.faceZ))
+				: new CFrame(at);
+		this.place(model, view.pushX === 0 && view.pushY === 0 ? origin : origin.add(view.push));
+		if (look !== view.look) {
+			view.look = look;
+			setModelColor(
+				model,
+				look === "aura"
+					? model.baseColor.Lerp(this.auraColor, AURA_VIEW.placeholderTint)
+					: this.lookColor(pack, look) ?? model.baseColor,
+			);
+		}
+		if (transparency !== view.transparency) {
+			view.transparency = transparency;
+			setModelTransparency(model, transparency);
+		}
+	}
+
+	/**
+	 * The Goldling's flicker in its last seconds (docs/FORTUNE.md FO8, shared/view/golden goldenFlickerTransparency, on
+	 * sim time; none under reduced motion, where its timer ring's colour carries the warning): the body's extra
+	 * transparency, 0 for every other actor.
+	 */
+	private goldenFlicker(a: Readonly<ActorState>, slot: number, state: SimState, alpha: number): number {
+		if (a.alive === 0 || !isGoldenKind(a.kind)) return 0;
+		const simSec = (state.tick + alpha) / SIM_HZ;
+		return goldenFlickerTransparency(goldenTicksLeft(state, slot), simSec, this.fx.settings().reducedMotion);
+	}
+
+	// ---------------------------------------------------------------------------------------------
+	// Motion feel (docs/FEEL.md J6 squash & stretch, J7 afterimages): ../motionFx.ts does the work.
+
+	/** Builds the ghost pool under the actor folder and feeds it the tracker's hit / spawned / killed events. */
+	private startMotion(folder: Folder): void {
+		const motion = new MotionFx(folder);
+		this.motion = motion;
+		this.playerViews.setMotion(motion);
+		this.fx.onEvent((e) => motion.onFxEvent(e));
+		this.janitor.Add(() => motion.destroy(), true);
+	}
+
+	/** A sprite actor's squash (and the Demon Lord's charge ghosts), after drawActor updated its frame. */
+	private motionActor(slot: number, view: ActorView, a: Readonly<ActorState>, alpha: number): void {
+		const sprite = view.sprite;
+		const motion = this.motion;
+		if (sprite === undefined || motion === undefined) return;
+		const x = studsX(lerp(a.prevX, a.x, alpha));
+		const z = studsZ(lerp(a.prevZ, a.z, alpha));
+		motion.actor(slot, sprite, a, x, floorStudsY() + ACTOR_VIEW.liftStuds, z);
+	}
+
+	/**
+	 * docs/BUILDS_V2.md BV11c, Siege Bolt: SiegeFxController's pin mask (PinHoldMask.held, slot -> carried by an arrow),
+	 * handed over once and read every frame by the hit reaction: a pinned actor's sprite holds while it is carried.
+	 */
+	setPinHolds(held: ReadonlyArray<boolean>): void {
+		this.hit.setPinHolds(held);
+	}
+
+	/** Holds an actor's sprite for `seconds` of the hit-reaction clock (docs/ROOM_CLEAR.md RC5). */
+	holdActor(slot: number, actorId: number, seconds: number): void {
+		this.hit.holdActor(slot, actorId, seconds);
+	}
+
+	/** Destroys every pooled view (not used in play; kept for tests / teardown). */
+	destroy(): void {
+		for (const [, list] of this.free) for (const m of list) destroyModel(m);
+		this.free.clear();
+		for (const [, list] of this.freeSprites) for (const s of list) s.destroy();
+		this.freeSprites.clear();
+		this.janitor.Cleanup();
+	}
+}

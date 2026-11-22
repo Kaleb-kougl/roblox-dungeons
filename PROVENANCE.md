@@ -1,6 +1,7 @@
 # Provenance
 
-Every module ported from the web build. Source repo: `/Users/kalebmon/Documents/project-kaleb-vale` (read-only).
+Every module ported from the web build: a private TypeScript project (read-only, not part of this repository).
+Source paths are relative to that project's root.
 
 | Ported module | Source path | Source commit |
 |---|---|---|
