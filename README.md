@@ -1,5 +1,7 @@
 # Roblox Dungeons
 
+[![CI](https://github.com/Kaleb-kougl/roblox-dungeons/actions/workflows/ci.yml/badge.svg)](https://github.com/Kaleb-kougl/roblox-dungeons/actions/workflows/ci.yml)
+
 A co-op bullet-hell roguelike on Roblox for up to 8 players, built on a deterministic simulation with lockstep
 multiplayer. Pick a hero, dodge everything, draft boons between floors, and fight Mother Mayhem and the Demon Lord.
 
@@ -96,7 +98,9 @@ prediction (problem 3) was built instead. The full record, including the harness
 
 ## How it stays correct at this size
 
-`npm run verify` is the gate before every merge. Its 15 steps include:
+`npm run verify` is the gate before every merge, and CI runs the same stages on every pull request. The spec
+suite runs on both x86-64 and arm64, because the simulation has to compute the same run on a PC and on a phone
+([`docs/CI.md`](docs/CI.md)). Its 15 steps include:
 
 - typecheck and lint at zero warnings;
 - the headless spec suite: real Jest modules under [Lune](https://github.com/lune-org/lune), long statistical

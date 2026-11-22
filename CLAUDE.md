@@ -255,4 +255,6 @@ split-16-bit `imul`, no getters in sim state.
 ## Working agreement
 
 - Report failures plainly, with output. If you skipped something, say what and why.
+- A change lands on `main` by pull request with CI green (docs/CI.md): work on a branch, run `npm run verify`, push,
+  open the pull request. Never push to `main` directly.
 - Spikes and debug features are off by default (Workspace attributes / `shared/config`), cleaned up with Janitor.
