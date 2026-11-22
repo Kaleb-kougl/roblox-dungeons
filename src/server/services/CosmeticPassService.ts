@@ -4,7 +4,15 @@ import { MarketplaceService, Players, RunService } from "@rbxts/services";
 import { serverLogger } from "server/log";
 import { Events } from "server/network";
 import { SlidingWindowLimiter } from "shared/run";
-import { COSMETIC_PASS, armoryItem, cosmeticPassItemOf, cosmeticPassesFor, isRobuxItem } from "shared/wallet";
+import {
+	COSMETIC_PASS,
+	armoryItem,
+	cosmeticPassItemOf,
+	cosmeticPassesFor,
+	isRobuxItem,
+	itemPurchaseEvent,
+} from "shared/wallet";
+import { TelemetryService } from "./TelemetryService";
 import { WalletService } from "./WalletService";
 
 const log = serverLogger("CosmeticPass");
@@ -24,6 +32,9 @@ const log = serverLogger("CosmeticPass");
  *              purchases are not owned) and then granted, the push carrying `passPurchase` with `bought` true. An
  *              unconfirmed purchase is logged and granted at the buyer's next join.
  *   Studio     `cosmeticPassFakeBuy(itemId)` while KV_FakePasses gives a fake price: the same grant (no pass needed).
+ *   telemetry  (docs/SHOP_ANALYTICS.md PUD3) one `Purchase` when a grant commits, from the prompt or the join check
+ *              alike, so each pass logs once per player; only while the player is here (AnalyticsService needs the
+ *              Player).
  */
 @Service({})
 export class CosmeticPassService implements OnStart {
@@ -33,7 +44,7 @@ export class CosmeticPassService implements OnStart {
 		COSMETIC_PASS.fakeRate.windowSeconds,
 	);
 
-	constructor(private readonly wallet: WalletService) {}
+	constructor(private readonly wallet: WalletService, private readonly telemetry: TelemetryService) {}
 
 	onStart(): void {
 		this.wallet.onLoaded((player) => this.reconcile(player));
@@ -103,6 +114,15 @@ export class CosmeticPassService implements OnStart {
 		if (r.granted) log.info("GRANT", `${userId} ${itemId} (${what})`);
 		// A purchase always answers (the buyer's client is waiting on it); a join check only when it granted.
 		if (r.granted || bought) this.wallet.pushPass(userId, { itemId, bought });
+		if (r.granted) this.logPurchase(userId, itemId);
+	}
+
+	/** The granted item's `Purchase` (docs/SHOP_ANALYTICS.md PUD3), while its buyer is on this server. */
+	private logPurchase(userId: number, itemId: string): void {
+		const player = Players.GetPlayerByUserId(userId);
+		const bought = itemPurchaseEvent(itemId);
+		if (player === undefined || bought === undefined) return;
+		this.telemetry.logEvents(player, [bought]);
 	}
 
 	/** `cosmeticPassFakeBuy` (Studio only, KV_FakePasses with a price): the real grant without a pass. */

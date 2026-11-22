@@ -72,7 +72,9 @@ const log = serverLogger("Telemetry");
  * Silver's economy (docs/SILVER.md SV10, shared/wallet analytics.ts): WalletService hands over `logEconomy` specs, one
  * `LogEconomyEvent` Source per non-zero part of a grant (the run rows, Prospector and the top-up as Gameplay, the day
  * bonuses as TimedReward) and one Sink per purchase (Shop), plus the `ArmoryPurchase` custom event through
- * `logEvents`. Built from the transaction's result, never from a client claim.
+ * `logEvents`. Built from the transaction's result, never from a client claim. Every purchase also logs one `Purchase`
+ * (docs/SHOP_ANALYTICS.md: the kind, the currency and the item), from WalletService, SilverShopService and
+ * CosmeticPassService.
  */
 @Service({})
 export class TelemetryService implements OnStart {

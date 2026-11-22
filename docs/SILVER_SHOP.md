@@ -224,7 +224,7 @@ sim / dungeon (unchanged).
 - [x] **SH4. Theme.**
 - [x] **SH5. Client controller and store.**
 - [x] **SH6. Get Silver panel and the two `+` buttons.**
-- [x] **SH7. Telemetry.**
+- [x] **SH7. Telemetry.** (2026-11-22: a granted pack also logs one `Purchase`, docs/SHOP_ANALYTICS.md.)
 - [x] **SH8. Docs.** This file, docs/SILVER.md, docs/SERVER.md, docs/CLIENT.md, CLAUDE.md.
 - [x] **SH10. Robux icon.** Wired (prep script, atlas entry, layout, manifest, spec), built at 14 x 14 and uploaded
   2026-11-14 (`ui-robux.png`, `assetIds.ts`); the Studio look is part of the Studio check.

@@ -17,7 +17,15 @@ import {
 	type RunRecapNearMiss,
 } from "shared/run";
 import { TUTORIAL_DEVICES, TUTORIAL_STEPS } from "shared/tutorial";
-import { ARMORY_CATALOG, WALLET_ANALYTICS_EVENT, armoryPurchaseEvent, itemPrice } from "shared/wallet";
+import {
+	ARMORY_CATALOG,
+	SILVER_PACK_IDS,
+	WALLET_ANALYTICS_EVENT,
+	armoryPurchaseEvent,
+	itemPrice,
+	itemPurchaseEvent,
+	packPurchaseEvent,
+} from "shared/wallet";
 import {
 	ANALYTICS_CATALOG,
 	MAX_TUTORIAL_STEP_NAME_CHARS,
@@ -115,8 +123,8 @@ describe("analytics catalog limits", () => {
 		for (const [, n] of pairs(WALLET_ANALYTICS_EVENT)) expect(names.has(n)).toBe(true);
 		// 36 before the run-over recap's RunRecap (docs/RUN_RECAP.md RR9); its views row (docs/RUN_CONTRIBUTION.md CT8) is
 		// a row kind on that event, not a new name. 38 with Silver's ArmoryPurchase (docs/SILVER.md SV10), 39 with the
-		// Silver shop's SilverShop (docs/SILVER_SHOP.md SH7).
-		expect(custom.size()).toBe(39);
+		// Silver shop's SilverShop (docs/SILVER_SHOP.md SH7), 40 with Purchase (docs/SHOP_ANALYTICS.md).
+		expect(custom.size()).toBe(40);
 		expect(custom.size() <= ROBLOX_MAX_CUSTOM_EVENT_NAMES).toBe(true);
 	});
 
@@ -277,6 +285,12 @@ describe("run-over recap events stay inside the catalog", () => {
 				]);
 			}
 		}
+	});
+
+	it("Purchase (docs/SHOP_ANALYTICS.md): every catalogue item and every Silver pack", () => {
+		for (const item of ARMORY_CATALOG) expectInCatalog([itemPurchaseEvent(item.id)!]);
+		for (const packId of SILVER_PACK_IDS)
+			expectInCatalog([packPurchaseEvent({ purchaseId: "p", packId, productId: 1, silver: 1, balance: 1 })]);
 	});
 });
 

@@ -8,6 +8,7 @@ import {
 	SILVER_SHOP,
 	SILVER_SHOP_FAKE_NONCE_CHARS,
 	fakeSilverReceipt,
+	packPurchaseEvent,
 	readSilverShopReport,
 	silverAuditKey,
 	silverAuditRecord,
@@ -41,7 +42,8 @@ const log = serverLogger("SilverShop");
  *   - otherwise runs WalletService.purchaseSilver (the wallet book: the stored doc inside UpdateAsync, the receipt ring
  *     in the same write, the per-player lock, retries), whether or not the buyer is still here (SHD4), and answers
  *     Processed only after the write committed or for a duplicate (SHD2);
- *   - after a grant: the buyer's `wallet` push with `purchase`, the IAP economy Source and the `granted` funnel event
+ *   - after a grant: the buyer's `wallet` push with `purchase`, the IAP economy Source, the `granted` funnel event
+ *     and the pack's `Purchase` (docs/SHOP_ANALYTICS.md)
  *     (only while the buyer is here: AnalyticsService needs the Player), and one best-effort audit entry in
  *     SILVER_SHOP.auditStore (never on Studio, never deciding the answer). A duplicate logs nothing.
  * BindToClose only raises the closing flag: WalletService's own BindToClose waits for receipts already running (the
@@ -144,7 +146,7 @@ export class SilverShopService implements OnStart {
 			const player = Players.GetPlayerByUserId(receipt.playerId);
 			if (player !== undefined) {
 				this.telemetry.logEconomy(player, [silverPackEconomyEvent(g)]);
-				this.telemetry.logEvents(player, [silverShopGrantedEvent(g)]);
+				this.telemetry.logEvents(player, [silverShopGrantedEvent(g), packPurchaseEvent(g)]);
 			}
 			if (!fake) task.spawn(() => this.writeAudit(receipt, g));
 		} else if (r.reason === "duplicate") {

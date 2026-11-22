@@ -101,6 +101,7 @@ One doc per gameplay or presentation feature: plan, decisions, tasks, as built.
 | [RUN_RECAP.md](RUN_RECAP.md) | Run-over recap and co-op moments |
 | [SECRET_ROOMS.md](SECRET_ROOMS.md) | Secret rooms |
 | [SILVER.md](SILVER.md) | Silver, the cross-run currency |
+| [SHOP_ANALYTICS.md](SHOP_ANALYTICS.md) | Shop analytics (the `Purchase` event) |
 | [SILVER_SHOP.md](SILVER_SHOP.md) | Silver shop |
 | [SPECTATE.md](SPECTATE.md) | Co-op spectating |
 | [SWORD_SPACING.md](SWORD_SPACING.md) | Sword spacing |
