@@ -21,7 +21,8 @@
 		"tsx",
 		"typescript",
 		"lua",
-		"csv"
+		"csv",
+		"mermaid"
 	],
 	"disableSources": true,
 	"excludeInternal": false,
