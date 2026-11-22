@@ -75,7 +75,7 @@ Rules of the move:
 - [x] **R3. Hit reaction** into `ActorHitReact.ts`.
 - [x] **R4. Players** into `PlayerViews.ts`.
 - [x] **R5. Pure rules** `placeholderDrawScale`, `rollTumbleTurn` into `shared/view/actorDraw.ts` with a spec.
-- [ ] **R6. Studio check (owner)**, below.
+- [x] **R6. Studio check (owner)**, below. *(passed 2026-11-21, owner)*
 
 ## As built (2026-11-21)
 

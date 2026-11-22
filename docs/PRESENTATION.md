@@ -4,8 +4,8 @@ Make the repository read well to an engineer evaluating it: close the real gaps,
 strongest work easy to find. No gameplay change: no sim, hash group, wire format, ruleset or fixture is touched,
 and every emitted log line is the same text as before.
 
-**Status: built 2026-11-21 on branch `staff-presentation` (from `main` @ `d4936547`), not yet run in Studio.
-The owner's checks (below) come before the merge.**
+**Status: built 2026-11-21 on branch `staff-presentation` (from `main` @ `d4936547`), the owner's Studio check of
+both controller splits passed the same day. Not merged yet.**
 
 ## Findings, as first measured and as corrected
 
@@ -125,9 +125,9 @@ Not run: Studio, two clients, a device, the art and audio pipelines (the packs w
 - [x] SE8. The Studio pass written.
 - [x] SE10, SE11, SE13-SE19.
 - [x] SE12. An index instead of a move (SED6 revised).
-- [ ] SE5a. [owner] Studio check of the `SimController` split: docs/SIM_CONTROLLER.md "Studio check". Two clients:
+- [x] SE5a. [owner] *(passed 2026-11-21)* Studio check of the `SimController` split: docs/SIM_CONTROLLER.md "Studio check". Two clients:
   the co-op debug line and the 10 s `[Pace]` line read as on `main`.
-- [ ] SE6a. [owner] Studio check of the actor renderer split: docs/ACTOR_RENDER.md "Studio check (owner)", 11 steps.
+- [x] SE6a. [owner] *(passed 2026-11-21)* Studio check of the actor renderer split: docs/ACTOR_RENDER.md "Studio check (owner)", 11 steps.
 - [ ] SE3a. [owner] One solo endless run and one 2-player lobby run: verdict, records and Silver arrive as before.
 - [ ] SE9a. [owner] Run docs/STUDIO_PASS.md; close every task per docs/OPEN_TASKS_TRIAGE.md; file the issues.
 - [ ] SE13a. [owner] Record or abandon the seven open spikes, then remove them. Decide whether Spike B's recorded
