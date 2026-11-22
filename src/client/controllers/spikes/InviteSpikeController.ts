@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { Players, ReplicatedStorage, SocialService, Workspace } from "@rbxts/services";
+import { logInfo, logWarn } from "client/log";
 import { clientStore, InviteSpikeRequest, selectInviteSpikeRequest } from "client/store";
 import { INVITE_SPIKE, InviteSpikeAction, SPIKE_ATTRIBUTES } from "shared/config";
 import {
@@ -100,12 +101,12 @@ export class InviteSpikeController implements OnStart {
 	}
 
 	private line(event: string, message: string): void {
-		print(`${LOG} ${event}: ${message}`);
+		logInfo(`${LOG} ${event}: ${message}`);
 		clientStore.pushInviteSpikeLine(`cli ${event}: ${message}`);
 	}
 
 	private warnLine(event: string, message: string): void {
-		warn(`${LOG} ${event}: ${message}`);
+		logWarn(`${LOG} ${event}: ${message}`);
 		clientStore.pushInviteSpikeLine(`cli ${event}: ${message}`);
 	}
 

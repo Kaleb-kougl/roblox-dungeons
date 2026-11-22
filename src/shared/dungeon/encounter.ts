@@ -1,5 +1,5 @@
 /**
- * Encounter placement (Roblox port of project-kaleb-vale src/bullets/encounter.ts and setup.ts roomFloorTile
+ * Encounter placement (Roblox port of the web build's src/bullets/encounter.ts and setup.ts roomFloorTile
  * @ 42897e2): a PURE function of the dungeon that decides what stands where at run start and describes every room
  * for AI. The result is SimConfig.encounter, so live play and replays rebuild the same world from the run seed.
  *

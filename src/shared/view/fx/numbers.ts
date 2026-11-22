@@ -1,5 +1,5 @@
 /**
- * Damage number pool (port of project-kaleb-vale src/fx/numbers/numberPool.ts @ 42897e2): spawning, merging, the
+ * Damage number pool (port of the web build's src/fx/numbers/numberPool.ts @ 42897e2): spawning, merging, the
  * "CAP" tag throttle and the per-number animation curves. Pure, preallocated arrays, no allocation per frame. Times
  * are SimClock seconds (sim time: numbers freeze with pause / hitstop).
  *

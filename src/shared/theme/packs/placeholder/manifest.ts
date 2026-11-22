@@ -2,7 +2,7 @@
  * The placeholder pack: every visual ID is a placeholder primitive (placeholders.ts) and every
  * audio event is silent. No uploaded assets. Colors, biomes and strings are the web build's.
  *
- * Ported from project-kaleb-vale `src/theme/packs/placeholder/manifest.json` @ 42897e2: same colors,
+ * Ported from the web build's `src/theme/packs/placeholder/manifest.json` @ 42897e2: same colors,
  * biomes, strings and asset IDs; every `generated` asset became `{ kind: "placeholder" }` (its shape and
  * colour now live in PLACEHOLDER_VISUALS) and every `silent` one stayed silent. Roblox-port additions are marked
  * (enemy.dummy, the port sfx, breakables and the decor fx colour roles; no decor art: decor is optional; the port

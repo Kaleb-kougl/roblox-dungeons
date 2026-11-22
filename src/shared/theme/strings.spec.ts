@@ -1,4 +1,4 @@
-// Ported from project-kaleb-vale src/theme/strings.test.ts @ 42897e2.
+// Ported from the web build's src/theme/strings.test.ts @ 42897e2.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { interpolate, placeholders, templateProblem } from "./strings";
 

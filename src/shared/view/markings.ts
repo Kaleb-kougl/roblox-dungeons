@@ -4,7 +4,7 @@
  * seal, the roar) and weapon arcs. Pure geometry: each builder writes
  * segments into a SegmentSink; the client's dash layers turn segments into fixed-size dash Parts (`dashLayout`).
  *
- * Ported from project-kaleb-vale @ 42897e2: src/boss/BossView.tsx (LineBatch.ray / arc / rect, fanLanes, ringArcs,
+ * Ported from the web build @ 42897e2: src/boss/BossView.tsx (LineBatch.ray / arc / rect, fanLanes, ringArcs,
  * shockArc, drawTelegraph, drawSlam), src/bullets/ActorsView.tsx (ActorFx aim line and shockwave), and
  * src/bullets/WeaponView.tsx (fans). The Demon Lord's previews are the Roblox port's (docs/BOSS_DEMONLORD.md D6, no web
  * source). Presentation only: trig is fine here, nothing feeds back into the sim.

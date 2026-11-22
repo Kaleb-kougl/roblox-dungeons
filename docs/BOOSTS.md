@@ -208,8 +208,9 @@ docs/DECOR.md applies: before launch no reset; after launch bump `LB_Solo_v1` / 
 - [ ] **B7. HUD and audio.** (code-complete; headless specs pass; Studio check pending) Snapshot fields, `BoostRow`, the Aegis pip, the toast, the cue mapper. → Verify:
   `snapshot.spec.ts` (quantised fields, vitals index), audio cue spec; Studio: row drains and blinks, refresh resets
   it, Aegis pip breaks on a K hit.
-- [ ] **B8. Vale art and audio.** (Art: now planned in docs/BOOST_ART.md with the Lords of Pain props; this task keeps the audio.) Vendor Items, atlas and audio entries, upload, paste IDs. → Verify: `art:build`,
+- [x] **B8. Vale art and audio.** (Art: now planned in docs/BOOST_ART.md with the Lords of Pain props; this task keeps the audio.) Vendor Items, atlas and audio entries, upload, paste IDs. → Verify: `art:build`,
   `audio:build`, `test:art`; vale pack validator passes.
+  *Done 2026-11-21 (docs/OPEN_TASKS_TRIAGE.md): the art is docs/BOOST_ART.md BA4; the four `sfx.boost.*` clips have layouts in `packs/vale/audioLayout.ts` and ids in `packs/vale/assetIds.ts`.*
 - [x] **B9. Tutorial.** The tutorial world's drops config (guaranteed Fury on combat B's last kill), a `boost`
   callout when it lands (`tutorial.callout.boost`: "Enemies sometimes drop a boost. Walk over it before it fades."),
   the marker on the drop while it lies there, a ring on the boost row on pickup. (Superseded 2026-10-26: the callout

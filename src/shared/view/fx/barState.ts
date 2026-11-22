@@ -1,5 +1,5 @@
 /**
- * Health bar state per actor slot (port of project-kaleb-vale src/fx/bars/barState.ts and simClock.ts @ 42897e2):
+ * Health bar state per actor slot (port of the web build's src/fx/bars/barState.ts and simClock.ts @ 42897e2):
  * chip trail, hit flash / shake and visibility. Pure, preallocated arrays indexed by actor pool slot (0-based) and
  * keyed by ActorState.id. Times are SimClock seconds (sim time: everything freezes with pause / hitstop).
  *

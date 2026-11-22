@@ -175,8 +175,9 @@ so nothing was swapped; the kind left the contract too.
   emulator size; 4-player co-op with four drops at once (fps, no overlap mess).
 - [ ] **BA6. Optional extras.** BA-P5 aura rings, BA-P6 HUD icons. **Auras built** (2026-11-06) as BAD3's original
   art, not BA-P5's ring; uploaded 2026-11-06; open: its Studio check; BA-P6 not started.
-- [ ] **BA7. Docs.** docs/BOOSTS.md (B8 art part done, pointer here), docs/ART.md (slice table row, `gems` no longer
+- [x] **BA7. Docs.** docs/BOOSTS.md (B8 art part done, pointer here), docs/ART.md (slice table row, `gems` no longer
   decor), docs/DECOR.md (gems removed), docs/CLIENT.md (the drop's layers), CLAUDE.md docs-table row.
+  *Done 2026-11-21 (docs/OPEN_TASKS_TRIAGE.md): every doc listed carries it.*
 
 Critical path: BA0 -> BA1 -> BA2 -> BA3 -> BA4 -> BA5. BA6 any time after BA3.
 

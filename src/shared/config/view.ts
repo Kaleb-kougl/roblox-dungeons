@@ -1,7 +1,7 @@
 /**
  * The camera view, ported from the web build so both frame the world the same way.
  *
- * Source: project-kaleb-vale `src/config.ts` (CAMERA_YAW, CAMERA_PITCH, RENDER_W/H,
+ * Source: the web build's `src/config.ts` (CAMERA_YAW, CAMERA_PITCH, RENDER_W/H,
  * PIXELS_PER_TILE) @ 42897e2. The web camera is a true orthographic camera; Roblox has no
  * orthographic projection, so the port fakes it with a very narrow perspective camera placed
  * far away (PLAN.md "Accepted losses"). See `shared/view` for the math.

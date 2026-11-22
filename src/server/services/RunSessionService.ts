@@ -5,7 +5,13 @@ import { dailyClockNow, dailySeed } from "server/config";
 import { serverLogger } from "server/log";
 import { Events } from "server/network";
 import { DAILY_VERDICT, DAILY_WORLD_KIND, type DailyRunResult } from "shared/daily";
-import { boardForParty, dailyRunResult, partyContributors, type LeaderboardMember } from "shared/leaderboard";
+import {
+	PARTY_NOT_LEFT,
+	boardForParty,
+	creditedPartyMembers,
+	dailyRunResult,
+	type LeaderboardMember,
+} from "shared/leaderboard";
 import { LobbyRunTracker, type LobbyRunStart } from "shared/lobby";
 import type { LeaderboardPostStatus, RunFinishVerdict } from "shared/network";
 import type { RunRecordsResult } from "shared/records";
@@ -24,6 +30,7 @@ import {
 	SEGMENT_REPLAY_SLICE_TICKS,
 	SEGMENT_SUBMIT_RATE,
 	SlidingWindowLimiter,
+	forRecipient,
 	replayTurn,
 	truncateReason,
 	type RunFinal,
@@ -64,29 +71,9 @@ interface SessionMeta {
 	pumping: boolean;
 	/**
 	 * Party runs, captured when the lockstep session handed its final to the validator: per member the first tick of
-	 * their leave frame (NOT_LEFT: never), for the co-op credit (shared/leaderboard partyContributors).
+	 * their leave frame (PARTY_NOT_LEFT: never), for the co-op credit (shared/leaderboard partyContributors).
 	 */
 	leftFromTick?: number[];
-}
-
-const NOT_LEFT = -1;
-
-/**
- * `verdict` with one recipient's personal records result, daily board result and predicted Silver grant (a copy; the
- * verdict itself when there is none of them).
- */
-function forRecipient(
-	verdict: RunFinishVerdict,
-	records: RunRecordsResult | undefined,
-	daily: DailyRunResult | undefined,
-	silver: SilverGrantBreakdown | undefined,
-): RunFinishVerdict {
-	if (records === undefined && daily === undefined && silver === undefined) return verdict;
-	const out: RunFinishVerdict = { ...verdict };
-	if (records !== undefined) out.records = records;
-	if (daily !== undefined) out.daily = daily;
-	if (silver !== undefined) out.silver = silver;
-	return out;
 }
 
 /** A lobby's run is over (`reason` is for the log). */
@@ -610,7 +597,7 @@ export class RunSessionService implements OnStart {
 				// Co-op credit: who was still in the run, captured from the server's own relay.
 				const relay = coop.getRelay();
 				const left: number[] = [];
-				for (let i = 0; i < session.members.size(); i++) left.push(relay.leftFromTick(i) ?? NOT_LEFT);
+				for (let i = 0; i < session.members.size(); i++) left.push(relay.leftFromTick(i) ?? PARTY_NOT_LEFT);
 				const meta = this.meta.get(session);
 				if (meta !== undefined) meta.leftFromTick = left;
 				this.registry.markFinishing(session);
@@ -793,17 +780,13 @@ export class RunSessionService implements OnStart {
 				});
 			}
 			// Co-op credit: only members who contributed (present until the end, or through one full floor).
-			let credited = meta.members;
-			if (session.members.size() > 1) {
-				const left = meta.leftFromTick ?? [];
-				const flags = partyContributors(
-					(i) => (left[i] === undefined || left[i] === NOT_LEFT ? undefined : left[i]),
-					session.members.size(),
-					result.verifiedTicks,
-					result.firstFloorChangeTick,
-				);
-				credited = meta.members.filter((_, i) => flags[i]);
-			}
+			const credited = creditedPartyMembers(
+				meta.members,
+				session.members.size(),
+				meta.leftFromTick,
+				result.verifiedTicks,
+				result.firstFloorChangeTick,
+			);
 			const [ok, status] = pcall(() =>
 				this.leaderboards.post({
 					runId: session.runId,

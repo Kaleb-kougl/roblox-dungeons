@@ -1,11 +1,11 @@
 # Golden fixtures (web build -> Roblox port)
 
-Exported from the web game (`project-kaleb-vale`, commit `42897e2`) by `scripts/export-fixtures.ts`. The Luau port
-must reproduce every value here bit for bit. Do not edit these files by hand: regenerate them.
+Exported from the web build (the private TypeScript source project, commit `42897e2`) by its
+`scripts/export-fixtures.ts`. The Luau port must reproduce every value here bit for bit. Do not edit these files by hand: regenerate them.
 
 ```bash
-# in project-kaleb-vale
-npm run fixtures:export                                   # writes ../kaleb-vale-roblox/fixtures/*.json
+# in the source project
+npm run fixtures:export                                   # writes ../roblox-dungeons/fixtures/*.json
 KV_FIXTURES_OUT=/some/dir npm run fixtures:export         # somewhere else
 ```
 

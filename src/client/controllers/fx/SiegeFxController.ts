@@ -25,7 +25,7 @@ import {
 } from "shared/view/fx";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
-import { ActorRenderController } from "../render/ActorRenderController";
+import { ActorRenderController } from "../render/actors";
 import { FxPartPool } from "./BuildFxController";
 import { ComboController } from "./ComboController";
 import { FreezeFrameController } from "./FreezeFrameController";

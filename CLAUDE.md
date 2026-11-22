@@ -1,15 +1,19 @@
-# Kaleb-Vale (Roblox port)
+# Roblox Dungeons
 
-A port of the web game **Project Kaleb-Vale** (top-down bullet-hell ARPG, M1 "First fight") to Roblox.
+**Roblox Dungeons** (repo `roblox-dungeons`): a co-op top-down bullet-hell roguelike on Roblox. It began as a port
+of a private TypeScript web build (M1 "First fight") and has grown past it.
 **roblox-ts + Flamework + Reflex + React**, synced with Rojo. The plan is `PLAN.md`; work it task by task.
 
 ## The source project
 
-`/Users/kalebmon/Documents/project-kaleb-vale` @ **`42897e2`** (Three.js / TypeScript). It is the reference:
-its outputs are exported as golden JSON fixtures (`fixtures/`) and this build must match them bit for bit.
+The game began as a port of a private TypeScript web build (Three.js), at its commit **`42897e2`**. That build is the
+reference: its outputs are exported as golden JSON fixtures (`fixtures/`) and this build must match them bit for bit.
+It is not part of this repository; where a checkout exists, its path on the machine is given in an untracked
+`CLAUDE.local.md`.
 
 **It is READ-ONLY.** Never modify it, commit to it, or run its build. Read its code; port from it.
-Record every ported module in `PROVENANCE.md` (ported module, source path, source commit).
+Record every ported module in `PROVENANCE.md` (ported module, source path relative to the source project's root,
+source commit).
 
 ## Documents
 
@@ -94,6 +98,16 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/REPO_HYGIENE.md` | Repo hygiene (session outputs, backups and marketing renders out of the tree, 124 branches and 24 worktree folders cleared, `.mailmap`, shared ignore rules; the history rewrite with `git filter-repo` before any remote is the owner's; tooling and repository state only): findings, as built RH0-RH8, tasks RH0-RH12, decisions RHD1-RHD8 |
 | `docs/DEVELOPING.md` | Contributor guide (setup, what works without the art packs, every npm script by group, the source layout); the root `README.md` is the project overview for a reader evaluating the code |
 | `docs/CI.md` | CI on GitHub Actions (the `verify` stages `verify:static` / `verify:build` / `verify:specs` in three jobs; the spec suite in 12 shards by path hash, `--shard i/n`, on x86-64 and arm64; Lune from `rokit.toml` by `scripts/ci/install-lune.sh`; the API reference to Pages; the NaN sign finding CI1; tooling only): findings, as built, tasks CI0-CI13, decisions CD1-CD9 |
+| `ARCHITECTURE.md` | One-page architecture: layers and import rules, one frame of co-op, the trust boundary, the determinism invariant |
+| `docs/README.md` | Index of `docs/` by group (engineering, generated, owner checklists, features, art and audio). A new doc adds its line there too |
+| `docs/decisions/README.md` | Six decision records (0001-0006) extracted from the log: lockstep, runner-enforced determinism, opt-in state hashed last, rollback not built, local prediction, the wallet. Extracts; `docs/DECISIONS.md` stays the authority |
+| `docs/PRESENTATION.md` | Presentation pass (server census and five rules moved to shared with specs, `SimController` and the actor renderer split, `client/log` and the print / warn lint, the `KV_*` registry, one name, private references out, architecture page, decision records, the Studio pass and task triage; no gameplay change): corrected findings, as built, findings left for the owner, tasks SE0-SE20, decisions SED1-SED11 |
+| `docs/SERVER_CENSUS.md` | Server census (per service the remotes and their argument checks, writes, the shared module and spec behind each rule; the five inline rules moved to shared; what is left; findings) |
+| `docs/SIM_CONTROLLER.md` | `SimController` census and split (members by responsibility, clock reads, frame order, coupling; contracts, co-op / solo build, HUD feed, submissions in `client/controllers/game/sim/`, the drawn local player in `shared/view/predict`; the class keeps its path and Flamework id; refactor only): census, as built, Studio check |
+| `docs/ACTOR_RENDER.md` | Actor render split (the controller as `render/actors/`: frame and actor pool in the class, `PlayerViews`, `ActorHitReact`, records and part builders, `shared/view/actorDraw.ts`; a pure move, presentation only): census, split, as built, tasks R0-R6, Studio check |
+| `docs/STUDIO_PASS.md` | The owner's one ordered checklist of every open Studio, device and upload check, by session, each line naming the tasks it closes |
+| `docs/OPEN_TASKS_TRIAGE.md` | Proposed state of every open task and pending log note (Studio pass, issue, done, won't do) and the `gh issue create` commands |
+| `docs/DEBUG_SWITCHES.md` | Generated list of every `KV_*` name (debug switches with value / reader / gate, DataStores, instance names, render steps) from `scripts/kv-names.json` (`npm run check:kvnames -- --write`). Never edit by hand |
 | `docs/DECISIONS.md` | The decision log: every deviation from `PLAN.md`, port retune and feature entry (moved out of this file) |
 | `docs/FACTS.md` | Generated numbers (`npm run facts`; `facts:check` in verify): `DAILY.ruleset`, `SIM_BUTTONS`, Codex and analytics counts, theme list sizes, the archetype index table, the fullest modules' top-level locals. Never edit by hand |
 | `docs/OPEN_TASKS.md` | Generated list of every plan's unchecked tasks and the decision log's pending notes (`npm run tasks:open`). Never edit by hand |
@@ -126,14 +140,14 @@ Rules from the log that apply to every task:
 ## Commands
 
 ```
-npm run verify      # typecheck -> lint -> build -> headless tests. Run before you finish
+npm run verify      # typecheck -> lint -> format:check -> checks -> build -> headless tests. Run before you finish
 npm test            # gen fixtures -> rbxtsc -> Lune runs every out/shared/**/*.spec
 npm run test:only -- sim/rng   # rerun specs without rebuilding; args filter by source path
 npm run test:only -- --shard 3/12   # one CI shard of the spec files (docs/CI.md); --list prints them instead
 npm run test:only -- --census run/archer.survival   # opt-in census specs: their full sample (docs/ARCHER.md AR13)
 npm run build       # gen fixtures -> rbxtsc -> out/
 npm run dev         # rbxtsc -w + rojo serve
-npm run build:place # publishable place: build/kaleb-vale.rbxl from publish.project.json (no specs, fixtures or Jest)
+npm run build:place # publishable place: build/roblox-dungeons.rbxl from publish.project.json (no specs, fixtures or Jest)
 npm run test:plugin # Studio test-runner plugin (same specs under real @rbxts/jest in Studio)
 npm run art:build   # art/vendor -> art/build atlases + packs/vale/layout.ts / fxLayout.ts (art:lock rewrites art/vendor.lock.json)
 npm run test:art    # node:test specs of the atlas pipeline (scripts/art/*.test.js; part of verify)
@@ -141,6 +155,8 @@ npm run audio:build # art/vendor/ninja-adventure/Audio -> art/build/audio/*.ogg 
 npm run l10n:export # (after build) English + l10n/context.json -> l10n/out/kv-strings*.csv for the Roblox cloud table
 npm run l10n:import -- l10n/in/table.csv   # the whole downloaded cloud table -> shared/theme/locales/*.ts + l10n/report.md
 npm run l10n:check  # (after build) translation coverage / stale / context report (test:l10n, check:autolocalize: in verify)
+npm run check:kvnames # (in verify) every KV_* string in src/ is in scripts/kv-names.json and still used;
+                    # docs/DEBUG_SWITCHES.md is its table: after adding a name, `npm run check:kvnames -- --write`
 npm run check:locals # (after build; in verify) top-level locals of every compiled module: fails past Luau's 200, warns from 185
 npm run docs        # TypeDoc -> build/api/index.html: the API reference from the doc comments, with docs/*.md as pages
                     # and every `docs/NAME.md` a link (about 33 s, never committed)
@@ -208,6 +224,11 @@ split-16-bit `imul`, no getters in sim state.
   ends with `@module`, `{@link}` for symbols worth following; a plan doc is cited as plain `docs/NAME.md` (the site links it). In `shared/sim`, `shared/dungeon` and `shared/lockstep`
   every field of an exported interface has one too. `check:docs` fails on a new gap; never add a name to
   `scripts/doc-coverage.json` (docs/DOC_COMMENTS.md).
+- **A new `KV_*` name needs a registry entry** in `scripts/kv-names.json` with its kind and a one-line description
+  (`check:kvnames`).
+- **Client and server code never call `print` / `warn`** (ESLint): the client logs through `client/log`
+  (`logInfo` / `logWarn` pass the text unchanged, `clientLogger(source)` for new lines), the server through
+  `server/log`. Never change the text of an existing line: docs and Studio checks quote them.
 - **No magic numbers.** Tunables live in `shared/config` (or the data module that owns them), never inline in logic.
 - **Roblox properties are float32; Luau arithmetic is float64.** A value written to a property and read back is not
   the value you computed. Assert with tolerance (`toBeCloseTo`) only where a value passes through a property or

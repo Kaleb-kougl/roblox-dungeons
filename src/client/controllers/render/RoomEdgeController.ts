@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
+import { logInfo, logWarn } from "client/log";
 import { clientStore, selectDisplay } from "client/store";
 import { buildScoreRooms } from "shared/sim";
 import { ROOM_EDGE_HORDE_ROLE, ROOM_EDGE_ROLES } from "shared/theme";
@@ -136,13 +137,16 @@ export class RoomEdgeController implements OnStart {
 		const state = this.sim.getState();
 		let fallback;
 		if (state !== undefined && state.score === undefined) {
-			if (state.tick !== 0) warn(`[RoomEdges] unscored run built its room records at tick ${state.tick}, not 0`);
+			if (state.tick !== 0)
+				logWarn(`[RoomEdges] unscored run built its room records at tick ${state.tick}, not 0`);
 			fallback = buildScoreRooms(state, ctx.config.encounter);
 		}
 		this.states = new RoomEdgeStates(d.rooms.size(), fallback);
 		this.folder = folder;
 		folder.Parent = this.enabled ? Workspace : undefined;
-		print(`[RoomEdges] built ${dashes} dashes, ${edges.runs.size()} runs, ${this.rooms.size()} rooms (${d.name})`);
+		logInfo(
+			`[RoomEdges] built ${dashes} dashes, ${edges.runs.size()} runs, ${this.rooms.size()} rooms (${d.name})`,
+		);
 	}
 
 	private frame(): void {

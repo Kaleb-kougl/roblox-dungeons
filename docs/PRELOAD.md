@@ -45,8 +45,8 @@ green (theme 327, view 664, sim 642, dungeon 188, the rest 512).
   menu 15, pause / settings 20; spikes HUD 100). **The cursor (docs/CURSOR.md) must sit above 30.** Skip: click,
   Enter / KeypadEnter (not while typing), pad A (Skip takes `GuiService.SelectedObject`); `HudController`'s
   `selectMenuOpen` is also true while the screen is up, so InputController lets pad A through. No shimmer, so reduced
-  motion only drops the fade. Strings (`LOADING_STRINGS`, required in the contract): `loading.title` "Project
-  Kaleb-Vale", `loading.progress` "Loading {done} / {total}", `loading.skip` "Skip".
+  motion only drops the fade. Strings (`LOADING_STRINGS`, required in the contract): `loading.title` "Roblox Dungeons",
+  `loading.progress` "Loading {done} / {total}", `loading.skip` "Skip".
 - **Join gate**: `TutorialController` feeds its `FirstRunGate` decision into a `JoinGate`; the release comes from
   `PreloadController.whenReleased`. Logs `[Tutorial] first run: X waits for the loading screen` /
   `... (dispatched as the loading screen released)`.

@@ -25,7 +25,7 @@ const MAX_NUDGE_DT = 0.1;
 const MS = 1000;
 
 /**
- * Freeze frame on kill (port of project-kaleb-vale src/fx/freeze/FreezeFrame.tsx @ 42897e2). Three jobs:
+ * Freeze frame on kill (port of the web build's src/fx/freeze/FreezeFrame.tsx @ 42897e2). Three jobs:
  *   1. Tracker events -> hitstop requests on the SimController's clock (shared/view/fx freezeRules): kill 50 ms,
  *      elite / heavy kill 80 ms, boss phase 2/3 120 ms, boss death 250 ms + 0.5 s slow motion; 'reset' clears. The
  *      clock applies longest-wins, the clamp and the 150 ms / 1 s rate cap; LiveRun turns it into sim pacing.

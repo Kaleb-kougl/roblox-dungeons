@@ -187,6 +187,40 @@ export function partyContributors(
 	return out;
 }
 
+/**
+ * `leftFromTick` entry of a member who never left a party run (RunSessionService captures one entry per member from the
+ * server's relay when the run's final goes to the validator).
+ */
+export const PARTY_NOT_LEFT = -1;
+
+/**
+ * The members of an accepted run who are credited with it: the leaderboard post, the personal records and the Silver
+ * grant all go to exactly these. A solo run credits its one member. A party run credits the members `partyContributors`
+ * names; `leftFromTick` is per member in index order (PARTY_NOT_LEFT or a missing entry: never left; undefined as a
+ * whole: nobody left), `verifiedTicks` the replay's final tick and `firstFloorChangeTick` its first floor change.
+ * Returns `members` itself for a solo run, otherwise a new array in member order. Pure.
+ */
+export function creditedPartyMembers<T extends defined>(
+	members: ReadonlyArray<T>,
+	partySize: number,
+	leftFromTick: ReadonlyArray<number> | undefined,
+	verifiedTicks: number,
+	firstFloorChangeTick: number | undefined,
+): ReadonlyArray<T> {
+	let credited = members;
+	if (partySize > 1) {
+		const left = leftFromTick ?? [];
+		const flags = partyContributors(
+			(i) => (left[i] === undefined || left[i] === PARTY_NOT_LEFT ? undefined : left[i]),
+			partySize,
+			verifiedTicks,
+			firstFloorChangeTick,
+		);
+		credited = members.filter((_, i) => flags[i]);
+	}
+	return credited;
+}
+
 /** Solo for a party of one, co-op from COOP_MIN_PARTY. */
 export function boardForParty(partySize: number): LeaderboardBoard {
 	return partySize >= COOP_MIN_PARTY ? "coop" : "solo";

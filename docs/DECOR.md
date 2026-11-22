@@ -82,7 +82,7 @@ Walls today are greedy-merged 1-tile-tall Parts (~480 wall tiles per floor) in t
 (`WorldController`). Themes are picked from each floor's seed, so all five biomes appear (ancient 21 %, frost 22 %,
 grim 20 %, verdant 22 %, molten 15 %).
 
-**The web build has already solved this.** `project-kaleb-vale` at HEAD `35307022` (newer than the port's
+**The web build has already solved this.** The source project at HEAD `35307022` (newer than the port's
 `42897e2`) has a full decoration system, and this plan ports it rather than reinventing it:
 
 | Web source | What it does |
@@ -364,7 +364,7 @@ every room a theme (`Dungeon.roomThemes`, by room id) and places its set pieces.
 ## Decisions
 
 - **D1. The full Lords of Pain pack:** bought (2026-10-25). Every task below is unblocked.
-- **D2. Solid pillars: decided, yes (2026-10-25).** The Kaleb-Vale Forge option `solidPillars` (on in
+- **D2. Solid pillars: decided, yes (2026-10-25).** The game's Forge option `solidPillars` (on in
   `endlessFloorParams` only) turns every pillar cell into a WALL tile after all decoration, so the rng stream and every
   other prop, torch, arch and spawn stay put; endless room spawns, hashes and replays changed, M1 and the fixtures did
   not. Walking room enemies (not the boss) round pillars with `SimConfig.actorSteerMover` (`moveCircleAroundCorners`); the player stops

@@ -1,9 +1,11 @@
 {
-	"name": "kaleb-vale-roblox",
+	"name": "roblox-dungeons",
 	"version": "0.1.0",
 	"description": "Roblox Dungeons: a co-op bullet-hell roguelike on Roblox (roblox-ts + Flamework + Reflex + React)",
 	"private": true,
-	"main": "index.js",
+	"engines": {
+		"node": ">=20"
+	},
 	"scripts": {
 		"build": "rbxtsc",
 		"watch": "rbxtsc -w",
@@ -20,11 +22,12 @@
 		"prelint": "npm run gen:fixtures",
 		"test": "npm run build && lune run scripts/lune/run-tests.luau",
 		"test:only": "lune run scripts/lune/run-tests.luau",
-		"test:plugin": "rojo build test-runner.project.json -o \"$HOME/Documents/Roblox/Plugins/KalebValeTestRunner.rbxm\"",
+		"test:plugin": "rojo build test-runner.project.json -o \"$HOME/Documents/Roblox/Plugins/RobloxDungeonsTestRunner.rbxm\"",
 		"check:assets": "node scripts/check-asset-ids.js",
 		"check:autolocalize": "node scripts/check-autolocalize.js",
 		"check:locals": "node scripts/check-luau-locals.js",
 		"check:docs": "node scripts/check-doc-coverage.js",
+		"check:kvnames": "node scripts/check-kv-names.js",
 		"dump:lists": "lune run scripts/lune/dump-lists.luau",
 		"out:digest": "node scripts/out-digest.js",
 		"facts": "node scripts/facts.js",
@@ -35,8 +38,8 @@
 		"predocs:check": "npm run gen:fixtures",
 		"docs:check": "typedoc --emit none",
 		"test:checks": "node --test \"scripts/check-*.test.js\"",
-		"art:build": "node scripts/art/gen-loot-glint.js && node scripts/art/gen-pellet.js && node scripts/art/gen-treasure-art.js && node scripts/art/gen-boost-auras.js && node scripts/art/gen-hazard-art.js && node scripts/art/gen-fortune-art.js && node scripts/art/gen-boon-icons.js && node scripts/art/gen-item-icons.js && node scripts/art/gen-boost-icons.js && node scripts/art/gen-pip-icons.js && node scripts/art/gen-heart-halfmax.js && node scripts/art/gen-duo-icons.js && node scripts/art/gen-grave-art.js && node scripts/art/gen-secret-art.js && node scripts/art/gen-silver-art.js && node scripts/art/build-atlases.js",
-		"art:lock": "node scripts/art/gen-loot-glint.js && node scripts/art/gen-pellet.js && node scripts/art/gen-treasure-art.js && node scripts/art/gen-boost-auras.js && node scripts/art/gen-hazard-art.js && node scripts/art/gen-fortune-art.js && node scripts/art/gen-boon-icons.js && node scripts/art/gen-item-icons.js && node scripts/art/gen-boost-icons.js && node scripts/art/gen-pip-icons.js && node scripts/art/gen-heart-halfmax.js && node scripts/art/gen-duo-icons.js && node scripts/art/gen-grave-art.js && node scripts/art/gen-secret-art.js && node scripts/art/gen-silver-art.js && node scripts/art/build-atlases.js --lock",
+		"art:build": "node scripts/art/gen-all.js",
+		"art:lock": "node scripts/art/gen-all.js --lock",
 		"test:art": "node --test \"scripts/art/*.test.js\"",
 		"l10n:dump": "lune run scripts/l10n/dump-strings.luau",
 		"l10n:export": "npm run l10n:dump && node scripts/l10n/export.js",
@@ -46,18 +49,14 @@
 		"audio:build": "node scripts/audio/build-audio.js",
 		"audio:lock": "node scripts/audio/build-audio.js --lock",
 		"audio:audition": "node scripts/audio/build-audio.js --audition",
-		"verify:static": "npm run typecheck && npm run lint && npm run check:docs && npm run docs:check && npm run check:assets && npm run check:autolocalize && npm run test:art && npm run test:checks && npm run test:l10n",
+		"verify:static": "npm run typecheck && npm run lint && npm run format:check && npm run check:docs && npm run docs:check && npm run check:assets && npm run check:autolocalize && npm run check:kvnames && npm run test:art && npm run test:checks && npm run test:l10n",
 		"verify:build": "npm run build && npm run check:locals && npm run facts:check",
 		"verify:specs": "npm run test:only -- --flag bench.budget",
 		"verify": "npm run verify:static && npm run verify:build && npm run verify:specs",
-		"build:place": "npm run build && node -e \"require('fs').mkdirSync('build',{recursive:true})\" && rojo build publish.project.json -o build/kaleb-vale.rbxl"
+		"build:place": "npm run build && node -e \"require('fs').mkdirSync('build',{recursive:true})\" && rojo build publish.project.json -o build/roblox-dungeons.rbxl"
 	},
-	"keywords": [],
 	"author": "Kaleb Kougl",
 	"license": "SEE LICENSE IN LICENSE",
-	"engines": {
-		"node": ">=20"
-	},
 	"devDependencies": {
 		"@rbxts/compiler-types": "^3.0.0-types.0",
 		"@rbxts/jest": "^3.16.0-ts.1",

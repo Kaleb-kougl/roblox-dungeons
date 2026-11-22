@@ -28,7 +28,7 @@ game. `npm run l10n:export` reads both files to fill the cloud table's Context a
     Example column shows a filled sentence. Values are what the code passes (formatted numbers are strings: `"12,340"`).
 - **`glossary.json`**: `{ "terms": [{ "term", "meaning", "translate", "keys" }] }`, the game's vocabulary a translator
   must keep consistent (classes, enemies, bosses, boons, combo tiers, floor / run / Daily...). `translate: false` only
-  for names that are never translated: the brand `Kaleb-Vale` (LD11; "Project" in the title may be translated) and the
+  for names that are never translated: the brand `Roblox Dungeons` (LD11) and the
   platform name `Roblox`. `keys` lists the keys whose English uses the term, for the review pass (L11).
 
 ## Adding or changing a string

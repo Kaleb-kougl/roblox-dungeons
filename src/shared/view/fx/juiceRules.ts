@@ -1,5 +1,5 @@
 /**
- * The shared juice rules every feature follows (port of the rule half of project-kaleb-vale src/fx/settings.ts
+ * The shared juice rules every feature follows (port of the rule half of the web build's src/fx/settings.ts
  * @ 42897e2: PARTICLE_BUDGET, effectiveParticles, particleBudget, freezeFrameOn, screenShakeOn, motionScale). The
  * settings schema itself (types, defaults, sanitize, the stored overrides) is shared/settings/juice.ts, which the
  * server uses too; these helpers are presentation only.

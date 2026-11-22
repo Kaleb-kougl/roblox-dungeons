@@ -1,4 +1,4 @@
-// Hitstop clock rules and the freeze-frame event rules (port of project-kaleb-vale src/fx/freeze/hitstop.rules.test.ts
+// Hitstop clock rules and the freeze-frame event rules (port of the web build's src/fx/freeze/hitstop.rules.test.ts
 // and src/fx/hitstop.test.ts @ 42897e2): longest wins, the clamps, the rolling rate cap and its boss-death exception,
 // the slow-motion ramp, settings, clearing, the camera nudge, and the clock driving a real FixedStepLoop.
 import { describe, expect, it } from "@rbxts/jest-globals";

@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
+import { logInfo } from "client/log";
 import { STUDS_PER_TILE } from "shared/config";
 import { DECOR_FX_TINT, decorFxId, type DecorPiece, type ThemePack } from "shared/theme";
 import {
@@ -390,7 +391,7 @@ export class DecorFxController implements OnStart {
 			});
 		}
 		folder.Parent = this.folder;
-		print(
+		logInfo(
 			`[DecorFx] ${this.candEntry.size()} pool candidates, ${this.flames.size()} flames, ${this.glows.size()} glows, ` +
 				`${this.fixed.size()} fixed lights, ${ring.size()} ring pits, ${this.glints.size()} glints, ambient ${
 					this.hasAmbient ? "on" : "none"

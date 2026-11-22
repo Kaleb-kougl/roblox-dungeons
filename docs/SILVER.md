@@ -14,7 +14,7 @@ Numbers marked *(tune)* are starting points for the censuses, not commitments. T
 upgrades, hearts, the Archer) and **SC** (Silver in crates), decisions **SVD**.
 
 Goal: every run pays out **Silver**, a currency that is kept between runs (the model is Megabonk's silver: found and
-earned by playing, spent in a menu shop on permanent upgrades and unlocks). In Kaleb-Vale, gold already means *this
+earned by playing, spent in a menu shop on permanent upgrades and unlocks). In Roblox Dungeons, gold already means *this
 run's score* (Goldling coins, the score panel, `ui.icon.coin` beside the score number); Silver is what you take home.
 Some of it is **in the dungeon**: a few barrels and crates on every floor hold Silver, and breaking them spills it. It
 is spent in a new main-menu screen, the **Armory**, on:
@@ -580,8 +580,9 @@ ship before Vigor and the unlock can be bought); then SV7-SV8, SV10 and the cosm
   ending balance >= 0) and one Sink per purchase with its tier; daily finishes carry the upgrade total; the new-player
   events carry starting hearts; days and runs from first run to each tier's first purchase, split by the player's usual
   death floor; the share of runs paid at the minimum.
-- [ ] **SV11-SV13. Cosmetics** (catalogue with tiers and colour validation; equip and per-player looks; drawing the
+- [x] **SV11-SV13. Cosmetics** (catalogue with tiers and colour validation; equip and per-player looks; drawing the
   slots).
+  *Done 2026-11-21 (docs/OPEN_TASKS_TRIAGE.md): built as docs/COSMETICS.md (CS3-CS8); what is left is tracked by its tasks.*
 - [x] **SV14. Docs.** This doc's "As built", docs/SERVER.md, docs/CLIENT.md, docs/DAILY.md, docs/ARCHER.md,
   docs/ROOM_CLEAR.md (room clears tick the counter), docs/BREAKABLE_DROPS.md and docs/GOLDLING_RUMOURS.md (what a
   twinkle can hold), docs/TUTORIAL.md (the 1-heart start), the CLAUDE.md row and decision log.

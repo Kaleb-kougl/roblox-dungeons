@@ -101,7 +101,7 @@ describe("placeholders", () => {
 describe("context cell", () => {
 	const glossary = {
 		terms: [
-			{ term: "Kaleb-Vale", meaning: "the game", translate: false },
+			{ term: "Dungeons", meaning: "the game", translate: false },
 			{ term: "Ember", meaning: "currency", translate: false, keys: ["ember.name"] },
 			{ term: "Boon", meaning: "upgrade", translate: true },
 		],
@@ -109,8 +109,8 @@ describe("context cell", () => {
 
 	it("is key · note · max · do not translate, leaving out absent parts", () => {
 		assert.equal(
-			lib.contextCell("game.title", "Project Kaleb-Vale", { note: "Title", max: 24 }, glossary),
-			"game.title · Title · max 24 chars · do not translate: Kaleb-Vale",
+			lib.contextCell("game.title", "Roblox Dungeons", { note: "Title", max: 24 }, glossary),
+			"game.title · Title · max 24 chars · do not translate: Dungeons",
 		);
 		assert.equal(lib.contextCell("menu.back", "Main menu", undefined, glossary), "menu.back");
 		// a term limited to keys applies only there

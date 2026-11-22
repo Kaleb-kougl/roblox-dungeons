@@ -1,4 +1,4 @@
-// Ported from project-kaleb-vale src/theme/validate.test.ts @ 42897e2. File checks became Roblox
+// Ported from the web build's src/theme/validate.test.ts @ 42897e2. File checks became Roblox
 // asset-ID checks and the `generated` kind became `placeholder`; every other case is kept.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { contrastRatio } from "./color";
@@ -286,7 +286,7 @@ describe("validateManifest: rejects bad manifests", () => {
 	it("checks locales and string placeholders", () => {
 		const m = clone();
 		at(m, "strings")["hud.level"] = "Lv {level";
-		m.locales = { fr: { "game.title": "Projet Kaleb-Vale", "not.a.key": "x" } };
+		m.locales = { fr: { "game.title": "Donjons Roblox", "not.a.key": "x" } };
 		expect(validateManifest(m)).toEqual([
 			'strings["hud.level"]: has a malformed placeholder (use {name} with letters, digits or _)',
 			'locales.fr["not.a.key"]: not in the default string table',
