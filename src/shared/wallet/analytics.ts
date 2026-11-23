@@ -11,6 +11,8 @@
  *   pack      (docs/SILVER_SHOP.md SH7) one economy Source per granted Silver pack (itemSku `silverPack.<id>`,
  *             transactionType IAP, apart from Gameplay / TimedReward) and one `SilverShop` custom event, step `granted`
  *             (shopAnalytics.ts holds the funnel's client steps).
+ *   bought    (docs/SHOP_ANALYTICS.md) one `Purchase` custom event beside each of the above and each game-pass grant:
+ *             the kind, the currency and the item (purchaseAnalytics.ts).
  *
  * Roblox's limits: amount > 0, ending balance >= 0, 5 currency types (Silver is one), 20 transaction types, about 100
  * SKUs (ECONOMY_SKUS; analytics.spec holds them under it).
@@ -47,8 +49,12 @@ export const GRANT_SKU = table.freeze({
 	dailyBonus: "dailyBonus",
 });
 
-/** The Armory's and the Silver shop's custom events. */
-export const WALLET_ANALYTICS_EVENT = table.freeze({ armoryPurchase: "ArmoryPurchase", silverShop: "SilverShop" });
+/** The Armory's and the Silver shop's custom events, and `Purchase`, the one event of everything bought. */
+export const WALLET_ANALYTICS_EVENT = table.freeze({
+	armoryPurchase: "ArmoryPurchase",
+	silverShop: "SilverShop",
+	purchase: "Purchase",
+});
 
 /** A Silver pack's economy SKU. */
 export function silverPackSku(id: SilverPackId): string {

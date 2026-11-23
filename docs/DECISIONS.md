@@ -1704,3 +1704,13 @@ Superseded in older entries (kept as written):
   opens an attempt (accepted). The client debug switches read outside Studio are relabelled, not gated (owner).
   New log line `FINISH_DROPPED`; no existing line changed. Open: the owner's Studio check (SF12), the test place
   id (OC1).
+
+- **Shop analytics (2026-11-22, docs/SHOP_ANALYTICS.md).** No gameplay change: no sim, hash group, wire format,
+  ruleset, fixture or remote touched; server telemetry only. One new custom event `Purchase` (40 names) for
+  everything bought: field01 the kind (`upgrade` / `unlock` / `cosmetic` from the catalogue item, `silverPack`),
+  field02 the currency (`silver` / `robux`), field03 the item (the catalogue id or `silverPack.<id>`), value 1
+  (`shared/wallet/purchaseAnalytics.ts`). Logged by the server beside `ArmoryPurchase`, beside the Silver shop's
+  `granted`, and at every game-pass grant that commits (prompt or join check alike, once per player per pass),
+  which logged nothing before. `ArmoryPurchase`, `SilverShop` and the economy events are unchanged.
+  `CosmeticPassService` takes `TelemetryService`. No existing log line changed. Open: the `continue` kind with
+  docs/CONTINUE.md (PU6), the owner's Studio check (PU8), the pass prompt's funnel and views / try-ons (OC1, OC2).

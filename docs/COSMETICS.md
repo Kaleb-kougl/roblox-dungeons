@@ -185,7 +185,8 @@ the spec does not need the PNGs):
 - [x] **CS10. Prismatic.** Data half built (stops, `prismaticColor`, rule 5: "As built: theme (CS3)"); the drawing is CS5
   ("As built: view (CS5)": the sprite clock in runs, Heartbeat in menus, held at the first stop under reduced motion).
 - [ ] **CS11. Earned cosmetics** (not this pass).
-- [ ] **CS12. Telemetry** (not this pass).
+- [ ] **CS12. Telemetry** (not this pass). Purchases are logged since 2026-11-22: every cosmetic bought, a game-pass
+  item included, is one `Purchase` (docs/SHOP_ANALYTICS.md PUD7). Open: views, try-ons, the pass prompt's funnel.
 
 ## As built: pipeline (CS1-CS2, 2026-11-17)
 

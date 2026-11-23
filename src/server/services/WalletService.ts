@@ -16,6 +16,7 @@ import {
 	WALLET_FAKE_ATTRIBUTE,
 	WalletBook,
 	armoryPurchaseEvent,
+	itemPurchaseEvent,
 	cosmeticPassStatusFields,
 	encodeWalletDoc,
 	grantEconomyEvents,
@@ -361,6 +362,9 @@ export class WalletService implements OnStart {
 			log.info("BUY", `${player.UserId} ${p.itemId} ${p.level} for ${p.price} (balance ${p.balance})`);
 			this.telemetry.logEconomy(player, [purchaseEconomyEvent(p)]);
 			this.telemetry.logEvents(player, [armoryPurchaseEvent(p)]);
+			// docs/SHOP_ANALYTICS.md: the one event of everything bought (kind, currency, item).
+			const bought = itemPurchaseEvent(p.itemId);
+			if (bought !== undefined) this.telemetry.logEvents(player, [bought]);
 		} else if (!result.ok) {
 			log.info("REFUSED", `${player.UserId} ${result.action} ${result.itemId}: ${result.reason ?? "?"}`);
 		}
